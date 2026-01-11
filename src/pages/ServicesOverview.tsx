@@ -1,50 +1,52 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { Sun, Moon, Scissors, GraduationCap, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 
+// Import icons
+import iconStay from "@/assets/icons/icon-stay.png";
+import iconGroom from "@/assets/icons/icon-groom.png";
+import iconTrain from "@/assets/icons/icon-train.png";
+import iconShop from "@/assets/icons/icon-shop.png";
+
 const services = [
   {
     id: "daycare",
-    title: "Daycare",
+    title: "Play",
+    subtitle: "Daily Daycare",
     description: "Supervised play, socialization, and exercise in a safe, fun environment. Your dog will come home happy and tired.",
-    icon: Sun,
-    color: "from-golden to-primary",
-    bgColor: "bg-golden-light",
+    icon: iconStay,
     features: ["Play groups by size", "Indoor/outdoor areas", "Daily report cards"],
-    price: "From $45/day",
+    price: "From $25/half day",
   },
   {
     id: "boarding",
-    title: "Boarding",
-    description: "Home-away-from-home overnight stays with 24/7 care, comfortable suites, and plenty of love.",
-    icon: Moon,
-    color: "from-navy to-navy-light",
-    bgColor: "bg-sage-light",
-    features: ["Private suites", "24/7 supervision", "Webcam access"],
-    price: "From $55/night",
+    title: "Stay",
+    subtitle: "Overnight Boarding",
+    description: "Home-away-from-home overnight stays with 24/7 care, individual suites with Kuranda beds, and plenty of love.",
+    icon: iconStay,
+    features: ["Individual suites", "24/7 supervision", "Group play included"],
+    price: "$25/night + daycare",
   },
   {
     id: "grooming",
-    title: "Grooming",
+    title: "Groom",
+    subtitle: "Professional Grooming",
     description: "Professional spa treatments from bath & brush to full grooms. Your pup will look and feel amazing.",
-    icon: Scissors,
-    color: "from-primary to-coral-dark",
-    bgColor: "bg-coral-light",
-    features: ["Certified groomers", "All-natural products", "Breed-specific cuts"],
-    price: "From $35",
+    icon: iconGroom,
+    features: ["Bath & brush from $60", "Full groom from $75", "Nail trim $15"],
+    price: "From $15",
   },
   {
     id: "training",
-    title: "Training",
-    description: "Expert-led classes and private sessions to build skills, confidence, and strengthen your bond.",
-    icon: GraduationCap,
-    color: "from-sage to-sage-dark",
-    bgColor: "bg-sage-light",
-    features: ["Positive methods", "Group & private", "Puppy to advanced"],
-    price: "From $95/session",
+    title: "Train",
+    subtitle: "Training Academy",
+    description: "Expert-led classes and private sessions using positive reinforcement to build skills and strengthen your bond.",
+    icon: iconTrain,
+    features: ["Puppy to advanced", "Group & private", "Positive methods"],
+    price: "From $25/class",
   },
 ];
 
@@ -53,15 +55,21 @@ const ServicesOverview = () => {
     <div className="min-h-screen bg-background">
       <Header />
       
-      <main className="pt-20">
+      <main className="pt-24">
         {/* Hero */}
-        <section className="relative py-20 lg:py-32 bg-gradient-to-br from-primary to-golden overflow-hidden">
-          <div className="absolute inset-0 bg-black/10" />
-          <div className="container-app relative text-center">
+        <section className="py-16 lg:py-24 bg-cream-warm">
+          <div className="container-app text-center">
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-uppercase-spaced text-muted-foreground mb-4"
+            >
+              What We Offer
+            </motion.p>
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold text-primary-foreground mb-6"
+              className="font-display text-4xl sm:text-5xl lg:text-6xl font-medium text-foreground mb-6"
             >
               Our Services
             </motion.h1>
@@ -69,10 +77,10 @@ const ServicesOverview = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="text-xl text-primary-foreground/80 max-w-2xl mx-auto"
+              className="text-lg text-muted-foreground max-w-2xl mx-auto"
             >
-              Comprehensive care for your furry family member. From daily adventures to 
-              overnight stays, we've got everything covered.
+              Regina's premier 24-hour supervised canine care facility. 
+              Comprehensive care for your furry family member.
             </motion.p>
           </div>
         </section>
@@ -80,65 +88,124 @@ const ServicesOverview = () => {
         {/* Services Grid */}
         <section className="section-padding">
           <div className="container-app">
-            <div className="grid md:grid-cols-2 gap-8">
-              {services.map((service, i) => {
-                const Icon = service.icon;
-                return (
-                  <motion.div
-                    key={service.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.1 }}
-                  >
-                    <Link to={`/services/${service.id}`}>
-                      <div className={`relative rounded-3xl overflow-hidden bg-gradient-to-br ${service.color} p-8 lg:p-10 group hover:shadow-2xl transition-shadow`}>
-                        <div className="relative z-10">
-                          <div className={`w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center mb-6`}>
-                            <Icon className="w-8 h-8 text-primary-foreground" />
-                          </div>
-                          <h2 className="font-display text-3xl font-bold text-primary-foreground mb-3">
-                            {service.title}
-                          </h2>
-                          <p className="text-primary-foreground/80 mb-6">
-                            {service.description}
-                          </p>
-                          <div className="flex flex-wrap gap-2 mb-6">
-                            {service.features.map((f, j) => (
-                              <span key={j} className="px-3 py-1 bg-white/20 text-primary-foreground text-sm rounded-full">
-                                {f}
-                              </span>
-                            ))}
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-2xl font-bold text-primary-foreground">{service.price}</span>
-                            <span className="flex items-center gap-2 text-primary-foreground font-medium group-hover:gap-3 transition-all">
-                              Learn More <ArrowRight className="w-5 h-5" />
-                            </span>
-                          </div>
-                        </div>
+            <div className="grid md:grid-cols-2 gap-px bg-border">
+              {services.map((service, i) => (
+                <motion.div
+                  key={service.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                >
+                  <Link to={`/services/${service.id}`} className="group block">
+                    <div className="bg-background p-8 lg:p-12 h-full hover:bg-cream-warm transition-colors duration-300">
+                      {/* Icon */}
+                      <div className="w-14 h-14 mb-6 group-hover:scale-110 transition-transform duration-300">
+                        <img 
+                          src={service.icon} 
+                          alt={service.title}
+                          className="w-full h-full object-contain"
+                        />
                       </div>
-                    </Link>
-                  </motion.div>
-                );
-              })}
+
+                      {/* Title */}
+                      <p className="text-uppercase-spaced text-muted-foreground mb-2">
+                        {service.subtitle}
+                      </p>
+                      <h2 className="font-display text-3xl lg:text-4xl font-medium text-foreground mb-4">
+                        {service.title}
+                      </h2>
+
+                      {/* Description */}
+                      <p className="text-muted-foreground mb-6 leading-relaxed">
+                        {service.description}
+                      </p>
+
+                      {/* Features */}
+                      <div className="flex flex-wrap gap-2 mb-6">
+                        {service.features.map((f, j) => (
+                          <span key={j} className="px-3 py-1.5 bg-muted text-muted-foreground text-xs tracking-wide">
+                            {f}
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Price and Link */}
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-foreground">{service.price}</span>
+                        <span className="flex items-center gap-2 text-foreground text-sm tracking-wide group-hover:gap-4 transition-all duration-300">
+                          LEARN MORE <ArrowRight className="w-4 h-4" />
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
             </div>
+
+            {/* Shop CTA */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="mt-px"
+            >
+              <Link to="/shop" className="group block">
+                <div className="bg-foreground text-primary-foreground p-8 lg:p-12 hover:bg-charcoal-light transition-colors duration-300">
+                  <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
+                    <div className="flex items-center gap-6">
+                      <div className="w-14 h-14 invert opacity-90">
+                        <img src={iconShop} alt="Shop" className="w-full h-full object-contain" />
+                      </div>
+                      <div className="text-center lg:text-left">
+                        <p className="text-uppercase-spaced text-primary-foreground/60 mb-1">Retail</p>
+                        <h3 className="font-display text-2xl lg:text-3xl font-medium">Shop</h3>
+                      </div>
+                    </div>
+                    <p className="text-primary-foreground/70 max-w-md text-center lg:text-left">
+                      Premium food, treats, toys, and accessories your pet will love.
+                    </p>
+                    <div className="flex items-center gap-2 font-medium text-sm tracking-wide group-hover:gap-4 transition-all duration-300">
+                      VISIT SHOP <ArrowRight className="w-4 h-4" />
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            </motion.div>
           </div>
         </section>
 
         {/* CTA */}
-        <section className="section-padding bg-muted/30">
+        <section className="section-padding bg-cream-warm">
           <div className="container-app text-center">
-            <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground mb-4">
-              Ready to Get Started?
-            </h2>
-            <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-              Book your first visit online in minutes. New customers get 20% off their first service!
-            </p>
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-uppercase-spaced text-muted-foreground mb-4"
+            >
+              Get Started
+            </motion.p>
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="font-display text-3xl font-medium text-foreground mb-4"
+            >
+              Ready to Book?
+            </motion.h2>
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-muted-foreground mb-8 max-w-xl mx-auto"
+            >
+              New dogs require a $35 assessment. Book online or give us a call to schedule your first visit.
+            </motion.p>
             <Link to="/book">
-              <Button variant="hero" size="xl">
-                Book a Service
-                <ArrowRight className="w-5 h-5" />
+              <Button variant="default" size="lg" className="tracking-[0.1em] text-sm">
+                BOOK A SERVICE
+                <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
           </div>

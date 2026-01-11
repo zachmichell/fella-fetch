@@ -1,29 +1,28 @@
 import { motion } from "framer-motion";
-import { Heart, Award, Users, Shield } from "lucide-react";
+import { MapPin, Phone, Mail, Clock } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
-
-const team = [
-  { name: "Sarah Johnson", role: "Founder & Lead Trainer", emoji: "👩‍🦰" },
-  { name: "Mike Chen", role: "Head Groomer", emoji: "👨" },
-  { name: "Emily Davis", role: "Daycare Manager", emoji: "👩" },
-  { name: "James Wilson", role: "Boarding Supervisor", emoji: "👨‍🦱" },
-];
 
 const AboutPage = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
       
-      <main className="pt-20">
+      <main className="pt-24">
         {/* Hero */}
-        <section className="relative py-20 lg:py-32 bg-gradient-to-br from-sage to-sage-dark overflow-hidden">
-          <div className="absolute inset-0 bg-black/10" />
-          <div className="container-app relative text-center">
+        <section className="py-16 lg:py-24 bg-cream-warm">
+          <div className="container-app text-center">
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-uppercase-spaced text-muted-foreground mb-4"
+            >
+              About Us
+            </motion.p>
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold text-primary-foreground mb-6"
+              className="font-display text-4xl sm:text-5xl lg:text-6xl font-medium text-foreground mb-6"
             >
               Our Story
             </motion.h1>
@@ -31,10 +30,10 @@ const AboutPage = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="text-xl text-primary-foreground/80 max-w-2xl mx-auto"
+              className="text-lg text-muted-foreground max-w-2xl mx-auto"
             >
-              Built by pet lovers, for pet lovers. We're on a mission to provide 
-              the best care experience for your furry family.
+              Regina's premier 24-hour supervised canine care facility. 
+              A true home away from home for your furry family member.
             </motion.p>
           </div>
         </section>
@@ -48,25 +47,29 @@ const AboutPage = () => {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
               >
-                <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground mb-6">
-                  Where It All Began
+                <p className="text-uppercase-spaced text-muted-foreground mb-4">
+                  Who We Are
+                </p>
+                <h2 className="font-display text-3xl sm:text-4xl font-medium text-foreground mb-6">
+                  Where Every Tail Wags With Joy
                 </h2>
-                <div className="space-y-4 text-muted-foreground">
+                <div className="space-y-4 text-muted-foreground leading-relaxed">
                   <p>
-                    PawsHub started in 2014 when our founder, Sarah Johnson, couldn't find 
-                    a pet care facility that met her standards for her own dogs. She dreamed 
-                    of a place that felt like home—where pets were treated like family, not 
-                    just guests.
+                    Fella & Fetch is Regina's premier canine care facility, offering comprehensive 
+                    services including daycare, overnight boarding, professional grooming, and 
+                    expert training—all under one roof.
                   </p>
                   <p>
-                    What began as a small daycare operation has grown into a full-service 
-                    pet care campus offering daycare, boarding, grooming, and training. But 
-                    no matter how much we've grown, our core mission remains the same: 
-                    provide exceptional care with genuine love.
+                    What sets us apart is our commitment to providing a true "home away from home" 
+                    experience. With 24-hour supervision, comfortable individual suites with Kuranda 
+                    beds, and carefully supervised group play, your dog receives the attention and 
+                    care they deserve.
                   </p>
                   <p>
-                    Today, we're proud to serve over 2,000 pets and their families, 
-                    maintaining a 4.9-star rating and countless wagging tails.
+                    Our team is passionate about dogs and dedicated to creating a safe, enriching 
+                    environment where every pup can thrive. From puppy socialization to advanced 
+                    training, from a quick nail trim to a full spa day—we're here for every stage 
+                    of your dog's life.
                   </p>
                 </div>
               </motion.div>
@@ -78,14 +81,13 @@ const AboutPage = () => {
                 className="grid grid-cols-2 gap-6"
               >
                 {[
-                  { icon: Heart, label: "10+ Years", sublabel: "Of loving care" },
-                  { icon: Users, label: "2,000+", sublabel: "Happy pets" },
-                  { icon: Award, label: "4.9 Stars", sublabel: "Average rating" },
-                  { icon: Shield, label: "Certified", sublabel: "Pet first aid" },
+                  { label: "24-Hour", sublabel: "Supervision" },
+                  { label: "Expert", sublabel: "Training" },
+                  { label: "Professional", sublabel: "Grooming" },
+                  { label: "Loving", sublabel: "Care" },
                 ].map((stat, i) => (
-                  <div key={i} className="bg-card rounded-2xl p-6 text-center border border-border/50">
-                    <stat.icon className="w-8 h-8 text-primary mx-auto mb-3" />
-                    <div className="font-display text-2xl font-bold text-foreground">{stat.label}</div>
+                  <div key={i} className="border border-border p-6 text-center">
+                    <div className="font-display text-2xl font-medium text-foreground">{stat.label}</div>
                     <div className="text-sm text-muted-foreground">{stat.sublabel}</div>
                   </div>
                 ))}
@@ -94,62 +96,146 @@ const AboutPage = () => {
           </div>
         </section>
 
-        {/* Team Section */}
-        <section className="section-padding bg-muted/30">
+        {/* Services Overview */}
+        <section className="section-padding bg-cream-warm">
           <div className="container-app">
-            <div className="text-center mb-12">
-              <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground mb-4">
-                Meet Our Team
-              </h2>
-              <p className="text-muted-foreground max-w-xl mx-auto">
-                Passionate pet lovers who treat every animal like their own.
+            <div className="text-center mb-16">
+              <p className="text-uppercase-spaced text-muted-foreground mb-4">
+                What We Offer
               </p>
+              <h2 className="font-display text-3xl font-medium text-foreground">
+                Comprehensive Canine Care
+              </h2>
             </div>
 
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {team.map((member, i) => (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+              {[
+                { 
+                  title: "Play", 
+                  subtitle: "Daycare",
+                  description: "Full and half-day supervised play with indoor/outdoor areas and rest periods." 
+                },
+                { 
+                  title: "Stay", 
+                  subtitle: "Boarding",
+                  description: "Overnight stays in individual suites with 24-hour supervision and group play." 
+                },
+                { 
+                  title: "Groom", 
+                  subtitle: "Grooming",
+                  description: "Professional bath & brush, full grooms, nail care, and spa treatments." 
+                },
+                { 
+                  title: "Train", 
+                  subtitle: "Training",
+                  description: "Puppy socialization, obedience classes, and private training sessions." 
+                },
+              ].map((service, i) => (
                 <motion.div
                   key={i}
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1 }}
-                  className="bg-card rounded-2xl p-6 text-center border border-border/50"
+                  className="text-center"
                 >
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-golden flex items-center justify-center mx-auto mb-4">
-                    <span className="text-3xl">{member.emoji}</span>
-                  </div>
-                  <h3 className="font-semibold text-foreground">{member.name}</h3>
-                  <p className="text-sm text-muted-foreground">{member.role}</p>
+                  <p className="text-uppercase-spaced text-muted-foreground text-xs mb-2">{service.subtitle}</p>
+                  <h3 className="font-display text-xl font-medium text-foreground mb-3">{service.title}</h3>
+                  <p className="text-muted-foreground text-sm">{service.description}</p>
                 </motion.div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* Values */}
+        {/* Requirements */}
         <section className="section-padding">
-          <div className="container-app text-center">
-            <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground mb-12">
-              Our Values
-            </h2>
-            <div className="grid sm:grid-cols-3 gap-8">
+          <div className="container-app max-w-3xl">
+            <div className="text-center mb-12">
+              <p className="text-uppercase-spaced text-muted-foreground mb-4">
+                Requirements
+              </p>
+              <h2 className="font-display text-3xl font-medium text-foreground">
+                What We Require
+              </h2>
+            </div>
+
+            <div className="space-y-6">
               {[
-                { title: "Safety First", description: "Your pet's wellbeing is our top priority. We maintain strict safety protocols and trained staff at all times." },
-                { title: "Genuine Love", description: "We're not just pet care providers—we're pet lovers. Every animal receives the affection they deserve." },
-                { title: "Transparency", description: "From pricing to policies, we believe in honest communication. No surprises, just trust." },
-              ].map((value, i) => (
+                { 
+                  title: "Vaccinations", 
+                  content: "Required: Rabies, Parvo, Distemper. Highly Recommended: Bordetella." 
+                },
+                { 
+                  title: "Spay/Neuter Policy", 
+                  content: "All dogs over 8 months must be altered. No ovarian spays or vasectomies accepted." 
+                },
+                { 
+                  title: "30-Day Rule", 
+                  content: "New dogs must be in the owner's home for 30 days before attending any service." 
+                },
+                { 
+                  title: "Assessment", 
+                  content: "All new dogs require a temperament assessment ($35) before daycare or boarding." 
+                },
+                { 
+                  title: "Cancellation Policy", 
+                  content: "24 hours notice for Daycare. 48 business hours for Grooming and Boarding." 
+                },
+              ].map((req, i) => (
                 <motion.div
                   key={i}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 10 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="border-b border-border pb-6"
                 >
-                  <h3 className="font-display text-xl font-semibold text-foreground mb-3">{value.title}</h3>
-                  <p className="text-muted-foreground">{value.description}</p>
+                  <h3 className="font-medium text-foreground mb-2">{req.title}</h3>
+                  <p className="text-muted-foreground">{req.content}</p>
                 </motion.div>
               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Contact Info */}
+        <section className="section-padding bg-foreground text-primary-foreground">
+          <div className="container-app">
+            <div className="text-center mb-12">
+              <p className="text-uppercase-spaced text-primary-foreground/60 mb-4">
+                Visit Us
+              </p>
+              <h2 className="font-display text-3xl font-medium">
+                Get in Touch
+              </h2>
+            </div>
+
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 max-w-4xl mx-auto">
+              <div className="text-center">
+                <MapPin className="w-6 h-6 mx-auto mb-4 text-primary-foreground/60" strokeWidth={1.5} />
+                <p className="font-medium mb-1">Address</p>
+                <p className="text-primary-foreground/70 text-sm">
+                  1600 Osler St<br />Regina, SK
+                </p>
+              </div>
+              <div className="text-center">
+                <Phone className="w-6 h-6 mx-auto mb-4 text-primary-foreground/60" strokeWidth={1.5} />
+                <p className="font-medium mb-1">Phone</p>
+                <p className="text-primary-foreground/70 text-sm">(306) 540-4451</p>
+              </div>
+              <div className="text-center">
+                <Mail className="w-6 h-6 mx-auto mb-4 text-primary-foreground/60" strokeWidth={1.5} />
+                <p className="font-medium mb-1">Email</p>
+                <p className="text-primary-foreground/70 text-sm">hello@fellaandfetch.ca</p>
+              </div>
+              <div className="text-center">
+                <Clock className="w-6 h-6 mx-auto mb-4 text-primary-foreground/60" strokeWidth={1.5} />
+                <p className="font-medium mb-1">Hours</p>
+                <p className="text-primary-foreground/70 text-sm">
+                  Mon–Fri: 7AM–6PM<br />Sat–Sun: 9AM–5PM
+                </p>
+              </div>
             </div>
           </div>
         </section>
