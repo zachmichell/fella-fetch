@@ -1,81 +1,71 @@
 import { motion } from "framer-motion";
+import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Phone, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const CTASection = () => {
   return (
-    <section className="section-padding">
+    <section className="section-padding bg-foreground text-primary-foreground">
       <div className="container-app">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary via-primary to-golden p-8 lg:p-16"
-        >
-          {/* Background Decorations */}
-          <div className="absolute top-0 right-0 w-96 h-96 rounded-full bg-white/10 blur-3xl" />
-          <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full bg-white/10 blur-3xl" />
+        <div className="text-center max-w-3xl mx-auto">
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-uppercase-spaced text-primary-foreground/60 mb-4"
+          >
+            Get Started
+          </motion.p>
           
-          {/* Decorative Paw */}
-          <div className="absolute top-8 right-8 opacity-10">
-            <svg width="120" height="120" viewBox="0 0 60 60" fill="white">
-              <ellipse cx="30" cy="38" rx="14" ry="18" />
-              <circle cx="15" cy="18" r="8" />
-              <circle cx="45" cy="18" r="8" />
-              <circle cx="10" cy="32" r="6" />
-              <circle cx="50" cy="32" r="6" />
-            </svg>
-          </div>
-
-          <div className="relative grid lg:grid-cols-2 gap-8 items-center">
-            {/* Left Content */}
-            <div className="text-center lg:text-left">
-              <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-primary-foreground mb-4">
-                Ready to Give Your Pet the Best Care?
-              </h2>
-              <p className="text-lg text-primary-foreground/80 mb-8 max-w-lg">
-                Book your first visit today and see why thousands of pet parents 
-                trust PawsHub for their furry family members.
-              </p>
-
-              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                <Link to="/book">
-                  <Button variant="hero-outline" size="xl" className="w-full sm:w-auto">
-                    <Calendar className="w-5 h-5" />
-                    Book Online
-                  </Button>
-                </Link>
-                <Button variant="hero-outline" size="xl" className="w-full sm:w-auto">
-                  <Phone className="w-5 h-5" />
-                  (555) 123-PAWS
-                </Button>
-              </div>
-            </div>
-
-            {/* Right Content - Features */}
-            <div className="grid grid-cols-2 gap-4">
-              {[
-                { label: "Easy Online Booking", sublabel: "24/7 availability" },
-                { label: "First Visit Discount", sublabel: "20% off services" },
-                { label: "Free Consultation", sublabel: "Meet our team" },
-                { label: "Flexible Packages", sublabel: "Save on bundles" },
-              ].map((item, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                  className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 text-center"
-                >
-                  <p className="font-semibold text-primary-foreground">{item.label}</p>
-                  <p className="text-sm text-primary-foreground/70">{item.sublabel}</p>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </motion.div>
+          <motion.h2
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+            className="font-display text-3xl sm:text-4xl lg:text-5xl font-medium mb-6"
+          >
+            Ready to Book?
+          </motion.h2>
+          
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 }}
+            className="text-lg text-primary-foreground/70 mb-10 leading-relaxed"
+          >
+            Schedule your pet's next visit in just a few clicks. 
+            New clients welcome — we can't wait to meet your furry friend.
+          </motion.p>
+          
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.3 }}
+            className="flex flex-col sm:flex-row gap-4 justify-center"
+          >
+            <Link to="/book">
+              <Button 
+                variant="secondary" 
+                size="lg" 
+                className="w-full sm:w-auto tracking-[0.1em] text-sm bg-primary-foreground text-foreground hover:bg-primary-foreground/90"
+              >
+                BOOK NOW
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </Link>
+            <Link to="/contact">
+              <Button 
+                variant="outline" 
+                size="lg" 
+                className="w-full sm:w-auto tracking-[0.1em] text-sm border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10"
+              >
+                CONTACT US
+              </Button>
+            </Link>
+          </motion.div>
+        </div>
       </div>
     </section>
   );
