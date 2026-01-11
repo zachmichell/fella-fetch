@@ -3,6 +3,19 @@ import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
+// Import the actual Fella & Fetch icons
+import iconStay from "@/assets/icons/icon-stay.png";
+import iconGroom from "@/assets/icons/icon-groom.png";
+import iconTrain from "@/assets/icons/icon-train.png";
+import iconShop from "@/assets/icons/icon-shop.png";
+
+const services = [
+  { name: "STAY", icon: iconStay, path: "/services/boarding" },
+  { name: "GROOM", icon: iconGroom, path: "/services/grooming" },
+  { name: "TRAIN", icon: iconTrain, path: "/services/training" },
+  { name: "SHOP", icon: iconShop, path: "/shop" },
+];
+
 const HeroSection = () => {
   return (
     <section className="relative min-h-screen flex items-center justify-center pt-24 lg:pt-0">
@@ -64,20 +77,15 @@ const HeroSection = () => {
           </motion.div>
         </motion.div>
 
-        {/* Service Icons Grid */}
+        {/* Service Icons Grid - Using actual Fella & Fetch icons */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.8, duration: 0.6 }}
           className="mt-24 lg:mt-32"
         >
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12 max-w-3xl mx-auto">
-            {[
-              { name: "STAY", icon: "🏠", path: "/services/boarding" },
-              { name: "GROOM", icon: "✂️", path: "/services/grooming" },
-              { name: "TRAIN", icon: "🎓", path: "/services/training" },
-              { name: "PLAY", icon: "☀️", path: "/services/daycare" },
-            ].map((service, index) => (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-16 max-w-3xl mx-auto">
+            {services.map((service, index) => (
               <Link
                 key={service.name}
                 to={service.path}
@@ -87,9 +95,14 @@ const HeroSection = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.9 + index * 0.1, duration: 0.4 }}
+                  className="flex flex-col items-center"
                 >
-                  <div className="text-4xl lg:text-5xl mb-4 group-hover:scale-110 transition-transform duration-300">
-                    {service.icon}
+                  <div className="w-16 h-16 lg:w-20 lg:h-20 mb-4 group-hover:scale-110 transition-transform duration-300">
+                    <img 
+                      src={service.icon} 
+                      alt={service.name}
+                      className="w-full h-full object-contain"
+                    />
                   </div>
                   <span className="text-xs tracking-[0.2em] font-medium text-muted-foreground group-hover:text-foreground transition-colors">
                     {service.name}
