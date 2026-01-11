@@ -1,116 +1,64 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, ChevronDown, Dog } from "lucide-react";
+import { Menu, X, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const navItems = [
-  { name: "Home", path: "/" },
-  {
-    name: "Services",
-    path: "/services",
-    children: [
-      { name: "Daycare", path: "/services/daycare" },
-      { name: "Boarding", path: "/services/boarding" },
-      { name: "Grooming", path: "/services/grooming" },
-      { name: "Training", path: "/services/training" },
-    ],
-  },
-  { name: "Shop", path: "/shop" },
-  { name: "Pricing", path: "/pricing" },
-  { name: "About", path: "/about" },
-  { name: "Contact", path: "/contact" },
+  { name: "STAY", path: "/services/boarding" },
+  { name: "GROOM", path: "/services/grooming" },
+  { name: "TRAIN", path: "/services/training" },
+  { name: "PLAY", path: "/services/daycare" },
+  { name: "SHOP", path: "/shop" },
 ];
 
 const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const location = useLocation();
 
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border/50">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border/30">
       <nav className="container-app">
-        <div className="flex items-center justify-between h-16 lg:h-20">
+        <div className="flex items-center justify-between h-20 lg:h-24">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="relative">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-golden flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
-                <Dog className="w-6 h-6 text-primary-foreground" />
-              </div>
-            </div>
-            <div className="flex flex-col">
-              <span className="font-display text-xl font-bold text-foreground">
-                PawsHub
-              </span>
-              <span className="text-[10px] text-muted-foreground -mt-1 tracking-wide uppercase">
-                Pet Care & Wellness
-              </span>
-            </div>
+          <Link to="/" className="flex flex-col items-center group">
+            <span className="font-display text-xl lg:text-2xl font-semibold tracking-[0.15em] text-foreground uppercase">
+              Fella & Fetch
+            </span>
+            <span className="text-[10px] lg:text-xs text-muted-foreground tracking-[0.25em] uppercase">
+              Canine Care
+            </span>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center gap-1">
+          <div className="hidden lg:flex items-center gap-8">
             {navItems.map((item) => (
-              <div
+              <Link
                 key={item.name}
-                className="relative"
-                onMouseEnter={() => item.children && setOpenDropdown(item.name)}
-                onMouseLeave={() => setOpenDropdown(null)}
+                to={item.path}
+                className={`text-sm tracking-[0.15em] font-medium transition-colors link-underline ${
+                  isActive(item.path)
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
               >
-                <Link
-                  to={item.path}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1 ${
-                    isActive(item.path)
-                      ? "text-primary bg-coral-light"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                  }`}
-                >
-                  {item.name}
-                  {item.children && (
-                    <ChevronDown className="w-4 h-4 transition-transform" />
-                  )}
-                </Link>
-
-                {/* Dropdown */}
-                <AnimatePresence>
-                  {item.children && openDropdown === item.name && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 8 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute top-full left-0 pt-2"
-                    >
-                      <div className="bg-card rounded-xl shadow-xl border border-border/50 p-2 min-w-[200px]">
-                        {item.children.map((child) => (
-                          <Link
-                            key={child.name}
-                            to={child.path}
-                            className="block px-4 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                          >
-                            {child.name}
-                          </Link>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+                {item.name}
+              </Link>
             ))}
           </div>
 
           {/* Desktop CTA */}
-          <div className="hidden lg:flex items-center gap-3">
+          <div className="hidden lg:flex items-center gap-6">
             <Link to="/login">
-              <Button variant="ghost" size="sm">
-                Sign In
-              </Button>
+              <span className="text-sm tracking-[0.1em] font-medium text-muted-foreground hover:text-foreground transition-colors link-underline">
+                SIGN IN
+              </span>
             </Link>
             <Link to="/book">
-              <Button variant="hero" size="default">
-                Book Now
+              <Button variant="default" size="default" className="tracking-[0.1em] text-sm">
+                BOOK NOW
               </Button>
             </Link>
           </div>
@@ -118,7 +66,8 @@ const Header = () => {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="lg:hidden p-2 rounded-lg hover:bg-muted transition-colors"
+            className="lg:hidden p-2 hover:bg-muted transition-colors"
+            aria-label="Toggle menu"
           >
             {isOpen ? (
               <X className="w-6 h-6 text-foreground" />
@@ -138,45 +87,30 @@ const Header = () => {
               transition={{ duration: 0.2 }}
               className="lg:hidden overflow-hidden"
             >
-              <div className="py-4 space-y-1 border-t border-border/50">
+              <div className="py-8 space-y-1 border-t border-border/30">
                 {navItems.map((item) => (
-                  <div key={item.name}>
-                    <Link
-                      to={item.path}
-                      onClick={() => !item.children && setIsOpen(false)}
-                      className={`block px-4 py-3 rounded-lg text-base font-medium transition-colors ${
-                        isActive(item.path)
-                          ? "text-primary bg-coral-light"
-                          : "text-foreground hover:bg-muted"
-                      }`}
-                    >
-                      {item.name}
-                    </Link>
-                    {item.children && (
-                      <div className="pl-4 mt-1 space-y-1">
-                        {item.children.map((child) => (
-                          <Link
-                            key={child.name}
-                            to={child.path}
-                            onClick={() => setIsOpen(false)}
-                            className="block px-4 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                          >
-                            {child.name}
-                          </Link>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <Link
+                    key={item.name}
+                    to={item.path}
+                    onClick={() => setIsOpen(false)}
+                    className={`block py-4 text-center text-sm tracking-[0.2em] font-medium transition-colors ${
+                      isActive(item.path)
+                        ? "text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {item.name}
+                  </Link>
                 ))}
-                <div className="pt-4 px-4 space-y-2 border-t border-border/50 mt-4">
+                <div className="pt-6 px-4 space-y-3 border-t border-border/30 mt-6">
                   <Link to="/login" onClick={() => setIsOpen(false)}>
-                    <Button variant="outline" className="w-full">
-                      Sign In
+                    <Button variant="outline" className="w-full tracking-[0.1em] text-sm">
+                      SIGN IN
                     </Button>
                   </Link>
                   <Link to="/book" onClick={() => setIsOpen(false)}>
-                    <Button variant="hero" className="w-full">
-                      Book Now
+                    <Button variant="default" className="w-full tracking-[0.1em] text-sm">
+                      BOOK NOW
                     </Button>
                   </Link>
                 </div>
