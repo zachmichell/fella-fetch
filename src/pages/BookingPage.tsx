@@ -1,9 +1,14 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Calendar, Clock, Dog, ArrowRight, ArrowLeft, Check, ChevronDown } from "lucide-react";
+import { Calendar, Clock, Dog, ArrowRight, ArrowLeft, Check } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
+
+import iconStay from "@/assets/icons/icon-stay.png";
+import iconGroom from "@/assets/icons/icon-groom.png";
+import iconTrain from "@/assets/icons/icon-train.png";
+import iconShop from "@/assets/icons/icon-shop.png";
 
 type ServiceType = "daycare" | "boarding" | "grooming" | "training";
 
@@ -16,15 +21,15 @@ interface BookingData {
 }
 
 const serviceOptions = [
-  { id: "daycare" as const, name: "Daycare", icon: "🌞", description: "Day of play & socialization", price: "From $45" },
-  { id: "boarding" as const, name: "Boarding", icon: "🌙", description: "Overnight stays", price: "From $55/night" },
-  { id: "grooming" as const, name: "Grooming", icon: "✂️", description: "Baths, cuts & spa", price: "From $35" },
-  { id: "training" as const, name: "Training", icon: "🎓", description: "Classes & sessions", price: "From $95" },
+  { id: "daycare" as const, name: "Daycare", icon: iconStay, description: "Supervised play & socialization for your pup", price: "From $40/day" },
+  { id: "boarding" as const, name: "Boarding", icon: iconStay, description: "Comfortable overnight stays with 24/7 care", price: "From $65/night" },
+  { id: "grooming" as const, name: "Grooming", icon: iconGroom, description: "Professional baths, haircuts & spa treatments", price: "From $40" },
+  { id: "training" as const, name: "Training", icon: iconTrain, description: "Group classes & private sessions", price: "From $275" },
 ];
 
 const timeSlots = [
-  "8:00 AM", "9:00 AM", "10:00 AM", "11:00 AM",
-  "12:00 PM", "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM"
+  "7:00 AM", "8:00 AM", "9:00 AM", "10:00 AM", "11:00 AM",
+  "12:00 PM", "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM", "5:00 PM", "6:00 PM"
 ];
 
 const BookingPage = () => {
@@ -131,11 +136,11 @@ const BookingPage = () => {
                       onClick={() => handleServiceSelect(service.id)}
                       className={`p-6 rounded-2xl border-2 text-left transition-all ${
                         bookingData.service === service.id
-                          ? "border-primary bg-coral-light"
+                          ? "border-primary bg-accent/30"
                           : "border-border hover:border-primary/50 bg-card"
                       }`}
                     >
-                      <span className="text-3xl block mb-3">{service.icon}</span>
+                      <img src={service.icon} alt={service.name} className="w-12 h-12 mb-3" />
                       <h3 className="font-semibold text-foreground text-lg">{service.name}</h3>
                       <p className="text-sm text-muted-foreground mb-2">{service.description}</p>
                       <p className="font-semibold text-primary">{service.price}</p>
@@ -217,10 +222,16 @@ const BookingPage = () => {
                   />
                 </div>
 
-                <p className="text-sm text-muted-foreground bg-sage-light p-4 rounded-xl">
-                  💡 <strong>New here?</strong> Don't worry! You'll be able to add complete pet profiles, 
-                  vaccination records, and more after signing up. For now, just enter your pet's name.
-                </p>
+                <div className="text-sm text-muted-foreground bg-muted/50 p-4 rounded-xl space-y-2">
+                  <p>
+                    💡 <strong>New here?</strong> Don't worry! You'll be able to add complete pet profiles, 
+                    vaccination records, and more after signing up.
+                  </p>
+                  <p className="text-xs">
+                    <strong>Requirements:</strong> All dogs must be spayed/neutered (6+ months), up-to-date on Rabies, 
+                    Distemper, Bordetella & Canine Influenza vaccinations.
+                  </p>
+                </div>
               </motion.div>
             )}
 
@@ -260,7 +271,7 @@ const BookingPage = () => {
                   </div>
                 </div>
 
-                <div className="bg-golden-light rounded-2xl p-6 text-center">
+                <div className="bg-accent/20 rounded-2xl p-6 text-center">
                   <p className="text-foreground mb-2">
                     You'll be redirected to complete payment
                   </p>
@@ -268,6 +279,11 @@ const BookingPage = () => {
                     Your slot will be held for 15 minutes during checkout
                   </p>
                 </div>
+
+                <p className="text-xs text-muted-foreground text-center">
+                  Hours: Mon-Fri 7am-7pm • Sat-Sun 9am-5pm<br />
+                  Located in Victoria Park Village, Toronto
+                </p>
               </motion.div>
             )}
           </AnimatePresence>
