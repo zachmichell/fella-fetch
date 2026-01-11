@@ -2,6 +2,12 @@ import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 
+// Import the actual Fella & Fetch icons
+import iconStay from "@/assets/icons/icon-stay.png";
+import iconGroom from "@/assets/icons/icon-groom.png";
+import iconTrain from "@/assets/icons/icon-train.png";
+import iconShop from "@/assets/icons/icon-shop.png";
+
 const services = [
   {
     id: "boarding",
@@ -9,6 +15,7 @@ const services = [
     subtitle: "Overnight Boarding",
     description: "Home-away-from-home overnight stays with 24/7 care, comfortable suites, and plenty of love.",
     path: "/services/boarding",
+    icon: iconStay,
     features: ["Private suites", "24/7 supervision", "Webcam access", "Bedtime routines"],
   },
   {
@@ -17,6 +24,7 @@ const services = [
     subtitle: "Professional Grooming",
     description: "Professional spa treatments from bath & brush to full grooms. Your pup will look and feel amazing.",
     path: "/services/grooming",
+    icon: iconGroom,
     features: ["Bath & dry", "Breed-specific cuts", "Nail care", "Spa treatments"],
   },
   {
@@ -25,6 +33,7 @@ const services = [
     subtitle: "Expert Training",
     description: "Expert-led classes and private sessions to build skills, confidence, and strengthen your bond.",
     path: "/services/training",
+    icon: iconTrain,
     features: ["Puppy basics", "Obedience", "Behavior work", "Private lessons"],
   },
   {
@@ -33,6 +42,7 @@ const services = [
     subtitle: "Daily Daycare",
     description: "Supervised play, socialization, and exercise in a safe, fun environment for your pup.",
     path: "/services/daycare",
+    icon: iconStay,
     features: ["Supervised play", "Indoor & outdoor", "Nap time", "Report cards"],
   },
 ];
@@ -74,6 +84,15 @@ const ServicesSection = () => {
             >
               <Link to={service.path} className="group block">
                 <div className="bg-background p-8 lg:p-12 h-full hover:bg-cream-warm transition-colors duration-300">
+                  {/* Icon */}
+                  <div className="w-12 h-12 lg:w-14 lg:h-14 mb-6 group-hover:scale-110 transition-transform duration-300">
+                    <img 
+                      src={service.icon} 
+                      alt={service.title}
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+
                   {/* Title */}
                   <div className="mb-6">
                     <span className="text-uppercase-spaced text-muted-foreground block mb-2">
@@ -120,19 +139,32 @@ const ServicesSection = () => {
           className="mt-px"
         >
           <Link to="/shop" className="group block">
-            <div className="bg-foreground text-primary-foreground p-8 lg:p-12 text-center hover:bg-charcoal-light transition-colors duration-300">
-              <p className="text-uppercase-spaced text-primary-foreground/60 mb-2">
-                Retail
-              </p>
-              <h3 className="font-display text-2xl lg:text-3xl font-medium mb-4">
-                Shop
-              </h3>
-              <p className="text-primary-foreground/70 max-w-md mx-auto mb-6">
-                Premium food, treats, toys, and accessories your pet will love.
-              </p>
-              <div className="flex items-center justify-center gap-2 font-medium text-sm tracking-wide group-hover:gap-4 transition-all duration-300">
-                <span>VISIT SHOP</span>
-                <ArrowRight className="w-4 h-4" />
+            <div className="bg-foreground text-primary-foreground p-8 lg:p-12 hover:bg-charcoal-light transition-colors duration-300">
+              <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
+                <div className="flex items-center gap-6">
+                  <div className="w-14 h-14 lg:w-16 lg:h-16 invert opacity-90">
+                    <img 
+                      src={iconShop} 
+                      alt="Shop"
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                  <div className="text-center lg:text-left">
+                    <p className="text-uppercase-spaced text-primary-foreground/60 mb-1">
+                      Retail
+                    </p>
+                    <h3 className="font-display text-2xl lg:text-3xl font-medium">
+                      Shop
+                    </h3>
+                  </div>
+                </div>
+                <p className="text-primary-foreground/70 max-w-md text-center lg:text-left">
+                  Premium food, treats, toys, and accessories your pet will love.
+                </p>
+                <div className="flex items-center gap-2 font-medium text-sm tracking-wide group-hover:gap-4 transition-all duration-300">
+                  <span>VISIT SHOP</span>
+                  <ArrowRight className="w-4 h-4" />
+                </div>
               </div>
             </div>
           </Link>
