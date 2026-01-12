@@ -84,6 +84,7 @@ interface ClientData {
   email: string | null;
   phone: string | null;
   address: string | null;
+  thread_id: string | null;
   pets: Pet[];
 }
 
@@ -150,6 +151,7 @@ const ClientPortal = () => {
           email,
           phone,
           address,
+          thread_id,
           pets (
             id,
             name,
@@ -970,7 +972,9 @@ const ClientPortal = () => {
       {clientData && (
         <AIAssistantChat 
           clientId={clientData.id} 
-          clientName={clientData.first_name} 
+          clientName={clientData.first_name}
+          threadId={clientData.thread_id}
+          onThreadIdUpdate={(threadId) => setClientData(prev => prev ? { ...prev, thread_id: threadId } : null)}
         />
       )}
     </div>
