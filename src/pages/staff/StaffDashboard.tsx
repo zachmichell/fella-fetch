@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { StaffLayout } from '@/components/staff/StaffLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
@@ -15,7 +16,9 @@ import {
   ArrowRight,
   LogIn,
   LogOut as LogOutIcon,
-  Loader2
+  Loader2,
+  Search,
+  X
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -47,6 +50,18 @@ const StaffDashboard = () => {
   });
   const [todayReservations, setTodayReservations] = useState<TodayReservation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Filter reservations based on search query
+  const filteredReservations = useMemo(() => {
+    if (!searchQuery.trim()) return todayReservations;
+    
+    const query = searchQuery.toLowerCase();
+    return todayReservations.filter(reservation => 
+      reservation.pet_name.toLowerCase().includes(query) ||
+      reservation.client_name.toLowerCase().includes(query)
+    );
+  }, [todayReservations, searchQuery]);
 
   const fetchDashboardData = async () => {
     if (!isStaffOrAdmin) {
@@ -248,10 +263,31 @@ const StaffDashboard = () => {
         {/* Today's Schedule */}
         <Card>
           <CardHeader>
-            <CardTitle>Today's Schedule</CardTitle>
-            <CardDescription>
-              Check-in and check-out pets as they arrive
-            </CardDescription>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <CardTitle>Today's Schedule</CardTitle>
+                <CardDescription>
+                  Check-in and check-out pets as they arrive
+                </CardDescription>
+              </div>
+              <div className="relative w-full sm:w-72">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search pet or owner..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-9"
+                />
+                {searchQuery && (
+                  <button 
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -263,9 +299,21 @@ const StaffDashboard = () => {
                 <Dog className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>No reservations scheduled for today</p>
               </div>
+            ) : filteredReservations.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No results found for "{searchQuery}"</p>
+                <Button 
+                  variant="link" 
+                  onClick={() => setSearchQuery('')}
+                  className="mt-2"
+                >
+                  Clear search
+                </Button>
+              </div>
             ) : (
               <div className="space-y-3">
-                {todayReservations.map((reservation) => (
+                {filteredReservations.map((reservation) => (
                   <div 
                     key={reservation.id}
                     className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
