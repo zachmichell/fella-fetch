@@ -43,6 +43,8 @@ interface TodayReservation {
   start_time: string | null;
   checked_in_at: string | null;
   checked_out_at: string | null;
+  daycare_credits: number;
+  boarding_credits: number;
 }
 
 const StaffDashboard = () => {
@@ -96,7 +98,9 @@ const StaffDashboard = () => {
             clients (
               id,
               first_name,
-              last_name
+              last_name,
+              daycare_credits,
+              boarding_credits
             )
           )
         `)
@@ -118,6 +122,8 @@ const StaffDashboard = () => {
         start_time: r.start_time,
         checked_in_at: r.checked_in_at,
         checked_out_at: r.checked_out_at,
+        daycare_credits: r.pets?.clients?.daycare_credits ?? 0,
+        boarding_credits: r.pets?.clients?.boarding_credits ?? 0,
       })) || [];
 
       setTodayReservations(formattedReservations);
@@ -496,6 +502,15 @@ const StaffDashboard = () => {
                         <p className="text-sm text-muted-foreground">
                           {reservation.client_name} • {reservation.service_type}
                           {reservation.start_time && ` • ${reservation.start_time.slice(0, 5)}`}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          <span className={reservation.daycare_credits <= 0 ? 'text-destructive font-medium' : ''}>
+                            Daycare: {reservation.daycare_credits}
+                          </span>
+                          {' • '}
+                          <span className={reservation.boarding_credits <= 0 ? 'text-destructive font-medium' : ''}>
+                            Boarding: {reservation.boarding_credits}
+                          </span>
                         </p>
                       </div>
                     </div>
