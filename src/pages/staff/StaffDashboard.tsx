@@ -19,7 +19,8 @@ import {
   LogOut as LogOutIcon,
   Loader2,
   Search,
-  X
+  X,
+  Undo2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -41,6 +42,7 @@ interface TodayReservation {
   status: string;
   start_time: string | null;
   checked_in_at: string | null;
+  checked_out_at: string | null;
 }
 
 const StaffDashboard = () => {
@@ -87,6 +89,7 @@ const StaffDashboard = () => {
           status,
           start_time,
           checked_in_at,
+          checked_out_at,
           pets (
             id,
             name,
@@ -114,6 +117,7 @@ const StaffDashboard = () => {
         status: r.status,
         start_time: r.start_time,
         checked_in_at: r.checked_in_at,
+        checked_out_at: r.checked_out_at,
       })) || [];
 
       setTodayReservations(formattedReservations);
@@ -246,6 +250,114 @@ const StaffDashboard = () => {
     } catch (error) {
       toast({ 
         title: 'Error checking out', 
+        description: 'Please try again',
+        variant: 'destructive' 
+      });
+    }
+  };
+
+  const handleRevertCheckIn = async (reservationId: string, petId: string, petName: string, serviceType: string, clientId: string) => {
+    try {
+      const { error } = await supabase
+        .from('reservations')
+        .update({ 
+          status: 'confirmed',
+          checked_in_at: null
+        })
+        .eq('id', reservationId);
+
+      if (error) throw error;
+
+      // If daycare, restore 1 credit
+      if (serviceType === 'daycare' && clientId) {
+        const { data: clientData } = await supabase
+          .from('clients')
+          .select('daycare_credits')
+          .eq('id', clientId)
+          .single();
+
+        if (clientData) {
+          await supabase
+            .from('clients')
+            .update({ daycare_credits: clientData.daycare_credits + 1 })
+            .eq('id', clientId);
+        }
+      }
+
+      // Log the revert activity
+      await logActivity({
+        petId,
+        reservationId,
+        actionType: 'pet_checked_out',
+        actionCategory: 'check_in',
+        description: `Check-in reverted for ${petName} (${serviceType})`,
+        details: {
+          service_type: serviceType,
+          action: 'revert_check_in',
+        }
+      });
+
+      toast({ title: 'Check-in reverted successfully!' });
+      fetchDashboardData();
+    } catch (error) {
+      toast({ 
+        title: 'Error reverting check-in', 
+        description: 'Please try again',
+        variant: 'destructive' 
+      });
+    }
+  };
+
+  const handleRevertCheckOut = async (reservationId: string, petId: string, petName: string, serviceType: string, clientId: string, checkedInAt: string | null, checkedOutAt: string | null) => {
+    try {
+      const { error } = await supabase
+        .from('reservations')
+        .update({ 
+          status: 'checked_in',
+          checked_out_at: null
+        })
+        .eq('id', reservationId);
+
+      if (error) throw error;
+
+      // If boarding, restore credits based on nights stayed
+      if (serviceType === 'boarding' && clientId && checkedInAt && checkedOutAt) {
+        const checkInDate = new Date(checkedInAt);
+        const checkOutDate = new Date(checkedOutAt);
+        const nights = Math.max(1, Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24)));
+        
+        const { data: clientData } = await supabase
+          .from('clients')
+          .select('boarding_credits')
+          .eq('id', clientId)
+          .single();
+
+        if (clientData) {
+          await supabase
+            .from('clients')
+            .update({ boarding_credits: clientData.boarding_credits + nights })
+            .eq('id', clientId);
+        }
+      }
+
+      // Log the revert activity
+      await logActivity({
+        petId,
+        reservationId,
+        actionType: 'pet_checked_in',
+        actionCategory: 'check_out',
+        description: `Check-out reverted for ${petName} (${serviceType})`,
+        details: {
+          service_type: serviceType,
+          action: 'revert_check_out',
+        }
+      });
+
+      toast({ title: 'Check-out reverted successfully!' });
+      fetchDashboardData();
+    } catch (error) {
+      toast({ 
+        title: 'Error reverting check-out', 
         description: 'Please try again',
         variant: 'destructive' 
       });
@@ -408,7 +520,7 @@ const StaffDashboard = () => {
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                       {getStatusBadge(reservation.status)}
                       {reservation.status === 'confirmed' || reservation.status === 'pending' ? (
                         <Button 
@@ -420,14 +532,36 @@ const StaffDashboard = () => {
                           Check In
                         </Button>
                       ) : reservation.status === 'checked_in' ? (
+                        <>
+                          <Button 
+                            size="sm" 
+                            variant="ghost"
+                            onClick={() => handleRevertCheckIn(reservation.id, reservation.pet_id, reservation.pet_name, reservation.service_type, reservation.client_id)}
+                            className="gap-1 text-muted-foreground hover:text-foreground"
+                            title="Revert check-in"
+                          >
+                            <Undo2 className="h-3 w-3" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleCheckOut(reservation.id, reservation.pet_id, reservation.pet_name, reservation.service_type, reservation.client_id, reservation.checked_in_at)}
+                            className="gap-1"
+                          >
+                            <LogOutIcon className="h-3 w-3" />
+                            Check Out
+                          </Button>
+                        </>
+                      ) : reservation.status === 'checked_out' ? (
                         <Button 
                           size="sm" 
-                          variant="outline"
-                          onClick={() => handleCheckOut(reservation.id, reservation.pet_id, reservation.pet_name, reservation.service_type, reservation.client_id, reservation.checked_in_at)}
-                          className="gap-1"
+                          variant="ghost"
+                          onClick={() => handleRevertCheckOut(reservation.id, reservation.pet_id, reservation.pet_name, reservation.service_type, reservation.client_id, reservation.checked_in_at, reservation.checked_out_at)}
+                          className="gap-1 text-muted-foreground hover:text-foreground"
+                          title="Revert check-out"
                         >
-                          <LogOutIcon className="h-3 w-3" />
-                          Check Out
+                          <Undo2 className="h-3 w-3" />
+                          Undo
                         </Button>
                       ) : null}
                     </div>
