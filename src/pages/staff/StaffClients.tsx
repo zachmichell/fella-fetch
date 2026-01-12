@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Dialog,
   DialogContent,
@@ -32,9 +34,22 @@ import {
   Mail,
   MapPin,
   Loader2,
-  Dog
+  Dog,
+  ChevronRight,
+  AlertCircle,
+  Calendar
 } from 'lucide-react';
 import { format } from 'date-fns';
+
+interface Pet {
+  id: string;
+  name: string;
+  breed: string | null;
+  date_of_birth: string | null;
+  vaccination_rabies: string | null;
+  vaccination_bordetella: string | null;
+  vaccination_distemper: string | null;
+}
 
 interface Client {
   id: string;
@@ -48,6 +63,7 @@ interface Client {
   notes: string | null;
   created_at: string;
   pet_count: number;
+  pets?: Pet[];
 }
 
 const StaffClients = () => {
@@ -57,6 +73,7 @@ const StaffClients = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [newClient, setNewClient] = useState({
     first_name: '',
     last_name: '',
@@ -79,7 +96,7 @@ const StaffClients = () => {
         .from('clients')
         .select(`
           *,
-          pets (id)
+          pets (id, name, breed, date_of_birth, vaccination_rabies, vaccination_bordetella, vaccination_distemper)
         `)
         .order('last_name', { ascending: true });
 
@@ -315,7 +332,11 @@ const StaffClients = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredClients.map((client) => (
-                    <TableRow key={client.id}>
+                    <TableRow 
+                      key={client.id} 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => setSelectedClient(client)}
+                    >
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
@@ -360,7 +381,9 @@ const StaffClients = () => {
                         {format(new Date(client.created_at), 'MMM d, yyyy')}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm">View</Button>
+                        <Button variant="ghost" size="sm" className="gap-1">
+                          View <ChevronRight className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -369,6 +392,163 @@ const StaffClients = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Client Detail Dialog */}
+        <Dialog open={!!selectedClient} onOpenChange={(open) => !open && setSelectedClient(null)}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+            {selectedClient && (
+              <>
+                <DialogHeader>
+                  <div className="flex items-center gap-4">
+                    <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+                      <User className="h-8 w-8 text-primary" />
+                    </div>
+                    <div>
+                      <DialogTitle className="text-2xl">
+                        {selectedClient.first_name} {selectedClient.last_name}
+                      </DialogTitle>
+                      <DialogDescription>
+                        Client since {format(new Date(selectedClient.created_at), 'MMMM yyyy')}
+                      </DialogDescription>
+                    </div>
+                  </div>
+                </DialogHeader>
+
+                <ScrollArea className="flex-1 pr-4">
+                  <div className="space-y-6">
+                    {/* Contact Info */}
+                    <Card>
+                      <CardHeader className="py-3">
+                        <CardTitle className="text-sm font-medium flex items-center gap-2">
+                          <Phone className="h-4 w-4" /> Contact Information
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="py-3">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-sm text-muted-foreground">Email</p>
+                            <p className="font-medium flex items-center gap-1">
+                              <Mail className="h-4 w-4" />
+                              {selectedClient.email || 'Not provided'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Phone</p>
+                            <p className="font-medium flex items-center gap-1">
+                              <Phone className="h-4 w-4" />
+                              {selectedClient.phone || 'Not provided'}
+                            </p>
+                          </div>
+                          <div className="col-span-2">
+                            <p className="text-sm text-muted-foreground">Address</p>
+                            <p className="font-medium flex items-center gap-1">
+                              <MapPin className="h-4 w-4" />
+                              {selectedClient.address || 'Not provided'}
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Emergency Contact */}
+                    <Card>
+                      <CardHeader className="py-3">
+                        <CardTitle className="text-sm font-medium flex items-center gap-2">
+                          <AlertCircle className="h-4 w-4" /> Emergency Contact
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="py-3">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-sm text-muted-foreground">Name</p>
+                            <p className="font-medium">
+                              {selectedClient.emergency_contact_name || 'Not provided'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Phone</p>
+                            <p className="font-medium">
+                              {selectedClient.emergency_contact_phone || 'Not provided'}
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Notes */}
+                    {selectedClient.notes && (
+                      <Card>
+                        <CardHeader className="py-3">
+                          <CardTitle className="text-sm font-medium">Notes</CardTitle>
+                        </CardHeader>
+                        <CardContent className="py-3">
+                          <p className="text-sm">{selectedClient.notes}</p>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Pets */}
+                    <Card>
+                      <CardHeader className="py-3">
+                        <CardTitle className="text-sm font-medium flex items-center gap-2">
+                          <Dog className="h-4 w-4" /> Pets ({selectedClient.pet_count})
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="py-3">
+                        {selectedClient.pets && selectedClient.pets.length > 0 ? (
+                          <div className="space-y-3">
+                            {selectedClient.pets.map((pet) => (
+                              <div 
+                                key={pet.id} 
+                                className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                    <Dog className="h-5 w-5 text-primary" />
+                                  </div>
+                                  <div>
+                                    <p className="font-medium">{pet.name}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      {pet.breed || 'Unknown breed'}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex gap-1">
+                                  <Badge 
+                                    variant={!pet.vaccination_rabies || new Date(pet.vaccination_rabies) < new Date() ? 'destructive' : 'secondary'}
+                                    className="text-xs"
+                                  >
+                                    R
+                                  </Badge>
+                                  <Badge 
+                                    variant={!pet.vaccination_bordetella || new Date(pet.vaccination_bordetella) < new Date() ? 'destructive' : 'secondary'}
+                                    className="text-xs"
+                                  >
+                                    B
+                                  </Badge>
+                                  <Badge 
+                                    variant={!pet.vaccination_distemper || new Date(pet.vaccination_distemper) < new Date() ? 'destructive' : 'secondary'}
+                                    className="text-xs"
+                                  >
+                                    D
+                                  </Badge>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground text-center py-4">
+                            No pets registered
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                </ScrollArea>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </StaffLayout>
   );
