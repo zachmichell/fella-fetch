@@ -17,7 +17,9 @@ export type Database = {
       clients: {
         Row: {
           address: string | null
+          boarding_credits: number
           created_at: string
+          daycare_credits: number
           email: string | null
           emergency_contact_name: string | null
           emergency_contact_phone: string | null
@@ -31,7 +33,9 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          boarding_credits?: number
           created_at?: string
+          daycare_credits?: number
           email?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
@@ -45,7 +49,9 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          boarding_credits?: number
           created_at?: string
+          daycare_credits?: number
           email?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null

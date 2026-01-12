@@ -37,7 +37,9 @@ import {
   Dog,
   ChevronRight,
   AlertCircle,
-  Calendar
+  Calendar,
+  CreditCard,
+  Pencil
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -64,6 +66,8 @@ interface Client {
   created_at: string;
   pet_count: number;
   pets?: Pet[];
+  daycare_credits: number;
+  boarding_credits: number;
 }
 
 const StaffClients = () => {
@@ -74,6 +78,8 @@ const StaffClients = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [isEditCreditsOpen, setIsEditCreditsOpen] = useState(false);
+  const [editingCredits, setEditingCredits] = useState({ daycare: 0, boarding: 0 });
   const [newClient, setNewClient] = useState({
     first_name: '',
     last_name: '',
@@ -487,6 +493,42 @@ const StaffClients = () => {
                       </Card>
                     )}
 
+                    {/* Credits */}
+                    <Card>
+                      <CardHeader className="py-3">
+                        <CardTitle className="text-sm font-medium flex items-center gap-2">
+                          <CreditCard className="h-4 w-4" /> Service Credits
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="py-3">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="p-4 rounded-lg border bg-muted/30 text-center">
+                            <p className="text-sm text-muted-foreground">Daycare Credits</p>
+                            <p className="text-3xl font-bold text-primary">{selectedClient.daycare_credits}</p>
+                          </div>
+                          <div className="p-4 rounded-lg border bg-muted/30 text-center">
+                            <p className="text-sm text-muted-foreground">Boarding Credits (nights)</p>
+                            <p className="text-3xl font-bold text-primary">{selectedClient.boarding_credits}</p>
+                          </div>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          className="w-full mt-4 gap-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingCredits({
+                              daycare: selectedClient.daycare_credits,
+                              boarding: selectedClient.boarding_credits,
+                            });
+                            setIsEditCreditsOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                          Edit Credits
+                        </Button>
+                      </CardContent>
+                    </Card>
+
                     {/* Pets */}
                     <Card>
                       <CardHeader className="py-3">
@@ -547,6 +589,77 @@ const StaffClients = () => {
                 </ScrollArea>
               </>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Credits Dialog */}
+        <Dialog open={isEditCreditsOpen} onOpenChange={setIsEditCreditsOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Credits</DialogTitle>
+              <DialogDescription>
+                Update credits for {selectedClient?.first_name} {selectedClient?.last_name}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="daycare_credits">Daycare Credits</Label>
+                <Input
+                  id="daycare_credits"
+                  type="number"
+                  min="0"
+                  value={editingCredits.daycare}
+                  onChange={(e) => setEditingCredits({ ...editingCredits, daycare: parseInt(e.target.value) || 0 })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="boarding_credits">Boarding Credits (nights)</Label>
+                <Input
+                  id="boarding_credits"
+                  type="number"
+                  min="0"
+                  value={editingCredits.boarding}
+                  onChange={(e) => setEditingCredits({ ...editingCredits, boarding: parseInt(e.target.value) || 0 })}
+                />
+              </div>
+              <div className="flex justify-end gap-3">
+                <Button variant="outline" onClick={() => setIsEditCreditsOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={async () => {
+                  if (!selectedClient) return;
+                  try {
+                    const { error } = await supabase
+                      .from('clients')
+                      .update({
+                        daycare_credits: editingCredits.daycare,
+                        boarding_credits: editingCredits.boarding,
+                      })
+                      .eq('id', selectedClient.id);
+
+                    if (error) throw error;
+
+                    toast({ title: 'Credits updated successfully!' });
+                    setIsEditCreditsOpen(false);
+                    setSelectedClient({
+                      ...selectedClient,
+                      daycare_credits: editingCredits.daycare,
+                      boarding_credits: editingCredits.boarding,
+                    });
+                    fetchClients();
+                  } catch (error) {
+                    console.error('Error updating credits:', error);
+                    toast({
+                      title: 'Error',
+                      description: 'Failed to update credits',
+                      variant: 'destructive',
+                    });
+                  }
+                }}>
+                  Save Changes
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
