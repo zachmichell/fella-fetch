@@ -43,8 +43,9 @@ import {
   CalendarDays,
   History,
   Plus,
-  Pencil
+  Pencil,
 } from 'lucide-react';
+import AIAssistantChat from '@/components/client/AIAssistantChat';
 import { format, isPast, isFuture, isToday, parseISO } from 'date-fns';
 import Header from '@/components/layout/Header';
 
@@ -964,6 +965,14 @@ const ClientPortal = () => {
           </motion.div>
         </div>
       </main>
+
+      {/* AI Assistant Chat */}
+      {clientData && (
+        <AIAssistantChat 
+          clientId={clientData.id} 
+          clientName={clientData.first_name} 
+        />
+      )}
     </div>
   );
 };
