@@ -148,14 +148,28 @@ serve(async (req) => {
     const responseText = await webhookResponse.text();
     console.log('Webhook response received');
 
+    // Check for thread_id in response headers (case-insensitive)
+    let newThreadId: string | null = null;
+    const threadIdHeader = webhookResponse.headers.get('x-thread-id') || 
+                           webhookResponse.headers.get('X-Thread-Id') ||
+                           webhookResponse.headers.get('thread-id') ||
+                           webhookResponse.headers.get('Thread-Id');
+    
+    if (threadIdHeader) {
+      newThreadId = threadIdHeader;
+      console.log('Thread ID found in response header:', newThreadId);
+    }
+
     // Try to parse JSON response
     let assistantMessage = responseText;
-    let newThreadId: string | null = null;
 
     try {
       const jsonResponse = JSON.parse(responseText);
       assistantMessage = jsonResponse.message || jsonResponse.response || responseText;
-      newThreadId = jsonResponse.thread_id || jsonResponse.threadId || null;
+      // Also check JSON body for thread_id (header takes precedence if both exist)
+      if (!newThreadId) {
+        newThreadId = jsonResponse.thread_id || jsonResponse.threadId || null;
+      }
     } catch {
       // Response is plain text, use as-is
       assistantMessage = responseText;
