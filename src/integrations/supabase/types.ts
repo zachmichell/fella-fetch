@@ -469,6 +469,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      deduct_boarding_credits: {
+        Args: { p_client_id: string; p_nights: number }
+        Returns: number
+      }
+      deduct_daycare_credit: { Args: { p_client_id: string }; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -477,6 +482,11 @@ export type Database = {
         Returns: boolean
       }
       is_staff_or_admin: { Args: { _user_id: string }; Returns: boolean }
+      restore_boarding_credits: {
+        Args: { p_client_id: string; p_nights: number }
+        Returns: number
+      }
+      restore_daycare_credit: { Args: { p_client_id: string }; Returns: number }
     }
     Enums: {
       app_role: "admin" | "staff"

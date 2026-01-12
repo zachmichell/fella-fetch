@@ -157,19 +157,15 @@ const StaffDashboard = () => {
 
       if (error) throw error;
 
-      // If daycare, deduct 1 credit immediately on check-in
+      // If daycare, deduct 1 credit atomically on check-in
       if (serviceType === 'daycare' && clientId) {
-        const { data: clientData } = await supabase
-          .from('clients')
-          .select('daycare_credits')
-          .eq('id', clientId)
-          .single();
-
-        if (clientData && clientData.daycare_credits > 0) {
-          await supabase
-            .from('clients')
-            .update({ daycare_credits: clientData.daycare_credits - 1 })
-            .eq('id', clientId);
+        const { data: newCredits, error: creditError } = await supabase
+          .rpc('deduct_daycare_credit', { p_client_id: clientId });
+        
+        if (creditError) {
+          console.error('Error deducting daycare credit:', creditError);
+        } else if (newCredits === -1) {
+          console.log('No daycare credits available to deduct');
         }
       }
 
@@ -210,25 +206,20 @@ const StaffDashboard = () => {
 
       if (error) throw error;
 
-      // If boarding, calculate nights and deduct credits on check-out
+      // If boarding, calculate nights and deduct credits atomically on check-out
       if (serviceType === 'boarding' && clientId && checkedInAt) {
         const checkInDate = new Date(checkedInAt);
         const checkOutDate = new Date(checkOutTime);
         // Calculate nights (difference in days, minimum 1)
         const nights = Math.max(1, Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24)));
         
-        const { data: clientData } = await supabase
-          .from('clients')
-          .select('boarding_credits')
-          .eq('id', clientId)
-          .single();
-
-        if (clientData) {
-          const newCredits = Math.max(0, clientData.boarding_credits - nights);
-          await supabase
-            .from('clients')
-            .update({ boarding_credits: newCredits })
-            .eq('id', clientId);
+        const { data: newCredits, error: creditError } = await supabase
+          .rpc('deduct_boarding_credits', { p_client_id: clientId, p_nights: nights });
+        
+        if (creditError) {
+          console.error('Error deducting boarding credits:', creditError);
+        } else if (newCredits === -1) {
+          console.log('Error deducting boarding credits');
         }
       }
 
@@ -268,19 +259,13 @@ const StaffDashboard = () => {
 
       if (error) throw error;
 
-      // If daycare, restore 1 credit
+      // If daycare, restore 1 credit atomically
       if (serviceType === 'daycare' && clientId) {
-        const { data: clientData } = await supabase
-          .from('clients')
-          .select('daycare_credits')
-          .eq('id', clientId)
-          .single();
-
-        if (clientData) {
-          await supabase
-            .from('clients')
-            .update({ daycare_credits: clientData.daycare_credits + 1 })
-            .eq('id', clientId);
+        const { data: newCredits, error: creditError } = await supabase
+          .rpc('restore_daycare_credit', { p_client_id: clientId });
+        
+        if (creditError) {
+          console.error('Error restoring daycare credit:', creditError);
         }
       }
 
@@ -320,23 +305,17 @@ const StaffDashboard = () => {
 
       if (error) throw error;
 
-      // If boarding, restore credits based on nights stayed
+      // If boarding, restore credits atomically based on nights stayed
       if (serviceType === 'boarding' && clientId && checkedInAt && checkedOutAt) {
         const checkInDate = new Date(checkedInAt);
         const checkOutDate = new Date(checkedOutAt);
         const nights = Math.max(1, Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24)));
         
-        const { data: clientData } = await supabase
-          .from('clients')
-          .select('boarding_credits')
-          .eq('id', clientId)
-          .single();
-
-        if (clientData) {
-          await supabase
-            .from('clients')
-            .update({ boarding_credits: clientData.boarding_credits + nights })
-            .eq('id', clientId);
+        const { data: newCredits, error: creditError } = await supabase
+          .rpc('restore_boarding_credits', { p_client_id: clientId, p_nights: nights });
+        
+        if (creditError) {
+          console.error('Error restoring boarding credits:', creditError);
         }
       }
 

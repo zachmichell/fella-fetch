@@ -18,8 +18,8 @@ export function StaffLayout({ children }: StaffLayoutProps) {
       if (!user) {
         navigate('/staff/login');
       } else if (!isStaffOrAdmin) {
-        // User is logged in but doesn't have staff/admin role
-        // They can still see the dashboard but with limited access
+        // User is logged in but doesn't have staff/admin role - redirect to client portal
+        navigate('/portal');
       }
     }
   }, [user, loading, isStaffOrAdmin, navigate]);
@@ -35,7 +35,7 @@ export function StaffLayout({ children }: StaffLayoutProps) {
     );
   }
 
-  if (!user) {
+  if (!user || !isStaffOrAdmin) {
     return null;
   }
 
@@ -49,14 +49,6 @@ export function StaffLayout({ children }: StaffLayoutProps) {
             <h1 className="font-medium text-lg">Fella & Fetch Staff Portal</h1>
           </header>
           <div className="flex-1 overflow-auto p-6">
-            {!isStaffOrAdmin && (
-              <div className="mb-6 p-4 rounded-lg bg-amber-100 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700">
-                <p className="text-amber-800 dark:text-amber-200 text-sm">
-                  <strong>Limited Access:</strong> Your account doesn't have staff permissions yet. 
-                  Please contact an administrator to grant you access.
-                </p>
-              </div>
-            )}
             {children}
           </div>
         </main>
