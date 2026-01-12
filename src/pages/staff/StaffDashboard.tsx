@@ -1,0 +1,350 @@
+import { useEffect, useState } from 'react';
+import { StaffLayout } from '@/components/staff/StaffLayout';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { 
+  Dog, 
+  Users, 
+  Calendar, 
+  Clock, 
+  CheckCircle2, 
+  AlertCircle,
+  ArrowRight,
+  LogIn,
+  LogOut as LogOutIcon,
+  Loader2
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
+
+interface DashboardStats {
+  totalPetsToday: number;
+  checkedIn: number;
+  expectedArrivals: number;
+  pendingCheckouts: number;
+}
+
+interface TodayReservation {
+  id: string;
+  pet_name: string;
+  client_name: string;
+  service_type: string;
+  status: string;
+  start_time: string | null;
+}
+
+const StaffDashboard = () => {
+  const { isStaffOrAdmin } = useAuth();
+  const { toast } = useToast();
+  const [stats, setStats] = useState<DashboardStats>({
+    totalPetsToday: 0,
+    checkedIn: 0,
+    expectedArrivals: 0,
+    pendingCheckouts: 0,
+  });
+  const [todayReservations, setTodayReservations] = useState<TodayReservation[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchDashboardData = async () => {
+    if (!isStaffOrAdmin) {
+      setLoading(false);
+      return;
+    }
+
+    const today = format(new Date(), 'yyyy-MM-dd');
+
+    try {
+      // Fetch today's reservations with pet and client info
+      const { data: reservations, error } = await supabase
+        .from('reservations')
+        .select(`
+          id,
+          service_type,
+          status,
+          start_time,
+          pets (
+            name,
+            clients (
+              first_name,
+              last_name
+            )
+          )
+        `)
+        .eq('start_date', today)
+        .order('start_time', { ascending: true });
+
+      if (error) throw error;
+
+      const formattedReservations = reservations?.map((r: any) => ({
+        id: r.id,
+        pet_name: r.pets?.name || 'Unknown',
+        client_name: r.pets?.clients 
+          ? `${r.pets.clients.first_name} ${r.pets.clients.last_name}`
+          : 'Unknown',
+        service_type: r.service_type,
+        status: r.status,
+        start_time: r.start_time,
+      })) || [];
+
+      setTodayReservations(formattedReservations);
+
+      // Calculate stats
+      const checkedIn = formattedReservations.filter(r => r.status === 'checked_in').length;
+      const expectedArrivals = formattedReservations.filter(r => r.status === 'confirmed' || r.status === 'pending').length;
+      const pendingCheckouts = formattedReservations.filter(r => r.status === 'checked_in').length;
+
+      setStats({
+        totalPetsToday: formattedReservations.length,
+        checkedIn,
+        expectedArrivals,
+        pendingCheckouts,
+      });
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [isStaffOrAdmin]);
+
+  const handleCheckIn = async (reservationId: string) => {
+    try {
+      const { error } = await supabase
+        .from('reservations')
+        .update({ 
+          status: 'checked_in',
+          checked_in_at: new Date().toISOString()
+        })
+        .eq('id', reservationId);
+
+      if (error) throw error;
+
+      toast({ title: 'Pet checked in successfully!' });
+      fetchDashboardData();
+    } catch (error) {
+      toast({ 
+        title: 'Error checking in', 
+        description: 'Please try again',
+        variant: 'destructive' 
+      });
+    }
+  };
+
+  const handleCheckOut = async (reservationId: string) => {
+    try {
+      const { error } = await supabase
+        .from('reservations')
+        .update({ 
+          status: 'checked_out',
+          checked_out_at: new Date().toISOString()
+        })
+        .eq('id', reservationId);
+
+      if (error) throw error;
+
+      toast({ title: 'Pet checked out successfully!' });
+      fetchDashboardData();
+    } catch (error) {
+      toast({ 
+        title: 'Error checking out', 
+        description: 'Please try again',
+        variant: 'destructive' 
+      });
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'checked_in':
+        return <Badge className="bg-green-500">In Facility</Badge>;
+      case 'confirmed':
+        return <Badge variant="secondary">Confirmed</Badge>;
+      case 'pending':
+        return <Badge variant="outline">Pending</Badge>;
+      case 'checked_out':
+        return <Badge className="bg-blue-500">Checked Out</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const getServiceIcon = (type: string) => {
+    const iconClass = "h-4 w-4";
+    switch (type) {
+      case 'daycare':
+        return <Dog className={iconClass} />;
+      case 'boarding':
+        return <Calendar className={iconClass} />;
+      case 'grooming':
+        return <Users className={iconClass} />;
+      case 'training':
+        return <Clock className={iconClass} />;
+      default:
+        return <Dog className={iconClass} />;
+    }
+  };
+
+  return (
+    <StaffLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Control Center</h1>
+          <p className="text-muted-foreground">
+            {format(new Date(), 'EEEE, MMMM d, yyyy')}
+          </p>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Today's Pets</CardTitle>
+              <Dog className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalPetsToday}</div>
+              <p className="text-xs text-muted-foreground">scheduled visits</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Currently In</CardTitle>
+              <CheckCircle2 className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.checkedIn}</div>
+              <p className="text-xs text-muted-foreground">pets in facility</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Expected</CardTitle>
+              <Clock className="h-4 w-4 text-amber-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.expectedArrivals}</div>
+              <p className="text-xs text-muted-foreground">arrivals pending</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Pending Checkout</CardTitle>
+              <AlertCircle className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.pendingCheckouts}</div>
+              <p className="text-xs text-muted-foreground">ready for pickup</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Today's Schedule */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Today's Schedule</CardTitle>
+            <CardDescription>
+              Check-in and check-out pets as they arrive
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : todayReservations.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Dog className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No reservations scheduled for today</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {todayReservations.map((reservation) => (
+                  <div 
+                    key={reservation.id}
+                    className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="p-2 rounded-full bg-primary/10">
+                        {getServiceIcon(reservation.service_type)}
+                      </div>
+                      <div>
+                        <p className="font-medium">{reservation.pet_name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {reservation.client_name} • {reservation.service_type}
+                          {reservation.start_time && ` • ${reservation.start_time.slice(0, 5)}`}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {getStatusBadge(reservation.status)}
+                      {reservation.status === 'confirmed' || reservation.status === 'pending' ? (
+                        <Button 
+                          size="sm" 
+                          onClick={() => handleCheckIn(reservation.id)}
+                          className="gap-1"
+                        >
+                          <LogIn className="h-3 w-3" />
+                          Check In
+                        </Button>
+                      ) : reservation.status === 'checked_in' ? (
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleCheckOut(reservation.id)}
+                          className="gap-1"
+                        >
+                          <LogOutIcon className="h-3 w-3" />
+                          Check Out
+                        </Button>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Quick Actions */}
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center justify-between">
+                New Reservation
+                <ArrowRight className="h-4 w-4" />
+              </CardTitle>
+              <CardDescription>Book a new appointment</CardDescription>
+            </CardHeader>
+          </Card>
+          <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center justify-between">
+                Add Client
+                <ArrowRight className="h-4 w-4" />
+              </CardTitle>
+              <CardDescription>Register a new client</CardDescription>
+            </CardHeader>
+          </Card>
+          <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center justify-between">
+                Send Report Card
+                <ArrowRight className="h-4 w-4" />
+              </CardTitle>
+              <CardDescription>Update pet parents</CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+      </div>
+    </StaffLayout>
+  );
+};
+
+export default StaffDashboard;
