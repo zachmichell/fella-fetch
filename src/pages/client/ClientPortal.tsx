@@ -8,6 +8,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dog,
   Calendar,
@@ -22,7 +41,8 @@ import {
   AlertCircle,
   ChevronRight,
   CalendarDays,
-  History
+  History,
+  Plus
 } from 'lucide-react';
 import { format, isPast, isFuture, isToday, parseISO } from 'date-fns';
 import Header from '@/components/layout/Header';
@@ -70,7 +90,16 @@ const ClientPortal = () => {
   const [clientData, setClientData] = useState<ClientData | null>(null);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [noClientRecord, setNoClientRecord] = useState(false);
-
+  const [addPetOpen, setAddPetOpen] = useState(false);
+  const [addingPet, setAddingPet] = useState(false);
+  const [newPet, setNewPet] = useState({
+    name: '',
+    breed: '',
+    date_of_birth: '',
+    gender: '',
+    weight: '',
+    color: '',
+  });
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/login');
@@ -160,6 +189,50 @@ const ClientPortal = () => {
   const handleSignOut = async () => {
     await signOut();
     navigate('/');
+  };
+
+  const handleAddPet = async () => {
+    if (!clientData || !newPet.name.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Pet name is required',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setAddingPet(true);
+    try {
+      const { error } = await supabase.from('pets').insert({
+        client_id: clientData.id,
+        name: newPet.name.trim(),
+        breed: newPet.breed || null,
+        date_of_birth: newPet.date_of_birth || null,
+        gender: newPet.gender || null,
+        weight: newPet.weight ? parseFloat(newPet.weight) : null,
+        color: newPet.color || null,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Pet Added',
+        description: `${newPet.name} has been added to your profile`,
+      });
+
+      setNewPet({ name: '', breed: '', date_of_birth: '', gender: '', weight: '', color: '' });
+      setAddPetOpen(false);
+      fetchClientData();
+    } catch (error) {
+      console.error('Error adding pet:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to add pet. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setAddingPet(false);
+    }
   };
 
   const isVaccinationExpired = (date: string | null) => {
@@ -298,10 +371,104 @@ const ClientPortal = () => {
                 {/* Pets Card */}
                 <Card>
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Dog className="h-5 w-5" />
-                      Your Pets ({clientData?.pets?.length || 0})
-                    </CardTitle>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Dog className="h-5 w-5" />
+                        Your Pets ({clientData?.pets?.length || 0})
+                      </CardTitle>
+                      <Dialog open={addPetOpen} onOpenChange={setAddPetOpen}>
+                        <DialogTrigger asChild>
+                          <Button size="sm" variant="outline" className="gap-1">
+                            <Plus className="h-4 w-4" />
+                            Add Pet
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-md">
+                          <DialogHeader>
+                            <DialogTitle>Add a New Pet</DialogTitle>
+                            <DialogDescription>
+                              Enter your pet's information below.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="grid gap-4 py-4">
+                            <div className="grid gap-2">
+                              <Label htmlFor="pet-name">Name *</Label>
+                              <Input
+                                id="pet-name"
+                                value={newPet.name}
+                                onChange={(e) => setNewPet(prev => ({ ...prev, name: e.target.value }))}
+                                placeholder="Enter pet's name"
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="grid gap-2">
+                                <Label htmlFor="pet-breed">Breed</Label>
+                                <Input
+                                  id="pet-breed"
+                                  value={newPet.breed}
+                                  onChange={(e) => setNewPet(prev => ({ ...prev, breed: e.target.value }))}
+                                  placeholder="e.g., Golden Retriever"
+                                />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label htmlFor="pet-color">Color</Label>
+                                <Input
+                                  id="pet-color"
+                                  value={newPet.color}
+                                  onChange={(e) => setNewPet(prev => ({ ...prev, color: e.target.value }))}
+                                  placeholder="e.g., Golden"
+                                />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="grid gap-2">
+                                <Label htmlFor="pet-gender">Gender</Label>
+                                <Select
+                                  value={newPet.gender}
+                                  onValueChange={(value) => setNewPet(prev => ({ ...prev, gender: value }))}
+                                >
+                                  <SelectTrigger id="pet-gender">
+                                    <SelectValue placeholder="Select" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Male">Male</SelectItem>
+                                    <SelectItem value="Female">Female</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="grid gap-2">
+                                <Label htmlFor="pet-weight">Weight (lbs)</Label>
+                                <Input
+                                  id="pet-weight"
+                                  type="number"
+                                  value={newPet.weight}
+                                  onChange={(e) => setNewPet(prev => ({ ...prev, weight: e.target.value }))}
+                                  placeholder="e.g., 50"
+                                />
+                              </div>
+                            </div>
+                            <div className="grid gap-2">
+                              <Label htmlFor="pet-dob">Date of Birth</Label>
+                              <Input
+                                id="pet-dob"
+                                type="date"
+                                value={newPet.date_of_birth}
+                                onChange={(e) => setNewPet(prev => ({ ...prev, date_of_birth: e.target.value }))}
+                              />
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button variant="outline" onClick={() => setAddPetOpen(false)}>
+                              Cancel
+                            </Button>
+                            <Button onClick={handleAddPet} disabled={addingPet}>
+                              {addingPet && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                              Add Pet
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     {clientData?.pets && clientData.pets.length > 0 ? (
@@ -332,7 +499,7 @@ const ClientPortal = () => {
                                 <Syringe className="h-3 w-3" />
                                 Vaccinations
                               </p>
-                              <div className="flex gap-2">
+                              <div className="flex flex-wrap gap-2">
                                 <Badge 
                                   variant="outline"
                                   className={isVaccinationExpired(pet.vaccination_rabies) 
@@ -372,7 +539,15 @@ const ClientPortal = () => {
                       <div className="text-center py-6 text-muted-foreground">
                         <Dog className="h-12 w-12 mx-auto mb-2 opacity-50" />
                         <p>No pets registered yet</p>
-                        <p className="text-sm mt-1">Contact us to add your pets</p>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="mt-3 gap-1"
+                          onClick={() => setAddPetOpen(true)}
+                        >
+                          <Plus className="h-4 w-4" />
+                          Add Your First Pet
+                        </Button>
                       </div>
                     )}
                   </CardContent>
