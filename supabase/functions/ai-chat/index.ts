@@ -117,8 +117,12 @@ serve(async (req) => {
       );
     }
 
-    // Sanitize client name
-    const sanitizedClientName = (clientName || '').toString().slice(0, 100).trim();
+    // Sanitize client name - remove non-alphanumeric characters except spaces, hyphens, and apostrophes
+    const sanitizedClientName = (clientName || '')
+      .toString()
+      .replace(/[^a-zA-Z0-9\s\-']/g, '') // Allow only alphanumeric, spaces, hyphens, apostrophes
+      .slice(0, 100)
+      .trim();
 
     console.log('Sending message to webhook for client:', clientId);
 
