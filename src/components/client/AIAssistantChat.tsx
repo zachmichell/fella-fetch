@@ -8,6 +8,14 @@ import { useToast } from '@/hooks/use-toast';
 import { MessageCircle, Send, Loader2, Bot, User, X, Minimize2, Maximize2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
+import { z } from 'zod';
+
+// Message validation schema
+const MAX_MESSAGE_LENGTH = 2000;
+const messageSchema = z.string()
+  .trim()
+  .min(1, 'Message cannot be empty')
+  .max(MAX_MESSAGE_LENGTH, `Message must be less than ${MAX_MESSAGE_LENGTH} characters`);
 
 interface ChatMessage {
   id: string;
@@ -87,7 +95,18 @@ const AIAssistantChat = ({ clientId, clientName, threadId, onThreadIdUpdate }: A
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;
 
-    const userMessage = input.trim();
+    // Validate message with zod
+    const validationResult = messageSchema.safeParse(input);
+    if (!validationResult.success) {
+      toast({
+        title: 'Invalid message',
+        description: validationResult.error.errors[0]?.message || 'Please check your message',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const userMessage = validationResult.data;
     setInput('');
     setIsLoading(true);
 
@@ -119,38 +138,30 @@ const AIAssistantChat = ({ clientId, clientName, threadId, onThreadIdUpdate }: A
         m.id === tempUserMessage.id ? { ...savedUserMsg, role: savedUserMsg.role as 'user' | 'assistant' } : m
       ));
 
-      // Send to Make.com webhook with thread_id
-      const response = await fetch('https://hook.us1.make.com/5wts4mehu53y8gzkn17m4wx7yxgeg172', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      // Get auth session for authenticated request
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Not authenticated');
+      }
+
+      // Send to Edge Function (secure server-side proxy)
+      const response = await supabase.functions.invoke('ai-chat', {
+        body: {
           clientId,
           clientName,
           message: userMessage,
           messageId: savedUserMsg.id,
           threadId: currentThreadId,
-        }),
+        },
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to get response from assistant');
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to get response from assistant');
       }
 
-      // Try to parse JSON response to get thread_id
-      const responseText = await response.text();
-      let assistantMessage = responseText;
-      let newThreadId: string | null = null;
-
-      try {
-        const jsonResponse = JSON.parse(responseText);
-        assistantMessage = jsonResponse.message || jsonResponse.response || responseText;
-        newThreadId = jsonResponse.thread_id || jsonResponse.threadId || null;
-      } catch {
-        // Response is plain text, use as-is
-        assistantMessage = responseText;
-      }
+      const responseData = response.data;
+      const assistantMessage = responseData?.message || 'No response received';
+      const newThreadId = responseData?.thread_id || null;
 
       // If we got a new thread_id and don't have one yet, save it
       if (newThreadId && !currentThreadId) {
@@ -182,7 +193,7 @@ const AIAssistantChat = ({ clientId, clientName, threadId, onThreadIdUpdate }: A
       console.error('Error sending message:', error);
       toast({
         title: 'Error',
-        description: 'Failed to send message. Please try again.',
+        description: error instanceof Error ? error.message : 'Failed to send message. Please try again.',
         variant: 'destructive',
       });
       // Remove the optimistic message on error
@@ -323,11 +334,12 @@ const AIAssistantChat = ({ clientId, clientName, threadId, onThreadIdUpdate }: A
                   <Input
                     ref={inputRef}
                     value={input}
-                    onChange={(e) => setInput(e.target.value)}
+                    onChange={(e) => setInput(e.target.value.slice(0, MAX_MESSAGE_LENGTH))}
                     onKeyDown={handleKeyDown}
                     placeholder="Type your message..."
                     disabled={isLoading}
                     className="flex-1"
+                    maxLength={MAX_MESSAGE_LENGTH}
                   />
                   <Button
                     size="icon"

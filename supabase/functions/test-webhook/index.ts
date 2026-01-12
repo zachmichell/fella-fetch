@@ -11,6 +11,16 @@ serve(async (req) => {
   }
 
   try {
+    const webhookUrl = Deno.env.get('MAKE_WEBHOOK_URL');
+    if (!webhookUrl) {
+      return new Response(JSON.stringify({ 
+        error: "MAKE_WEBHOOK_URL not configured"
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const testData = {
       clientId: "test-client-123",
       clientName: "John",
@@ -18,9 +28,9 @@ serve(async (req) => {
       messageId: "test-msg-456"
     };
 
-    console.log("Sending test data to webhook:", testData);
+    console.log("Sending test data to webhook");
 
-    const response = await fetch('https://hook.us1.make.com/5wts4mehu53y8gzkn17m4wx7yxgeg172', {
+    const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -30,7 +40,6 @@ serve(async (req) => {
 
     const responseText = await response.text();
     console.log("Webhook response status:", response.status);
-    console.log("Webhook response:", responseText);
 
     return new Response(JSON.stringify({
       success: true,
