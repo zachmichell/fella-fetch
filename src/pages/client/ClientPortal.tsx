@@ -42,7 +42,8 @@ import {
   ChevronRight,
   CalendarDays,
   History,
-  Plus
+  Plus,
+  Pencil
 } from 'lucide-react';
 import { format, isPast, isFuture, isToday, parseISO } from 'date-fns';
 import Header from '@/components/layout/Header';
@@ -52,6 +53,9 @@ interface Pet {
   name: string;
   breed: string | null;
   date_of_birth: string | null;
+  gender?: string | null;
+  weight?: number | null;
+  color?: string | null;
   vaccination_rabies: string | null;
   vaccination_bordetella: string | null;
   vaccination_distemper: string | null;
@@ -92,6 +96,25 @@ const ClientPortal = () => {
   const [noClientRecord, setNoClientRecord] = useState(false);
   const [addPetOpen, setAddPetOpen] = useState(false);
   const [addingPet, setAddingPet] = useState(false);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [editPetOpen, setEditPetOpen] = useState(false);
+  const [editingPet, setEditingPet] = useState(false);
+  const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
+  const [profileForm, setProfileForm] = useState({
+    first_name: '',
+    last_name: '',
+    phone: '',
+    address: '',
+  });
+  const [petForm, setPetForm] = useState({
+    name: '',
+    breed: '',
+    date_of_birth: '',
+    gender: '',
+    weight: '',
+    color: '',
+  });
   const [newPet, setNewPet] = useState({
     name: '',
     breed: '',
@@ -131,6 +154,9 @@ const ClientPortal = () => {
             name,
             breed,
             date_of_birth,
+            gender,
+            weight,
+            color,
             vaccination_rabies,
             vaccination_bordetella,
             vaccination_distemper,
@@ -232,6 +258,120 @@ const ClientPortal = () => {
       });
     } finally {
       setAddingPet(false);
+    }
+  };
+
+  const openEditProfile = () => {
+    if (clientData) {
+      setProfileForm({
+        first_name: clientData.first_name || '',
+        last_name: clientData.last_name || '',
+        phone: clientData.phone || '',
+        address: clientData.address || '',
+      });
+      setEditProfileOpen(true);
+    }
+  };
+
+  const handleEditProfile = async () => {
+    if (!clientData || !profileForm.first_name.trim() || !profileForm.last_name.trim()) {
+      toast({
+        title: 'Error',
+        description: 'First and last name are required',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setEditingProfile(true);
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .update({
+          first_name: profileForm.first_name.trim(),
+          last_name: profileForm.last_name.trim(),
+          phone: profileForm.phone.trim() || null,
+          address: profileForm.address.trim() || null,
+        })
+        .eq('id', clientData.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Profile Updated',
+        description: 'Your profile has been updated successfully',
+      });
+
+      setEditProfileOpen(false);
+      fetchClientData();
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update profile. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setEditingProfile(false);
+    }
+  };
+
+  const openEditPet = (pet: Pet) => {
+    setSelectedPet(pet);
+    setPetForm({
+      name: pet.name || '',
+      breed: pet.breed || '',
+      date_of_birth: pet.date_of_birth || '',
+      gender: pet.gender || '',
+      weight: pet.weight?.toString() || '',
+      color: pet.color || '',
+    });
+    setEditPetOpen(true);
+  };
+
+  const handleEditPet = async () => {
+    if (!selectedPet || !petForm.name.trim()) {
+      toast({
+        title: 'Error',
+        description: 'Pet name is required',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setEditingPet(true);
+    try {
+      const { error } = await supabase
+        .from('pets')
+        .update({
+          name: petForm.name.trim(),
+          breed: petForm.breed.trim() || null,
+          date_of_birth: petForm.date_of_birth || null,
+          gender: petForm.gender || null,
+          weight: petForm.weight ? parseFloat(petForm.weight) : null,
+          color: petForm.color.trim() || null,
+        })
+        .eq('id', selectedPet.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Pet Updated',
+        description: `${petForm.name}'s profile has been updated`,
+      });
+
+      setEditPetOpen(false);
+      setSelectedPet(null);
+      fetchClientData();
+    } catch (error) {
+      console.error('Error updating pet:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update pet. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setEditingPet(false);
     }
   };
 
@@ -345,12 +485,22 @@ const ClientPortal = () => {
                 {/* Profile Card */}
                 <Card>
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <User className="h-5 w-5" />
-                      Your Profile
-                    </CardTitle>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <User className="h-5 w-5" />
+                        Your Profile
+                      </CardTitle>
+                      <Button size="sm" variant="ghost" onClick={openEditProfile} className="gap-1">
+                        <Pencil className="h-4 w-4" />
+                        Edit
+                      </Button>
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
+                    <div className="flex items-center gap-2 text-sm">
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <span>{clientData?.first_name} {clientData?.last_name}</span>
+                    </div>
                     <div className="flex items-center gap-2 text-sm">
                       <Mail className="h-4 w-4 text-muted-foreground" />
                       <span>{clientData?.email || 'No email'}</span>
@@ -367,6 +517,66 @@ const ClientPortal = () => {
                     )}
                   </CardContent>
                 </Card>
+
+                {/* Edit Profile Dialog */}
+                <Dialog open={editProfileOpen} onOpenChange={setEditProfileOpen}>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Edit Profile</DialogTitle>
+                      <DialogDescription>
+                        Update your contact information.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                          <Label htmlFor="edit-first-name">First Name *</Label>
+                          <Input
+                            id="edit-first-name"
+                            value={profileForm.first_name}
+                            onChange={(e) => setProfileForm(prev => ({ ...prev, first_name: e.target.value }))}
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="edit-last-name">Last Name *</Label>
+                          <Input
+                            id="edit-last-name"
+                            value={profileForm.last_name}
+                            onChange={(e) => setProfileForm(prev => ({ ...prev, last_name: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="edit-phone">Phone</Label>
+                        <Input
+                          id="edit-phone"
+                          value={profileForm.phone}
+                          onChange={(e) => setProfileForm(prev => ({ ...prev, phone: e.target.value }))}
+                          placeholder="(555) 123-4567"
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="edit-address">Address</Label>
+                        <Textarea
+                          id="edit-address"
+                          value={profileForm.address}
+                          onChange={(e) => setProfileForm(prev => ({ ...prev, address: e.target.value }))}
+                          placeholder="123 Main St, City, State"
+                          rows={2}
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setEditProfileOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button onClick={handleEditProfile} disabled={editingProfile}>
+                        {editingProfile && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                        Save Changes
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
 
                 {/* Pets Card */}
                 <Card>
@@ -490,6 +700,14 @@ const ClientPortal = () => {
                                   </p>
                                 </div>
                               </div>
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => openEditPet(pet)}
+                                className="gap-1"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
                             </div>
                             
                             <Separator className="my-3" />
@@ -552,6 +770,90 @@ const ClientPortal = () => {
                     )}
                   </CardContent>
                 </Card>
+
+                {/* Edit Pet Dialog */}
+                <Dialog open={editPetOpen} onOpenChange={setEditPetOpen}>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Edit Pet</DialogTitle>
+                      <DialogDescription>
+                        Update {selectedPet?.name}'s information.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="edit-pet-name">Name *</Label>
+                        <Input
+                          id="edit-pet-name"
+                          value={petForm.name}
+                          onChange={(e) => setPetForm(prev => ({ ...prev, name: e.target.value }))}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                          <Label htmlFor="edit-pet-breed">Breed</Label>
+                          <Input
+                            id="edit-pet-breed"
+                            value={petForm.breed}
+                            onChange={(e) => setPetForm(prev => ({ ...prev, breed: e.target.value }))}
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="edit-pet-color">Color</Label>
+                          <Input
+                            id="edit-pet-color"
+                            value={petForm.color}
+                            onChange={(e) => setPetForm(prev => ({ ...prev, color: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                          <Label htmlFor="edit-pet-gender">Gender</Label>
+                          <Select
+                            value={petForm.gender}
+                            onValueChange={(value) => setPetForm(prev => ({ ...prev, gender: value }))}
+                          >
+                            <SelectTrigger id="edit-pet-gender">
+                              <SelectValue placeholder="Select" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Male">Male</SelectItem>
+                              <SelectItem value="Female">Female</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="edit-pet-weight">Weight (lbs)</Label>
+                          <Input
+                            id="edit-pet-weight"
+                            type="number"
+                            value={petForm.weight}
+                            onChange={(e) => setPetForm(prev => ({ ...prev, weight: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="edit-pet-dob">Date of Birth</Label>
+                        <Input
+                          id="edit-pet-dob"
+                          type="date"
+                          value={petForm.date_of_birth}
+                          onChange={(e) => setPetForm(prev => ({ ...prev, date_of_birth: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setEditPetOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button onClick={handleEditPet} disabled={editingPet}>
+                        {editingPet && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                        Save Changes
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
 
               {/* Right Column - Appointments */}
