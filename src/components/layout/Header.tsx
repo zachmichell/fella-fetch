@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, ChevronDown } from "lucide-react";
+import { Menu, X, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 
 const navItems = [
   { name: "STAY", path: "/services/boarding" },
@@ -15,6 +16,7 @@ const navItems = [
 const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const { user } = useAuth();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -50,17 +52,28 @@ const Header = () => {
           </div>
 
           {/* Desktop CTA */}
-          <div className="hidden lg:flex items-center gap-6">
+          <div className="hidden lg:flex items-center gap-4">
             <Link to="/staff/login">
-              <span className="text-sm tracking-[0.1em] font-medium text-muted-foreground hover:text-foreground transition-colors link-underline">
-                STAFF
+              <span className="text-xs tracking-[0.1em] text-muted-foreground/60 hover:text-muted-foreground transition-colors">
+                Staff
               </span>
             </Link>
-            <Link to="/login">
-              <span className="text-sm tracking-[0.1em] font-medium text-muted-foreground hover:text-foreground transition-colors link-underline">
-                SIGN IN
-              </span>
-            </Link>
+            <div className="w-px h-4 bg-border/50" />
+            {user ? (
+              <Link to="/portal">
+                <Button variant="outline" size="default" className="tracking-[0.1em] text-sm gap-2">
+                  <User className="h-4 w-4" />
+                  MY PORTAL
+                </Button>
+              </Link>
+            ) : (
+              <Link to="/login">
+                <Button variant="outline" size="default" className="tracking-[0.1em] text-sm gap-2">
+                  <User className="h-4 w-4" />
+                  SIGN IN
+                </Button>
+              </Link>
+            )}
             <Link to="/book">
               <Button variant="default" size="default" className="tracking-[0.1em] text-sm">
                 BOOK NOW
@@ -108,20 +121,30 @@ const Header = () => {
                   </Link>
                 ))}
                 <div className="pt-6 px-4 space-y-3 border-t border-border/30 mt-6">
-                  <Link to="/staff/login" onClick={() => setIsOpen(false)}>
-                    <Button variant="ghost" className="w-full tracking-[0.1em] text-sm">
-                      STAFF LOGIN
-                    </Button>
-                  </Link>
-                  <Link to="/login" onClick={() => setIsOpen(false)}>
-                    <Button variant="outline" className="w-full tracking-[0.1em] text-sm">
-                      SIGN IN
-                    </Button>
-                  </Link>
+                  {user ? (
+                    <Link to="/portal" onClick={() => setIsOpen(false)}>
+                      <Button variant="outline" className="w-full tracking-[0.1em] text-sm gap-2">
+                        <User className="h-4 w-4" />
+                        MY PORTAL
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Link to="/login" onClick={() => setIsOpen(false)}>
+                      <Button variant="outline" className="w-full tracking-[0.1em] text-sm gap-2">
+                        <User className="h-4 w-4" />
+                        SIGN IN
+                      </Button>
+                    </Link>
+                  )}
                   <Link to="/book" onClick={() => setIsOpen(false)}>
                     <Button variant="default" className="w-full tracking-[0.1em] text-sm">
                       BOOK NOW
                     </Button>
+                  </Link>
+                  <Link to="/staff/login" onClick={() => setIsOpen(false)}>
+                    <p className="text-center text-xs text-muted-foreground/60 hover:text-muted-foreground pt-2">
+                      Staff Login
+                    </p>
                   </Link>
                 </div>
               </div>
