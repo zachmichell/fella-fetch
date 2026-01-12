@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePetActivityLog } from '@/hooks/usePetActivityLog';
 import { 
   Dog, 
   Users, 
@@ -32,6 +33,7 @@ interface DashboardStats {
 
 interface TodayReservation {
   id: string;
+  pet_id: string;
   pet_name: string;
   client_name: string;
   service_type: string;
@@ -42,6 +44,7 @@ interface TodayReservation {
 const StaffDashboard = () => {
   const { isStaffOrAdmin } = useAuth();
   const { toast } = useToast();
+  const { logActivity } = usePetActivityLog();
   const [stats, setStats] = useState<DashboardStats>({
     totalPetsToday: 0,
     checkedIn: 0,
@@ -77,10 +80,12 @@ const StaffDashboard = () => {
         .from('reservations')
         .select(`
           id,
+          pet_id,
           service_type,
           status,
           start_time,
           pets (
+            id,
             name,
             clients (
               first_name,
@@ -95,6 +100,7 @@ const StaffDashboard = () => {
 
       const formattedReservations = reservations?.map((r: any) => ({
         id: r.id,
+        pet_id: r.pets?.id || r.pet_id,
         pet_name: r.pets?.name || 'Unknown',
         client_name: r.pets?.clients 
           ? `${r.pets.clients.first_name} ${r.pets.clients.last_name}`
@@ -128,17 +134,31 @@ const StaffDashboard = () => {
     fetchDashboardData();
   }, [isStaffOrAdmin]);
 
-  const handleCheckIn = async (reservationId: string) => {
+  const handleCheckIn = async (reservationId: string, petId: string, petName: string, serviceType: string) => {
     try {
+      const checkInTime = new Date().toISOString();
       const { error } = await supabase
         .from('reservations')
         .update({ 
           status: 'checked_in',
-          checked_in_at: new Date().toISOString()
+          checked_in_at: checkInTime
         })
         .eq('id', reservationId);
 
       if (error) throw error;
+
+      // Log the check-in activity
+      await logActivity({
+        petId,
+        reservationId,
+        actionType: 'pet_checked_in',
+        actionCategory: 'check_in',
+        description: `${petName} checked in for ${serviceType}`,
+        details: {
+          service_type: serviceType,
+          check_in_time: checkInTime,
+        }
+      });
 
       toast({ title: 'Pet checked in successfully!' });
       fetchDashboardData();
@@ -151,17 +171,31 @@ const StaffDashboard = () => {
     }
   };
 
-  const handleCheckOut = async (reservationId: string) => {
+  const handleCheckOut = async (reservationId: string, petId: string, petName: string, serviceType: string) => {
     try {
+      const checkOutTime = new Date().toISOString();
       const { error } = await supabase
         .from('reservations')
         .update({ 
           status: 'checked_out',
-          checked_out_at: new Date().toISOString()
+          checked_out_at: checkOutTime
         })
         .eq('id', reservationId);
 
       if (error) throw error;
+
+      // Log the check-out activity
+      await logActivity({
+        petId,
+        reservationId,
+        actionType: 'pet_checked_out',
+        actionCategory: 'check_out',
+        description: `${petName} checked out from ${serviceType}`,
+        details: {
+          service_type: serviceType,
+          check_out_time: checkOutTime,
+        }
+      });
 
       toast({ title: 'Pet checked out successfully!' });
       fetchDashboardData();
@@ -335,7 +369,7 @@ const StaffDashboard = () => {
                       {reservation.status === 'confirmed' || reservation.status === 'pending' ? (
                         <Button 
                           size="sm" 
-                          onClick={() => handleCheckIn(reservation.id)}
+                          onClick={() => handleCheckIn(reservation.id, reservation.pet_id, reservation.pet_name, reservation.service_type)}
                           className="gap-1"
                         >
                           <LogIn className="h-3 w-3" />
@@ -345,7 +379,7 @@ const StaffDashboard = () => {
                         <Button 
                           size="sm" 
                           variant="outline"
-                          onClick={() => handleCheckOut(reservation.id)}
+                          onClick={() => handleCheckOut(reservation.id, reservation.pet_id, reservation.pet_name, reservation.service_type)}
                           className="gap-1"
                         >
                           <LogOutIcon className="h-3 w-3" />

@@ -80,6 +80,57 @@ export type Database = {
         }
         Relationships: []
       }
+      pet_activity_logs: {
+        Row: {
+          action_category: string
+          action_type: string
+          created_at: string
+          description: string
+          details: Json | null
+          id: string
+          performed_by: string
+          pet_id: string
+          reservation_id: string | null
+        }
+        Insert: {
+          action_category: string
+          action_type: string
+          created_at?: string
+          description: string
+          details?: Json | null
+          id?: string
+          performed_by: string
+          pet_id: string
+          reservation_id?: string | null
+        }
+        Update: {
+          action_category?: string
+          action_type?: string
+          created_at?: string
+          description?: string
+          details?: Json | null
+          id?: string
+          performed_by?: string
+          pet_id?: string
+          reservation_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_activity_logs_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_activity_logs_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pets: {
         Row: {
           behavior_notes: string | null
