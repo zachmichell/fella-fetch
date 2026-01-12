@@ -163,8 +163,9 @@ const AIAssistantChat = ({ clientId, clientName, threadId, onThreadIdUpdate }: A
       const assistantMessage = responseData?.message || 'No response received';
       const newThreadId = responseData?.thread_id || null;
 
-      // If we got a new thread_id and don't have one yet, save it
-      if (newThreadId && !currentThreadId) {
+      // Always update thread_id if we receive one (even if we already have one, in case it changes)
+      if (newThreadId && newThreadId !== currentThreadId) {
+        console.log('Updating thread_id:', newThreadId);
         setCurrentThreadId(newThreadId);
         onThreadIdUpdate(newThreadId);
         
