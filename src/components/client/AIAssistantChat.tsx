@@ -19,9 +19,11 @@ interface ChatMessage {
 interface AIAssistantChatProps {
   clientId: string;
   clientName: string;
+  threadId: string | null;
+  onThreadIdUpdate: (threadId: string) => void;
 }
 
-const AIAssistantChat = ({ clientId, clientName }: AIAssistantChatProps) => {
+const AIAssistantChat = ({ clientId, clientName, threadId, onThreadIdUpdate }: AIAssistantChatProps) => {
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -29,8 +31,14 @@ const AIAssistantChat = ({ clientId, clientName }: AIAssistantChatProps) => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingHistory, setIsFetchingHistory] = useState(false);
+  const [currentThreadId, setCurrentThreadId] = useState<string | null>(threadId);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Sync threadId prop with local state
+  useEffect(() => {
+    setCurrentThreadId(threadId);
+  }, [threadId]);
 
   // Fetch chat history when chat opens
   useEffect(() => {
@@ -111,7 +119,7 @@ const AIAssistantChat = ({ clientId, clientName }: AIAssistantChatProps) => {
         m.id === tempUserMessage.id ? { ...savedUserMsg, role: savedUserMsg.role as 'user' | 'assistant' } : m
       ));
 
-      // Send to Make.com webhook
+      // Send to Make.com webhook with thread_id
       const response = await fetch('https://hook.us1.make.com/5wts4mehu53y8gzkn17m4wx7yxgeg172', {
         method: 'POST',
         headers: {
@@ -122,6 +130,7 @@ const AIAssistantChat = ({ clientId, clientName }: AIAssistantChatProps) => {
           clientName,
           message: userMessage,
           messageId: savedUserMsg.id,
+          threadId: currentThreadId,
         }),
       });
 
@@ -129,7 +138,31 @@ const AIAssistantChat = ({ clientId, clientName }: AIAssistantChatProps) => {
         throw new Error('Failed to get response from assistant');
       }
 
-      const assistantResponse = await response.text();
+      // Try to parse JSON response to get thread_id
+      const responseText = await response.text();
+      let assistantMessage = responseText;
+      let newThreadId: string | null = null;
+
+      try {
+        const jsonResponse = JSON.parse(responseText);
+        assistantMessage = jsonResponse.message || jsonResponse.response || responseText;
+        newThreadId = jsonResponse.thread_id || jsonResponse.threadId || null;
+      } catch {
+        // Response is plain text, use as-is
+        assistantMessage = responseText;
+      }
+
+      // If we got a new thread_id and don't have one yet, save it
+      if (newThreadId && !currentThreadId) {
+        setCurrentThreadId(newThreadId);
+        onThreadIdUpdate(newThreadId);
+        
+        // Save thread_id to client record
+        await supabase
+          .from('clients')
+          .update({ thread_id: newThreadId })
+          .eq('id', clientId);
+      }
 
       // Save assistant message to database
       const { data: savedAssistantMsg, error: assistantMsgError } = await supabase
@@ -137,7 +170,7 @@ const AIAssistantChat = ({ clientId, clientName }: AIAssistantChatProps) => {
         .insert({
           client_id: clientId,
           role: 'assistant',
-          content: assistantResponse,
+          content: assistantMessage,
         })
         .select()
         .single();
