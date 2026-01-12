@@ -51,6 +51,11 @@ const Header = () => {
 
           {/* Desktop CTA */}
           <div className="hidden lg:flex items-center gap-6">
+            <Link to="/staff/login">
+              <span className="text-sm tracking-[0.1em] font-medium text-muted-foreground hover:text-foreground transition-colors link-underline">
+                STAFF
+              </span>
+            </Link>
             <Link to="/login">
               <span className="text-sm tracking-[0.1em] font-medium text-muted-foreground hover:text-foreground transition-colors link-underline">
                 SIGN IN
@@ -103,6 +108,11 @@ const Header = () => {
                   </Link>
                 ))}
                 <div className="pt-6 px-4 space-y-3 border-t border-border/30 mt-6">
+                  <Link to="/staff/login" onClick={() => setIsOpen(false)}>
+                    <Button variant="ghost" className="w-full tracking-[0.1em] text-sm">
+                      STAFF LOGIN
+                    </Button>
+                  </Link>
                   <Link to="/login" onClick={() => setIsOpen(false)}>
                     <Button variant="outline" className="w-full tracking-[0.1em] text-sm">
                       SIGN IN
