@@ -35,10 +35,12 @@ interface TodayReservation {
   id: string;
   pet_id: string;
   pet_name: string;
+  client_id: string;
   client_name: string;
   service_type: string;
   status: string;
   start_time: string | null;
+  checked_in_at: string | null;
 }
 
 const StaffDashboard = () => {
@@ -84,10 +86,12 @@ const StaffDashboard = () => {
           service_type,
           status,
           start_time,
+          checked_in_at,
           pets (
             id,
             name,
             clients (
+              id,
               first_name,
               last_name
             )
@@ -102,12 +106,14 @@ const StaffDashboard = () => {
         id: r.id,
         pet_id: r.pets?.id || r.pet_id,
         pet_name: r.pets?.name || 'Unknown',
+        client_id: r.pets?.clients?.id || '',
         client_name: r.pets?.clients 
           ? `${r.pets.clients.first_name} ${r.pets.clients.last_name}`
           : 'Unknown',
         service_type: r.service_type,
         status: r.status,
         start_time: r.start_time,
+        checked_in_at: r.checked_in_at,
       })) || [];
 
       setTodayReservations(formattedReservations);
@@ -134,7 +140,7 @@ const StaffDashboard = () => {
     fetchDashboardData();
   }, [isStaffOrAdmin]);
 
-  const handleCheckIn = async (reservationId: string, petId: string, petName: string, serviceType: string) => {
+  const handleCheckIn = async (reservationId: string, petId: string, petName: string, serviceType: string, clientId: string) => {
     try {
       const checkInTime = new Date().toISOString();
       const { error } = await supabase
@@ -146,6 +152,22 @@ const StaffDashboard = () => {
         .eq('id', reservationId);
 
       if (error) throw error;
+
+      // If daycare, deduct 1 credit immediately on check-in
+      if (serviceType === 'daycare' && clientId) {
+        const { data: clientData } = await supabase
+          .from('clients')
+          .select('daycare_credits')
+          .eq('id', clientId)
+          .single();
+
+        if (clientData && clientData.daycare_credits > 0) {
+          await supabase
+            .from('clients')
+            .update({ daycare_credits: clientData.daycare_credits - 1 })
+            .eq('id', clientId);
+        }
+      }
 
       // Log the check-in activity
       await logActivity({
@@ -171,7 +193,7 @@ const StaffDashboard = () => {
     }
   };
 
-  const handleCheckOut = async (reservationId: string, petId: string, petName: string, serviceType: string) => {
+  const handleCheckOut = async (reservationId: string, petId: string, petName: string, serviceType: string, clientId: string, checkedInAt: string | null) => {
     try {
       const checkOutTime = new Date().toISOString();
       const { error } = await supabase
@@ -183,6 +205,28 @@ const StaffDashboard = () => {
         .eq('id', reservationId);
 
       if (error) throw error;
+
+      // If boarding, calculate nights and deduct credits on check-out
+      if (serviceType === 'boarding' && clientId && checkedInAt) {
+        const checkInDate = new Date(checkedInAt);
+        const checkOutDate = new Date(checkOutTime);
+        // Calculate nights (difference in days, minimum 1)
+        const nights = Math.max(1, Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24)));
+        
+        const { data: clientData } = await supabase
+          .from('clients')
+          .select('boarding_credits')
+          .eq('id', clientId)
+          .single();
+
+        if (clientData) {
+          const newCredits = Math.max(0, clientData.boarding_credits - nights);
+          await supabase
+            .from('clients')
+            .update({ boarding_credits: newCredits })
+            .eq('id', clientId);
+        }
+      }
 
       // Log the check-out activity
       await logActivity({
@@ -369,7 +413,7 @@ const StaffDashboard = () => {
                       {reservation.status === 'confirmed' || reservation.status === 'pending' ? (
                         <Button 
                           size="sm" 
-                          onClick={() => handleCheckIn(reservation.id, reservation.pet_id, reservation.pet_name, reservation.service_type)}
+                          onClick={() => handleCheckIn(reservation.id, reservation.pet_id, reservation.pet_name, reservation.service_type, reservation.client_id)}
                           className="gap-1"
                         >
                           <LogIn className="h-3 w-3" />
@@ -379,7 +423,7 @@ const StaffDashboard = () => {
                         <Button 
                           size="sm" 
                           variant="outline"
-                          onClick={() => handleCheckOut(reservation.id, reservation.pet_id, reservation.pet_name, reservation.service_type)}
+                          onClick={() => handleCheckOut(reservation.id, reservation.pet_id, reservation.pet_name, reservation.service_type, reservation.client_id, reservation.checked_in_at)}
                           className="gap-1"
                         >
                           <LogOutIcon className="h-3 w-3" />
