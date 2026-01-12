@@ -12,6 +12,9 @@ import PricingPage from "./pages/PricingPage";
 import ContactPage from "./pages/ContactPage";
 import AboutPage from "./pages/AboutPage";
 import NotFound from "./pages/NotFound";
+// Client pages
+import ClientLogin from "./pages/client/ClientLogin";
+import ClientPortal from "./pages/client/ClientPortal";
 // Staff pages
 import StaffLogin from "./pages/staff/StaffLogin";
 import StaffDashboard from "./pages/staff/StaffDashboard";
@@ -40,6 +43,9 @@ const App = () => (
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/about" element={<AboutPage />} />
+            {/* Client Portal Routes */}
+            <Route path="/login" element={<ClientLogin />} />
+            <Route path="/portal" element={<ClientPortal />} />
             {/* Staff Portal Routes */}
             <Route path="/staff/login" element={<StaffLogin />} />
             <Route path="/staff" element={<StaffDashboard />} />
