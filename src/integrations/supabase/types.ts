@@ -14,6 +14,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      chat_messages: {
+        Row: {
+          client_id: string
+          content: string
+          created_at: string
+          id: string
+          role: string
+        }
+        Insert: {
+          client_id: string
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+        }
+        Update: {
+          client_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           address: string | null
