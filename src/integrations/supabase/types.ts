@@ -448,6 +448,63 @@ export type Database = {
           },
         ]
       }
+      shopify_collection_mappings: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          shopify_collection_id: string
+          shopify_collection_title: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id?: string
+          shopify_collection_id: string
+          shopify_collection_title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          shopify_collection_id?: string
+          shopify_collection_title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      shopify_service_mappings: {
+        Row: {
+          created_at: string
+          credit_value: number | null
+          id: string
+          service_type: Database["public"]["Enums"]["service_type"]
+          shopify_product_id: string
+          shopify_product_title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          credit_value?: number | null
+          id?: string
+          service_type: Database["public"]["Enums"]["service_type"]
+          shopify_product_id: string
+          shopify_product_title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          credit_value?: number | null
+          id?: string
+          service_type?: Database["public"]["Enums"]["service_type"]
+          shopify_product_id?: string
+          shopify_product_title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       staff_time_clock: {
         Row: {
           break_minutes: number | null
