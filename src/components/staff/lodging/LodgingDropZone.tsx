@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { BoardingReservation } from '@/pages/staff/StaffLodgingCalendar';
 import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -16,6 +16,8 @@ interface LodgingDropZoneProps {
   onDragStart: (reservation: BoardingReservation) => void;
   onDragEnd: () => void;
   isUnassigned?: boolean;
+  onHoverZone: (suiteId: string | null) => void;
+  hoveredZone: string | null | undefined;
 }
 
 export const LodgingDropZone = ({
@@ -30,53 +32,46 @@ export const LodgingDropZone = ({
   onDragStart,
   onDragEnd,
   isUnassigned = false,
+  onHoverZone,
+  hoveredZone,
 }: LodgingDropZoneProps) => {
-  const [isOver, setIsOver] = useState(false);
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsOver(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsOver(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsOver(false);
-    
-    if (draggingReservation && suiteId !== draggingReservation.suite_id) {
-      onDropReservation(draggingReservation, suiteId);
-    }
-  };
-
-  // Handle pointer events for framer-motion drag
-  const handlePointerUp = () => {
-    if (draggingReservation && suiteId !== draggingReservation.suite_id) {
-      onDropReservation(draggingReservation, suiteId);
-    }
-  };
-
   const showDropIndicator = draggingReservation && 
     draggingReservation.suite_id !== suiteId;
+
+  const isHovered = hoveredZone === suiteId;
+
+  const handlePointerEnter = () => {
+    if (draggingReservation) {
+      onHoverZone(suiteId);
+    }
+  };
+
+  const handlePointerLeave = () => {
+    if (draggingReservation && hoveredZone === suiteId) {
+      onHoverZone(undefined);
+    }
+  };
 
   if (reservations.length === 0 && !isUnassigned) {
     return (
       <div
         className={cn(
           "h-full min-h-[60px] flex items-center justify-center rounded transition-all",
-          showDropIndicator && "border-2 border-dashed border-primary bg-primary/10",
+          showDropIndicator && isHovered && "border-2 border-dashed border-primary bg-primary/20",
+          showDropIndicator && !isHovered && "border-2 border-dashed border-muted-foreground/30 bg-muted/30",
           !showDropIndicator && "cursor-pointer hover:bg-muted/50 group"
         )}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        onPointerUp={handlePointerUp}
+        onPointerEnter={handlePointerEnter}
+        onPointerLeave={handlePointerLeave}
         onClick={() => !draggingReservation && suiteId && onCreateBooking(suiteId, date)}
       >
         {showDropIndicator ? (
-          <span className="text-xs text-primary font-medium">Drop here</span>
+          <span className={cn(
+            "text-xs font-medium",
+            isHovered ? "text-primary" : "text-muted-foreground"
+          )}>
+            {isHovered ? "Release to drop" : "Drop here"}
+          </span>
         ) : (
           <Plus className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
         )}
@@ -88,12 +83,11 @@ export const LodgingDropZone = ({
     <div
       className={cn(
         "space-y-1 min-h-[60px] rounded transition-all p-0.5",
-        showDropIndicator && "border-2 border-dashed border-primary bg-primary/10"
+        showDropIndicator && isHovered && "border-2 border-dashed border-primary bg-primary/20",
+        showDropIndicator && !isHovered && "border-2 border-dashed border-muted-foreground/30"
       )}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      onPointerUp={handlePointerUp}
+      onPointerEnter={handlePointerEnter}
+      onPointerLeave={handlePointerLeave}
     >
       {reservations.map((reservation) => (
         <LodgingDraggableCell
@@ -108,8 +102,11 @@ export const LodgingDropZone = ({
         />
       ))}
       {showDropIndicator && reservations.length > 0 && (
-        <div className="text-xs text-center text-primary font-medium py-1">
-          + Add here
+        <div className={cn(
+          "text-xs text-center font-medium py-1",
+          isHovered ? "text-primary" : "text-muted-foreground"
+        )}>
+          {isHovered ? "+ Release to add" : "+ Add here"}
         </div>
       )}
     </div>
