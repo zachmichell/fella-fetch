@@ -14,8 +14,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Plus, Pencil, Trash2, GripVertical, Calendar, Scissors, Package } from 'lucide-react';
+import { Plus, Pencil, Trash2, GripVertical, Calendar, Scissors, Package, ShoppingBag } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { ShopifyProductSelector } from '@/components/staff/ShopifyProductSelector';
 
 interface ServiceType {
   id: string;
@@ -103,6 +104,25 @@ export default function StaffServiceTypes() {
       
       if (error) throw error;
       return data as ServiceType[];
+    },
+  });
+
+  // Fetch linked product counts
+  const { data: productCounts = {} } = useQuery({
+    queryKey: ['service-type-product-counts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('service_type_products')
+        .select('service_type_id');
+      
+      if (error) throw error;
+      
+      // Count products per service type
+      const counts: Record<string, number> = {};
+      data.forEach(item => {
+        counts[item.service_type_id] = (counts[item.service_type_id] || 0) + 1;
+      });
+      return counts;
     },
   });
 
@@ -263,6 +283,16 @@ export default function StaffServiceTypes() {
         )}
       </TableCell>
       <TableCell>
+        {productCounts[type.id] ? (
+          <Badge variant="outline" className="gap-1">
+            <ShoppingBag className="h-3 w-3" />
+            {productCounts[type.id]}
+          </Badge>
+        ) : (
+          <span className="text-muted-foreground text-sm">—</span>
+        )}
+      </TableCell>
+      <TableCell>
         <Switch
           checked={type.is_active}
           onCheckedChange={(checked) => toggleActiveMutation.mutate({ id: type.id, is_active: checked })}
@@ -308,7 +338,7 @@ export default function StaffServiceTypes() {
                 Add Service Type
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
               <DialogHeader>
                 <DialogTitle>{editingType ? 'Edit Service Type' : 'Add Service Type'}</DialogTitle>
                 <DialogDescription>
@@ -318,7 +348,7 @@ export default function StaffServiceTypes() {
                   }
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 py-4">
+              <div className="space-y-4 py-4 overflow-y-auto flex-1">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Display Name *</Label>
@@ -445,6 +475,12 @@ export default function StaffServiceTypes() {
                   />
                   <Label>Active</Label>
                 </div>
+
+                {/* Shopify Product Linking */}
+                <ShopifyProductSelector 
+                  serviceTypeId={editingType?.id || null}
+                  serviceTypeName={formData.display_name || 'this service type'}
+                />
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={handleCloseDialog}>Cancel</Button>
@@ -500,6 +536,7 @@ export default function StaffServiceTypes() {
                           <TableHead>Name</TableHead>
                           <TableHead>System Key</TableHead>
                           <TableHead>Credits</TableHead>
+                          <TableHead>Products</TableHead>
                           <TableHead>Active</TableHead>
                           <TableHead>Actions</TableHead>
                         </TableRow>
