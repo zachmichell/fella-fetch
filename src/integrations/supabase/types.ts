@@ -451,6 +451,41 @@ export type Database = {
           },
         ]
       }
+      service_type_products: {
+        Row: {
+          created_at: string
+          credit_value: number | null
+          id: string
+          service_type_id: string
+          shopify_product_id: string
+          shopify_product_title: string
+        }
+        Insert: {
+          created_at?: string
+          credit_value?: number | null
+          id?: string
+          service_type_id: string
+          shopify_product_id: string
+          shopify_product_title: string
+        }
+        Update: {
+          created_at?: string
+          credit_value?: number | null
+          id?: string
+          service_type_id?: string
+          shopify_product_id?: string
+          shopify_product_title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_type_products_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_types: {
         Row: {
           category: string
