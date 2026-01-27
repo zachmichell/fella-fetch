@@ -127,6 +127,42 @@ export type Database = {
         }
         Relationships: []
       }
+      groomers: {
+        Row: {
+          color: string | null
+          created_at: string
+          email: string | null
+          id: string
+          is_active: boolean
+          name: string
+          phone: string | null
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          phone?: string | null
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          phone?: string | null
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pet_activity_logs: {
         Row: {
           action_category: string
@@ -398,6 +434,7 @@ export type Database = {
           created_at: string
           end_date: string | null
           end_time: string | null
+          groomer_id: string | null
           id: string
           notes: string | null
           pet_id: string
@@ -417,6 +454,7 @@ export type Database = {
           created_at?: string
           end_date?: string | null
           end_time?: string | null
+          groomer_id?: string | null
           id?: string
           notes?: string | null
           pet_id: string
@@ -436,6 +474,7 @@ export type Database = {
           created_at?: string
           end_date?: string | null
           end_time?: string | null
+          groomer_id?: string | null
           id?: string
           notes?: string | null
           pet_id?: string
@@ -448,6 +487,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "reservations_groomer_id_fkey"
+            columns: ["groomer_id"]
+            isOneToOne: false
+            referencedRelation: "groomers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "reservations_pet_id_fkey"
             columns: ["pet_id"]
