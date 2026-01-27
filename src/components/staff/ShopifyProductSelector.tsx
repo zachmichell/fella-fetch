@@ -1,13 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { fetchShopifyProducts, getProductIdFromGid, type ShopifyProduct } from '@/lib/shopify';
+import { 
+  fetchShopifyProducts, 
+  fetchShopifyCollections, 
+  fetchCollectionProducts,
+  getProductIdFromGid, 
+  getCollectionIdFromGid,
+  type ShopifyProduct,
+  type ShopifyCollection 
+} from '@/lib/shopify';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Search, X, Package } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -31,6 +40,9 @@ export function ShopifyProductSelector({ serviceTypeId, serviceTypeName }: Shopi
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [shopifyProducts, setShopifyProducts] = useState<ShopifyProduct[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+  const [selectedCollectionHandle, setSelectedCollectionHandle] = useState<string>('all');
+  const [collections, setCollections] = useState<ShopifyCollection[]>([]);
+  const [isLoadingCollections, setIsLoadingCollections] = useState(false);
 
   // Debounce search
   useEffect(() => {
@@ -56,13 +68,46 @@ export function ShopifyProductSelector({ serviceTypeId, serviceTypeName }: Shopi
     enabled: !!serviceTypeId,
   });
 
-  // Fetch Shopify products
-  const loadProducts = async (query?: string) => {
+  // Load collections on mount
+  useEffect(() => {
+    const loadCollections = async () => {
+      setIsLoadingCollections(true);
+      try {
+        const result = await fetchShopifyCollections(100);
+        if (result?.edges) {
+          setCollections(result.edges);
+        }
+      } catch (error) {
+        console.error('Error loading collections:', error);
+      } finally {
+        setIsLoadingCollections(false);
+      }
+    };
+    loadCollections();
+  }, []);
+
+  // Fetch Shopify products based on collection and search
+  const loadProducts = async (query?: string, collectionHandle?: string) => {
     setIsLoadingProducts(true);
     try {
-      const result = await fetchShopifyProducts(50, query);
-      if (result?.edges) {
-        setShopifyProducts(result.edges);
+      if (collectionHandle && collectionHandle !== 'all') {
+        // Fetch products from specific collection
+        const products = await fetchCollectionProducts(collectionHandle, 100);
+        // Filter by search query if provided
+        if (query) {
+          const filtered = products.filter((p: ShopifyProduct) => 
+            p.node.title.toLowerCase().includes(query.toLowerCase())
+          );
+          setShopifyProducts(filtered);
+        } else {
+          setShopifyProducts(products);
+        }
+      } else {
+        // Fetch all products with optional search
+        const result = await fetchShopifyProducts(50, query);
+        if (result?.edges) {
+          setShopifyProducts(result.edges);
+        }
       }
     } catch (error) {
       console.error('Error loading products:', error);
@@ -72,13 +117,8 @@ export function ShopifyProductSelector({ serviceTypeId, serviceTypeName }: Shopi
   };
 
   useEffect(() => {
-    loadProducts(debouncedSearch || undefined);
-  }, [debouncedSearch]);
-
-  // Load products on mount
-  useEffect(() => {
-    loadProducts();
-  }, []);
+    loadProducts(debouncedSearch || undefined, selectedCollectionHandle);
+  }, [debouncedSearch, selectedCollectionHandle]);
 
   // Add product mutation
   const addProductMutation = useMutation({
@@ -181,15 +221,30 @@ export function ShopifyProductSelector({ serviceTypeId, serviceTypeName }: Shopi
         </div>
       )}
 
-      {/* Search and product list */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search Shopify products..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9"
-        />
+      {/* Collection filter and search */}
+      <div className="flex gap-2">
+        <Select value={selectedCollectionHandle} onValueChange={setSelectedCollectionHandle}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="All Collections" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Collections</SelectItem>
+            {collections.map((collection) => (
+              <SelectItem key={collection.node.id} value={collection.node.handle}>
+                {collection.node.title}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search products..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
       </div>
 
       <ScrollArea className="h-[200px] border rounded-md">
