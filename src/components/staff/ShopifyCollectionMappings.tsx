@@ -242,7 +242,7 @@ export function ShopifyCollectionMappings() {
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline">
-                              {collection.node.productsCount?.count || 0} products
+                              {collection.node.handle}
                             </Badge>
                           </TableCell>
                           <TableCell>
