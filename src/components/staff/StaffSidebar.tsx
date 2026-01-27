@@ -52,6 +52,7 @@ const operationsItems = [
 const adminItems = [
   { title: 'User Management', url: '/staff/users', icon: UserCog },
   { title: 'Suite Management', url: '/staff/suites', icon: BedDouble },
+  { title: 'Groomer Management', url: '/staff/groomers', icon: Scissors },
   { title: 'Service Types', url: '/staff/service-types', icon: Layers },
   { title: 'Shopify Settings', url: '/staff/shopify-settings', icon: ShoppingBag },
   { title: 'Settings', url: '/staff/settings', icon: Settings },
