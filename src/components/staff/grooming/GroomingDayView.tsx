@@ -234,12 +234,16 @@ export const GroomingDayView = ({
                 <tr 
                   key={timeSlot} 
                   className={cn(
-                    isHourMark && "border-t-2 border-t-muted-foreground/20"
+                    isHourMark 
+                      ? "border-t border-t-muted-foreground/40" 
+                      : "border-t border-t-muted-foreground/10"
                   )}
                 >
                   <td className={cn(
-                    "border-b border-r p-1 text-xs text-muted-foreground bg-muted/20 sticky left-0 z-10",
-                    isHourMark ? "font-medium" : "text-muted-foreground/60"
+                    "border-r p-1 text-xs bg-muted/20 sticky left-0 z-10",
+                    isHourMark 
+                      ? "font-medium text-muted-foreground border-t border-t-muted-foreground/40" 
+                      : "text-muted-foreground/60 border-t border-t-muted-foreground/10"
                   )}>
                     {isHourMark ? format(parseISO(`2000-01-01T${timeSlot}`), 'h:mm a') : ''}
                   </td>
@@ -257,7 +261,10 @@ export const GroomingDayView = ({
                       <td
                         key={groomer.id}
                         className={cn(
-                          "border-b border-r p-0.5 align-top",
+                          "border-r p-0.5 align-top",
+                          isHourMark 
+                            ? "border-t border-t-muted-foreground/40" 
+                            : "border-t border-t-muted-foreground/10",
                           !appointment && "hover:bg-muted/30 cursor-pointer"
                         )}
                         rowSpan={isStart ? span : 1}
