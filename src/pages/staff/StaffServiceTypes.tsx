@@ -17,6 +17,8 @@ import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, GripVertical, Calendar, Scissors, Package, ShoppingBag } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { ShopifyProductSelector } from '@/components/staff/ShopifyProductSelector';
+import { ServiceTypeIconPicker } from '@/components/staff/ServiceTypeIconPicker';
+import { ServiceTypeIcon } from '@/components/ui/service-type-icon';
 
 interface ServiceType {
   id: string;
@@ -43,21 +45,6 @@ const COLORS = [
   { value: 'red', label: 'Red' },
   { value: 'cyan', label: 'Cyan' },
   { value: 'gray', label: 'Gray' },
-];
-
-const ICONS = [
-  { value: 'sun', label: 'Sun' },
-  { value: 'sunrise', label: 'Sunrise' },
-  { value: 'moon', label: 'Moon' },
-  { value: 'calendar', label: 'Calendar' },
-  { value: 'clipboard-check', label: 'Clipboard Check' },
-  { value: 'scissors', label: 'Scissors' },
-  { value: 'graduation-cap', label: 'Graduation Cap' },
-  { value: 'hand', label: 'Hand' },
-  { value: 'droplets', label: 'Droplets' },
-  { value: 'bone', label: 'Bone' },
-  { value: 'heart', label: 'Heart' },
-  { value: 'star', label: 'Star' },
 ];
 
 const CATEGORIES = [
@@ -269,7 +256,10 @@ export default function StaffServiceTypes() {
       <TableCell>
         <div className="flex items-center gap-2">
           <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
-          <Badge className={getColorClass(type.color)}>{type.display_name}</Badge>
+          <Badge className={`${getColorClass(type.color)} gap-1`}>
+            <ServiceTypeIcon iconName={type.icon_name} className="h-3 w-3" />
+            {type.display_name}
+          </Badge>
         </div>
       </TableCell>
       <TableCell className="font-mono text-sm text-muted-foreground">{type.name}</TableCell>
@@ -466,6 +456,15 @@ export default function StaffServiceTypes() {
                       onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
                     />
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Icon</Label>
+                  <ServiceTypeIconPicker
+                    value={formData.icon_name || 'calendar'}
+                    onChange={(value) => setFormData({ ...formData, icon_name: value })}
+                    color={formData.color || 'gray'}
+                  />
                 </div>
 
                 <div className="flex items-center gap-2">
