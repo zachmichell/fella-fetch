@@ -390,10 +390,15 @@ const StaffCalendar = () => {
                           return (
                             <div 
                               key={service.id}
-                              className={`flex items-center justify-between px-1 py-0.5 rounded ${service.bgColor}`}
+                              className={`flex items-center justify-between gap-1 px-1 py-0.5 rounded ${service.bgColor}`}
                             >
-                              <Icon className={`h-2.5 w-2.5 ${service.color}`} />
-                              <span className={`text-[9px] font-semibold ${service.color}`}>
+                              <div className={`flex items-center gap-0.5 min-w-0 ${service.color}`}>
+                                <Icon className="h-2.5 w-2.5 flex-shrink-0" />
+                                <span className="text-[8px] font-medium truncate">
+                                  {service.displayName}
+                                </span>
+                              </div>
+                              <span className={`text-[9px] font-semibold flex-shrink-0 ${service.color}`}>
                                 {service.count}
                               </span>
                             </div>
