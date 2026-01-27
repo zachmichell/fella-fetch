@@ -257,6 +257,7 @@ export const LodgingWeeklyView = ({
                         reservations={cellReservations}
                         date={day}
                         suiteId={suite.id}
+                        capacity={suite.capacity}
                         onPetClick={onPetClick}
                         onAssignSuite={onAssignSuite}
                         onCreateBooking={onCreateBooking}
