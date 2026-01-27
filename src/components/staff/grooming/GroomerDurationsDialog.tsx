@@ -50,21 +50,23 @@ interface DurationEntry {
   hasChanged: boolean;
 }
 
-const STOREFRONT_QUERY = `
-  query GetGroomProducts {
-    products(first: 50, query: "product_type:Groom") {
-      edges {
-        node {
-          id
-          title
-          variants(first: 50) {
-            edges {
-              node {
-                id
-                title
-                price {
-                  amount
-                  currencyCode
+const COLLECTION_PRODUCTS_QUERY = `
+  query GetCollectionProducts($handle: String!) {
+    collection(handle: $handle) {
+      products(first: 100) {
+        edges {
+          node {
+            id
+            title
+            variants(first: 50) {
+              edges {
+                node {
+                  id
+                  title
+                  price {
+                    amount
+                    currencyCode
+                  }
                 }
               }
             }
@@ -82,7 +84,10 @@ async function fetchGroomProducts(): Promise<ShopifyProduct[]> {
       'Content-Type': 'application/json',
       'X-Shopify-Storefront-Access-Token': SHOPIFY_STOREFRONT_TOKEN,
     },
-    body: JSON.stringify({ query: STOREFRONT_QUERY }),
+    body: JSON.stringify({ 
+      query: COLLECTION_PRODUCTS_QUERY,
+      variables: { handle: 'groom' }
+    }),
   });
 
   if (!response.ok) {
@@ -94,7 +99,7 @@ async function fetchGroomProducts(): Promise<ShopifyProduct[]> {
     throw new Error(`Shopify error: ${data.errors.map((e: { message: string }) => e.message).join(', ')}`);
   }
 
-  return data.data.products.edges.map((edge: { node: ShopifyProduct }) => edge.node);
+  return data.data.collection?.products?.edges?.map((edge: { node: ShopifyProduct }) => edge.node) || [];
 }
 
 export function GroomerDurationsDialog({
