@@ -195,6 +195,53 @@ const StaffDashboard = () => {
     }
   };
 
+  const handleUndoCheckIn = async (reservation: ControlCenterReservation) => {
+    try {
+      // Revert status to confirmed and clear check-in time
+      const { error } = await supabase
+        .from('reservations')
+        .update({ 
+          status: 'confirmed',
+          checked_in_at: null
+        })
+        .eq('id', reservation.id);
+
+      if (error) throw error;
+
+      // If daycare, restore the credit that was deducted on check-in
+      if (reservation.service_type === 'daycare' && reservation.client_id) {
+        const { error: creditError } = await supabase
+          .rpc('restore_daycare_credit', { p_client_id: reservation.client_id });
+        
+        if (creditError) {
+          console.error('Error restoring daycare credit:', creditError);
+        }
+      }
+
+      // Log the undo check-in activity
+      await logActivity({
+        petId: reservation.pet_id,
+        reservationId: reservation.id,
+        actionType: 'pet_checked_out',
+        actionCategory: 'check_in',
+        description: `Check-in reverted for ${reservation.pet_name} (${reservation.service_type})`,
+        details: {
+          service_type: reservation.service_type,
+          reason: 'undo_check_in',
+        }
+      });
+
+      toast({ title: `Check-in reverted for ${reservation.pet_name}` });
+      fetchDashboardData();
+    } catch (error) {
+      toast({ 
+        title: 'Error reverting check-in', 
+        description: 'Please try again',
+        variant: 'destructive' 
+      });
+    }
+  };
+
   const handleCheckOut = async (reservation: ControlCenterReservation) => {
     try {
       const checkOutTime = new Date().toISOString();
@@ -409,6 +456,7 @@ const StaffDashboard = () => {
               loading={loading}
               onCheckIn={handleCheckIn}
               onCheckOut={handleCheckOut}
+              onUndoCheckIn={handleUndoCheckIn}
               onCancelReservation={handleCancelReservation}
               onAddService={handleAddService}
               onTraitsUpdated={fetchDashboardData}

@@ -23,6 +23,7 @@ import {
   MoreHorizontal, 
   Search, 
   Plus,
+  Undo2,
   Loader2,
   Dog,
   Tags
@@ -61,6 +62,7 @@ interface ControlCenterTableProps {
   loading: boolean;
   onCheckIn: (reservation: ControlCenterReservation) => void;
   onCheckOut: (reservation: ControlCenterReservation) => void;
+  onUndoCheckIn: (reservation: ControlCenterReservation) => void;
   onCancelReservation: (reservation: ControlCenterReservation, useCredit: boolean) => void;
   onAddService: (reservation: ControlCenterReservation) => void;
   onTraitsUpdated?: () => void;
@@ -85,6 +87,7 @@ export function ControlCenterTable({
   loading,
   onCheckIn,
   onCheckOut,
+  onUndoCheckIn,
   onCancelReservation,
   onAddService,
   onTraitsUpdated,
@@ -240,15 +243,26 @@ export function ControlCenterTable({
                         </Button>
                       )}
                       {reservation.status === 'checked_in' && (
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-100"
-                          onClick={() => onCheckOut(reservation)}
-                          title="Check Out"
-                        >
-                          <Check className="h-4 w-4" />
-                        </Button>
+                        <>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-100"
+                            onClick={() => onCheckOut(reservation)}
+                            title="Check Out"
+                          >
+                            <Check className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-100"
+                            onClick={() => onUndoCheckIn(reservation)}
+                            title="Undo Check-In"
+                          >
+                            <Undo2 className="h-4 w-4" />
+                          </Button>
+                        </>
                       )}
                       <Button
                         size="icon"
