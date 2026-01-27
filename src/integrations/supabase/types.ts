@@ -175,6 +175,41 @@ export type Database = {
           },
         ]
       }
+      pet_traits: {
+        Row: {
+          color_key: string
+          created_at: string
+          icon_name: string
+          id: string
+          pet_id: string
+          title: string
+        }
+        Insert: {
+          color_key: string
+          created_at?: string
+          icon_name: string
+          id?: string
+          pet_id: string
+          title: string
+        }
+        Update: {
+          color_key?: string
+          created_at?: string
+          icon_name?: string
+          id?: string
+          pet_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_traits_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pets: {
         Row: {
           behavior_notes: string | null

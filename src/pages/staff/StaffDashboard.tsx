@@ -80,11 +80,31 @@ const StaffDashboard = () => {
 
       if (error) throw error;
 
+      // Fetch pet traits for all pets in today's reservations
+      const petIds = [...new Set(data?.map((r: any) => r.pets?.id).filter(Boolean) || [])];
+      let traitsMap: Record<string, any[]> = {};
+      
+      if (petIds.length > 0) {
+        const { data: traitsData } = await supabase
+          .from('pet_traits')
+          .select('*')
+          .in('pet_id', petIds);
+        
+        if (traitsData) {
+          traitsMap = traitsData.reduce((acc: Record<string, any[]>, trait: any) => {
+            if (!acc[trait.pet_id]) acc[trait.pet_id] = [];
+            acc[trait.pet_id].push(trait);
+            return acc;
+          }, {});
+        }
+      }
+
       const formattedReservations: ControlCenterReservation[] = data?.map((r: any) => ({
         id: r.id,
         pet_id: r.pets?.id || r.pet_id,
         pet_name: r.pets?.name || 'Unknown',
         pet_breed: r.pets?.breed || null,
+        pet_traits: traitsMap[r.pets?.id] || [],
         client_id: r.pets?.clients?.id || '',
         client_name: r.pets?.clients 
           ? `${r.pets.clients.first_name} ${r.pets.clients.last_name}`
@@ -355,6 +375,7 @@ const StaffDashboard = () => {
               onCheckOut={handleCheckOut}
               onCancelReservation={handleCancelReservation}
               onAddService={handleAddService}
+              onTraitsUpdated={fetchDashboardData}
             />
           </CardContent>
         </Card>
