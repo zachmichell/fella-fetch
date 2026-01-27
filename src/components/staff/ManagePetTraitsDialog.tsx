@@ -11,7 +11,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { X, Plus, Loader2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { X, Plus, Loader2, Bell } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
@@ -37,6 +38,15 @@ interface ExistingTrait {
   icon_name: string;
   color_key: string;
   title: string;
+  is_alert: boolean;
+}
+
+interface TraitTemplate {
+  id: string;
+  icon_name: string;
+  color_key: string;
+  title: string;
+  is_alert: boolean;
 }
 
 export function ManagePetTraitsDialog({
@@ -47,19 +57,34 @@ export function ManagePetTraitsDialog({
   onTraitsUpdated,
 }: ManagePetTraitsDialogProps) {
   const [existingTraits, setExistingTraits] = useState<ExistingTrait[]>([]);
+  const [templates, setTemplates] = useState<TraitTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedIcon, setSelectedIcon] = useState<TraitIcon | null>(null);
   const [selectedColor, setSelectedColor] = useState<TraitColor | null>(null);
   const [traitTitle, setTraitTitle] = useState('');
+  const [isAlert, setIsAlert] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>('behavior');
+  const [activeTab, setActiveTab] = useState<'templates' | 'custom'>('templates');
 
-  // Fetch existing traits
+  // Fetch existing traits and templates
   useEffect(() => {
     if (open && petId) {
       fetchTraits();
+      fetchTemplates();
     }
   }, [open, petId]);
+
+  const fetchTemplates = async () => {
+    const { data, error } = await supabase
+      .from('trait_templates')
+      .select('*')
+      .order('title', { ascending: true });
+
+    if (!error && data) {
+      setTemplates(data);
+    }
+  };
 
   const fetchTraits = async () => {
     setLoading(true);
@@ -78,8 +103,13 @@ export function ManagePetTraitsDialog({
     setLoading(false);
   };
 
-  const handleAddTrait = async () => {
-    if (!selectedIcon || !selectedColor || !traitTitle.trim()) {
+  const handleAddTrait = async (template?: TraitTemplate) => {
+    const iconName = template?.icon_name || selectedIcon?.id;
+    const colorKey = template?.color_key || selectedColor?.key;
+    const title = template?.title || traitTitle.trim();
+    const alertFlag = template?.is_alert ?? isAlert;
+
+    if (!iconName || !colorKey || !title) {
       toast.error('Please select an icon, color, and enter a title');
       return;
     }
@@ -87,14 +117,15 @@ export function ManagePetTraitsDialog({
     setSaving(true);
     const { error } = await supabase.from('pet_traits').insert({
       pet_id: petId,
-      icon_name: selectedIcon.id,
-      color_key: selectedColor.key,
-      title: traitTitle.trim(),
+      icon_name: iconName,
+      color_key: colorKey,
+      title: title,
+      is_alert: alertFlag,
     });
 
     if (error) {
       if (error.code === '23505') {
-        toast.error('This icon/color combination already exists for this pet');
+        toast.error('This trait already exists for this pet');
       } else {
         toast.error('Failed to add trait');
         console.error(error);
@@ -104,6 +135,7 @@ export function ManagePetTraitsDialog({
       setSelectedIcon(null);
       setSelectedColor(null);
       setTraitTitle('');
+      setIsAlert(false);
       fetchTraits();
       onTraitsUpdated?.();
     }
@@ -166,10 +198,15 @@ export function ManagePetTraitsDialog({
                   return (
                     <div
                       key={trait.id}
-                      className="inline-flex items-center gap-1.5 px-2 py-1 bg-muted rounded-md group"
+                      className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md group ${
+                        trait.is_alert ? 'bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700' : 'bg-muted'
+                      }`}
                     >
                       <IconComponent className={`h-4 w-4 ${colorDef.textClass}`} />
                       <span className="text-sm">{trait.title}</span>
+                      {trait.is_alert && (
+                        <Bell className="h-3 w-3 text-amber-600" />
+                      )}
                       <button
                         onClick={() => handleRemoveTrait(trait.id)}
                         className="ml-1 opacity-50 group-hover:opacity-100 hover:text-destructive"
@@ -186,123 +223,170 @@ export function ManagePetTraitsDialog({
           {/* Add New Trait */}
           <div className="border-t pt-4">
             <Label className="text-sm font-medium mb-3 block">Add New Trait</Label>
+            
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'templates' | 'custom')} className="mb-4">
+              <TabsList>
+                <TabsTrigger value="templates">From Templates</TabsTrigger>
+                <TabsTrigger value="custom">Custom</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="templates" className="mt-3">
+                {templates.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-2">No templates available. Create templates in Trait Templates.</p>
+                ) : (
+                  <ScrollArea className="h-32">
+                    <div className="flex flex-wrap gap-2">
+                      {templates.map((template) => {
+                        const iconDef = getTraitIcon(template.icon_name);
+                        const colorDef = getTraitColor(template.color_key);
+                        if (!iconDef || !colorDef) return null;
+                        const IconComponent = iconDef.icon;
+                        const isAlreadyAdded = existingTraits.some(
+                          t => t.icon_name === template.icon_name && t.color_key === template.color_key && t.title === template.title
+                        );
 
-            {/* Icon Selection */}
-            <div className="mb-4">
-              <Label className="text-xs text-muted-foreground mb-2 block">
-                1. Select an icon
-              </Label>
-              <Tabs value={activeCategory} onValueChange={setActiveCategory}>
-                <TabsList className="h-auto flex-wrap">
-                  {Object.entries(traitCategories).map(([key, label]) => (
-                    <TabsTrigger key={key} value={key} className="text-xs px-2 py-1">
-                      {label}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-                {Object.entries(iconsByCategory).map(([category, icons]) => (
-                  <TabsContent key={category} value={category} className="mt-2">
-                    <ScrollArea className="h-24">
-                      <div className="flex flex-wrap gap-1">
-                        {icons.map((icon) => {
-                          const IconComponent = icon.icon;
-                          const isSelected = selectedIcon?.id === icon.id;
-                          return (
-                            <button
-                              key={icon.id}
-                              onClick={() => {
-                                setSelectedIcon(icon);
-                                if (!traitTitle) setTraitTitle(icon.label);
-                              }}
-                              className={`p-2 rounded hover:bg-accent transition-colors ${
-                                isSelected ? 'bg-primary text-primary-foreground' : ''
-                              }`}
-                              title={icon.label}
-                            >
-                              <IconComponent className="h-5 w-5" />
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </ScrollArea>
-                  </TabsContent>
-                ))}
-              </Tabs>
-            </div>
+                        return (
+                          <button
+                            key={template.id}
+                            onClick={() => handleAddTrait(template)}
+                            disabled={saving || isAlreadyAdded}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border transition-colors ${
+                              isAlreadyAdded 
+                                ? 'opacity-50 cursor-not-allowed bg-muted' 
+                                : 'hover:bg-accent cursor-pointer'
+                            } ${template.is_alert ? 'border-amber-300 dark:border-amber-700' : 'border-border'}`}
+                            title={isAlreadyAdded ? 'Already added' : `Add: ${template.title}`}
+                          >
+                            <IconComponent className={`h-4 w-4 ${colorDef.textClass}`} />
+                            <span className="text-sm">{template.title}</span>
+                            {template.is_alert && <Bell className="h-3 w-3 text-amber-600" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
+                )}
+              </TabsContent>
+              
+              <TabsContent value="custom" className="mt-3 space-y-4">
+                {/* Icon Selection */}
+                <div>
+                  <Label className="text-xs text-muted-foreground mb-2 block">
+                    1. Select an icon
+                  </Label>
+                  <Tabs value={activeCategory} onValueChange={setActiveCategory}>
+                    <TabsList className="h-auto flex-wrap">
+                      {Object.entries(traitCategories).map(([key, label]) => (
+                        <TabsTrigger key={key} value={key} className="text-xs px-2 py-1">
+                          {label}
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                    {Object.entries(iconsByCategory).map(([category, icons]) => (
+                      <TabsContent key={category} value={category} className="mt-2">
+                        <ScrollArea className="h-24">
+                          <div className="flex flex-wrap gap-1">
+                            {icons.map((icon) => {
+                              const IconComponent = icon.icon;
+                              const isSelected = selectedIcon?.id === icon.id;
+                              return (
+                                <button
+                                  key={icon.id}
+                                  onClick={() => {
+                                    setSelectedIcon(icon);
+                                    if (!traitTitle) setTraitTitle(icon.label);
+                                  }}
+                                  className={`p-2 rounded hover:bg-accent transition-colors ${
+                                    isSelected ? 'bg-primary text-primary-foreground' : ''
+                                  }`}
+                                  title={icon.label}
+                                >
+                                  <IconComponent className="h-5 w-5" />
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </ScrollArea>
+                      </TabsContent>
+                    ))}
+                  </Tabs>
+                </div>
 
-            {/* Color Selection */}
-            {selectedIcon && (
-              <div className="mb-4">
-                <Label className="text-xs text-muted-foreground mb-2 block">
-                  2. Choose a color
-                </Label>
-                <div className="flex flex-wrap gap-2">
-                  {traitColors.map((color) => {
-                    const isSelected = selectedColor?.key === color.key;
-                    const IconComponent = selectedIcon.icon;
-                    return (
-                      <button
-                        key={color.key}
-                        onClick={() => setSelectedColor(color)}
-                        className={`p-2 rounded border-2 transition-all ${
-                          isSelected
-                            ? 'border-primary scale-110'
-                            : 'border-transparent hover:border-muted-foreground/30'
-                        }`}
-                        title={color.label}
+                {/* Color Selection */}
+                {selectedIcon && (
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-2 block">
+                      2. Choose a color
+                    </Label>
+                    <div className="flex flex-wrap gap-2">
+                      {traitColors.map((color) => {
+                        const isSelected = selectedColor?.key === color.key;
+                        const IconComponent = selectedIcon.icon;
+                        return (
+                          <button
+                            key={color.key}
+                            onClick={() => setSelectedColor(color)}
+                            className={`p-2 rounded border-2 transition-all ${
+                              isSelected
+                                ? 'border-primary scale-110'
+                                : 'border-transparent hover:border-muted-foreground/30'
+                            }`}
+                            title={color.label}
+                          >
+                            <IconComponent className={`h-5 w-5 ${color.textClass}`} />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Title Input */}
+                {selectedIcon && selectedColor && (
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-2 block">
+                      3. Enter a title (shown on hover)
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="e.g., Needs supervision with small dogs"
+                        value={traitTitle}
+                        onChange={(e) => setTraitTitle(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button
+                        onClick={() => handleAddTrait()}
+                        disabled={saving || !traitTitle.trim()}
+                        className="gap-1"
                       >
-                        <IconComponent className={`h-5 w-5 ${color.textClass}`} />
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+                        {saving ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Plus className="h-4 w-4" />
+                        )}
+                        Add
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
-            {/* Title Input */}
-            {selectedIcon && selectedColor && (
-              <div className="mb-4">
-                <Label className="text-xs text-muted-foreground mb-2 block">
-                  3. Enter a title (shown on hover)
-                </Label>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="e.g., Needs supervision with small dogs"
-                    value={traitTitle}
-                    onChange={(e) => setTraitTitle(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button
-                    onClick={handleAddTrait}
-                    disabled={saving || !traitTitle.trim()}
-                    className="gap-1"
-                  >
-                    {saving ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Plus className="h-4 w-4" />
-                    )}
-                    Add
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Preview */}
-            {selectedIcon && selectedColor && traitTitle && (
-              <div className="bg-muted/50 rounded-md p-3">
-                <Label className="text-xs text-muted-foreground mb-2 block">Preview</Label>
-                <div className="flex items-center gap-2">
-                  {(() => {
-                    const IconComponent = selectedIcon.icon;
-                    return (
-                      <IconComponent className={`h-5 w-5 ${selectedColor.textClass}`} />
-                    );
-                  })()}
-                  <span className="text-sm">{traitTitle}</span>
-                </div>
-              </div>
-            )}
+                {/* Preview */}
+                {selectedIcon && selectedColor && traitTitle && (
+                  <div className="bg-muted/50 rounded-md p-3">
+                    <Label className="text-xs text-muted-foreground mb-2 block">Preview</Label>
+                    <div className="flex items-center gap-2">
+                      {(() => {
+                        const IconComponent = selectedIcon.icon;
+                        return (
+                          <IconComponent className={`h-5 w-5 ${selectedColor.textClass}`} />
+                        );
+                      })()}
+                      <span className="text-sm">{traitTitle}</span>
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </DialogContent>

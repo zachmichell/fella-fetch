@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -25,7 +27,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Loader2, Trash2, Sparkles, Search } from 'lucide-react';
+import { Plus, Loader2, Trash2, Sparkles, Search, Bell } from 'lucide-react';
 import {
   traitIcons,
   traitColors,
@@ -41,6 +43,7 @@ interface TraitTemplate {
   icon_name: string;
   color_key: string;
   title: string;
+  is_alert: boolean;
   created_at: string;
 }
 
@@ -57,6 +60,7 @@ const StaffTraitTemplates = () => {
   const [selectedIcon, setSelectedIcon] = useState<TraitIcon | null>(null);
   const [selectedColor, setSelectedColor] = useState<TraitColor | null>(null);
   const [traitTitle, setTraitTitle] = useState('');
+  const [isAlert, setIsAlert] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>('behavior');
 
   const fetchTemplates = async () => {
@@ -105,6 +109,7 @@ const StaffTraitTemplates = () => {
         icon_name: selectedIcon.id,
         color_key: selectedColor.key,
         title: traitTitle.trim(),
+        is_alert: isAlert,
       });
 
       if (error) {
@@ -122,6 +127,7 @@ const StaffTraitTemplates = () => {
         setSelectedIcon(null);
         setSelectedColor(null);
         setTraitTitle('');
+        setIsAlert(false);
         setIsDialogOpen(false);
         fetchTemplates();
       }
@@ -288,6 +294,28 @@ const StaffTraitTemplates = () => {
                   </div>
                 )}
 
+                {/* Alert Toggle */}
+                {selectedIcon && selectedColor && traitTitle && (
+                  <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/30">
+                    <div className="flex items-center gap-3">
+                      <Bell className={`h-5 w-5 ${isAlert ? 'text-amber-500' : 'text-muted-foreground'}`} />
+                      <div>
+                        <Label htmlFor="is-alert" className="text-sm font-medium cursor-pointer">
+                          Show as Alert
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Display a popup when checking in/out pets with this trait
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      id="is-alert"
+                      checked={isAlert}
+                      onCheckedChange={setIsAlert}
+                    />
+                  </div>
+                )}
+
                 {/* Preview */}
                 {selectedIcon && selectedColor && traitTitle && (
                   <div className="bg-muted/50 rounded-md p-4">
@@ -300,6 +328,12 @@ const StaffTraitTemplates = () => {
                         );
                       })()}
                       <span className="font-medium">{traitTitle}</span>
+                      {isAlert && (
+                        <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-900/20">
+                          <Bell className="h-3 w-3 mr-1" />
+                          Alert
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 )}
@@ -367,6 +401,7 @@ const StaffTraitTemplates = () => {
                     <TableHead>Icon</TableHead>
                     <TableHead>Title</TableHead>
                     <TableHead>Color</TableHead>
+                    <TableHead>Alert</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -395,6 +430,16 @@ const StaffTraitTemplates = () => {
                               {colorDef.label}
                             </span>
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          {template.is_alert ? (
+                            <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-900/20">
+                              <Bell className="h-3 w-3 mr-1" />
+                              Alert
+                            </Badge>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">—</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <span className="text-sm capitalize">

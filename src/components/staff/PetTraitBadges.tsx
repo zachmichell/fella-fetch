@@ -11,6 +11,7 @@ export interface PetTrait {
   icon_name: string;
   color_key: string;
   title: string;
+  is_alert?: boolean;
 }
 
 interface PetTraitBadgesProps {
