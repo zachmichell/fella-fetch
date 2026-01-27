@@ -17,16 +17,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { 
   Check, 
   X, 
@@ -40,6 +30,7 @@ import {
 import { format } from 'date-fns';
 import { PetTraitBadges, type PetTrait } from './PetTraitBadges';
 import { ManagePetTraitsDialog } from './ManagePetTraitsDialog';
+import { CancelReservationDialog } from './CancelReservationDialog';
 
 export interface ControlCenterReservation {
   id: string;
@@ -69,7 +60,7 @@ interface ControlCenterTableProps {
   loading: boolean;
   onCheckIn: (reservation: ControlCenterReservation) => void;
   onCheckOut: (reservation: ControlCenterReservation) => void;
-  onCancelReservation: (reservation: ControlCenterReservation) => void;
+  onCancelReservation: (reservation: ControlCenterReservation, useCredit: boolean) => void;
   onAddService: (reservation: ControlCenterReservation) => void;
   onTraitsUpdated?: () => void;
 }
@@ -148,9 +139,9 @@ export function ControlCenterTable({
     setCancelDialogOpen(true);
   };
 
-  const confirmCancel = () => {
+  const handleCancelConfirm = (useCredit: boolean) => {
     if (selectedReservation) {
-      onCancelReservation(selectedReservation);
+      onCancelReservation(selectedReservation, useCredit);
     }
     setCancelDialogOpen(false);
     setSelectedReservation(null);
@@ -383,27 +374,20 @@ export function ControlCenterTable({
       )}
 
       {/* Cancel Confirmation Dialog */}
-      <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Reservation</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to cancel the reservation for{' '}
-              <span className="font-medium">{selectedReservation?.pet_name}</span>? 
-              This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Keep Reservation</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmCancel}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Cancel Reservation
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {selectedReservation && (
+        <CancelReservationDialog
+          open={cancelDialogOpen}
+          onOpenChange={(open) => {
+            setCancelDialogOpen(open);
+            if (!open) setSelectedReservation(null);
+          }}
+          petName={selectedReservation.pet_name}
+          serviceType={selectedReservation.service_type}
+          daycareCredits={selectedReservation.daycare_credits}
+          boardingCredits={selectedReservation.boarding_credits}
+          onConfirm={handleCancelConfirm}
+        />
+      )}
 
       {/* Manage Traits Dialog */}
       {selectedPetForTraits && (
