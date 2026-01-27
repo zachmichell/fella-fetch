@@ -448,6 +448,54 @@ export type Database = {
           },
         ]
       }
+      service_types: {
+        Row: {
+          category: string
+          color: string | null
+          created_at: string
+          credit_field: string | null
+          credits_per_unit: number | null
+          description: string | null
+          display_name: string
+          icon_name: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          color?: string | null
+          created_at?: string
+          credit_field?: string | null
+          credits_per_unit?: number | null
+          description?: string | null
+          display_name: string
+          icon_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          color?: string | null
+          created_at?: string
+          credit_field?: string | null
+          credits_per_unit?: number | null
+          description?: string | null
+          display_name?: string
+          icon_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       shopify_collection_mappings: {
         Row: {
           category: string
