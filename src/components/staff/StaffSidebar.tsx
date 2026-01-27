@@ -10,7 +10,8 @@ import {
   Settings,
   LogOut,
   UserCog,
-  Sparkles
+  Sparkles,
+  ShoppingBag
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
@@ -45,6 +46,7 @@ const operationsItems = [
 
 const adminItems = [
   { title: 'User Management', url: '/staff/users', icon: UserCog },
+  { title: 'Shopify Settings', url: '/staff/shopify-settings', icon: ShoppingBag },
   { title: 'Settings', url: '/staff/settings', icon: Settings },
 ];
 
