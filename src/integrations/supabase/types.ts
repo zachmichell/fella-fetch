@@ -127,6 +127,44 @@ export type Database = {
         }
         Relationships: []
       }
+      groomer_service_durations: {
+        Row: {
+          created_at: string
+          duration_minutes: number
+          groomer_id: string
+          id: string
+          shopify_product_id: string
+          shopify_variant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          duration_minutes?: number
+          groomer_id: string
+          id?: string
+          shopify_product_id: string
+          shopify_variant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          duration_minutes?: number
+          groomer_id?: string
+          id?: string
+          shopify_product_id?: string
+          shopify_variant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "groomer_service_durations_groomer_id_fkey"
+            columns: ["groomer_id"]
+            isOneToOne: false
+            referencedRelation: "groomers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       groomers: {
         Row: {
           color: string | null
