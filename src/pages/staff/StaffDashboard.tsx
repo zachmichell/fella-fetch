@@ -70,6 +70,7 @@ const StaffDashboard = () => {
               first_name,
               last_name,
               daycare_credits,
+              half_daycare_credits,
               boarding_credits
             )
           )
@@ -119,6 +120,7 @@ const StaffDashboard = () => {
         checked_in_at: r.checked_in_at,
         checked_out_at: r.checked_out_at,
         daycare_credits: r.pets?.clients?.daycare_credits ?? 0,
+        half_daycare_credits: r.pets?.clients?.half_daycare_credits ?? 0,
         boarding_credits: r.pets?.clients?.boarding_credits ?? 0,
       })) || [];
 

@@ -67,6 +67,7 @@ interface Client {
   pet_count: number;
   pets?: Pet[];
   daycare_credits: number;
+  half_daycare_credits: number;
   boarding_credits: number;
 }
 
@@ -79,7 +80,7 @@ const StaffClients = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isEditCreditsOpen, setIsEditCreditsOpen] = useState(false);
-  const [editingCredits, setEditingCredits] = useState({ daycare: 0, boarding: 0 });
+  const [editingCredits, setEditingCredits] = useState({ daycare: 0, halfDaycare: 0, boarding: 0 });
   const [newClient, setNewClient] = useState({
     first_name: '',
     last_name: '',
@@ -501,13 +502,17 @@ const StaffClients = () => {
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="py-3">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-3 gap-4">
                           <div className="p-4 rounded-lg border bg-muted/30 text-center">
                             <p className="text-sm text-muted-foreground">Daycare Credits</p>
                             <p className="text-3xl font-bold text-primary">{selectedClient.daycare_credits}</p>
                           </div>
                           <div className="p-4 rounded-lg border bg-muted/30 text-center">
-                            <p className="text-sm text-muted-foreground">Boarding Credits (nights)</p>
+                            <p className="text-sm text-muted-foreground">Half Day Credits</p>
+                            <p className="text-3xl font-bold text-primary">{selectedClient.half_daycare_credits}</p>
+                          </div>
+                          <div className="p-4 rounded-lg border bg-muted/30 text-center">
+                            <p className="text-sm text-muted-foreground">Boarding Credits</p>
                             <p className="text-3xl font-bold text-primary">{selectedClient.boarding_credits}</p>
                           </div>
                         </div>
@@ -518,6 +523,7 @@ const StaffClients = () => {
                             e.stopPropagation();
                             setEditingCredits({
                               daycare: selectedClient.daycare_credits,
+                              halfDaycare: selectedClient.half_daycare_credits,
                               boarding: selectedClient.boarding_credits,
                             });
                             setIsEditCreditsOpen(true);
@@ -613,6 +619,16 @@ const StaffClients = () => {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="half_daycare_credits">Half Day Credits</Label>
+                <Input
+                  id="half_daycare_credits"
+                  type="number"
+                  min="0"
+                  value={editingCredits.halfDaycare}
+                  onChange={(e) => setEditingCredits({ ...editingCredits, halfDaycare: parseInt(e.target.value) || 0 })}
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="boarding_credits">Boarding Credits (nights)</Label>
                 <Input
                   id="boarding_credits"
@@ -633,6 +649,7 @@ const StaffClients = () => {
                       .from('clients')
                       .update({
                         daycare_credits: editingCredits.daycare,
+                        half_daycare_credits: editingCredits.halfDaycare,
                         boarding_credits: editingCredits.boarding,
                       })
                       .eq('id', selectedClient.id);
@@ -644,6 +661,7 @@ const StaffClients = () => {
                     setSelectedClient({
                       ...selectedClient,
                       daycare_credits: editingCredits.daycare,
+                      half_daycare_credits: editingCredits.halfDaycare,
                       boarding_credits: editingCredits.boarding,
                     });
                     fetchClients();
