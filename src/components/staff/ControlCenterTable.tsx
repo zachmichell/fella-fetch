@@ -34,15 +34,19 @@ import {
   Search, 
   Plus,
   Loader2,
-  Dog
+  Dog,
+  Tags
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { PetTraitBadges, type PetTrait } from './PetTraitBadges';
+import { ManagePetTraitsDialog } from './ManagePetTraitsDialog';
 
 export interface ControlCenterReservation {
   id: string;
   pet_id: string;
   pet_name: string;
   pet_breed: string | null;
+  pet_traits?: PetTrait[];
   client_id: string;
   client_name: string;
   service_type: string;
@@ -67,6 +71,7 @@ interface ControlCenterTableProps {
   onCheckOut: (reservation: ControlCenterReservation) => void;
   onCancelReservation: (reservation: ControlCenterReservation) => void;
   onAddService: (reservation: ControlCenterReservation) => void;
+  onTraitsUpdated?: () => void;
 }
 
 const serviceTypeLabels: Record<string, string> = {
@@ -90,11 +95,14 @@ export function ControlCenterTable({
   onCheckOut,
   onCancelReservation,
   onAddService,
+  onTraitsUpdated,
 }: ControlCenterTableProps) {
   const [activeTab, setActiveTab] = useState<TabValue>('expected');
   const [searchQuery, setSearchQuery] = useState('');
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState<ControlCenterReservation | null>(null);
+  const [traitsDialogOpen, setTraitsDialogOpen] = useState(false);
+  const [selectedPetForTraits, setSelectedPetForTraits] = useState<{ id: string; name: string } | null>(null);
 
   // Filter by tab
   const getFilteredByTab = () => {
@@ -269,6 +277,15 @@ export function ControlCenterTable({
                           <DropdownMenuItem>View Details</DropdownMenuItem>
                           <DropdownMenuItem>Edit Reservation</DropdownMenuItem>
                           <DropdownMenuItem>View Pet Profile</DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => {
+                              setSelectedPetForTraits({ id: reservation.pet_id, name: reservation.pet_name });
+                              setTraitsDialogOpen(true);
+                            }}
+                          >
+                            <Tags className="h-4 w-4 mr-2" />
+                            Manage Traits
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -277,12 +294,16 @@ export function ControlCenterTable({
                   {/* Animal Column */}
                   <TableCell>
                     <div>
-                      <span className="font-medium">{reservation.pet_name}</span>
-                      {reservation.pet_breed && (
-                        <span className="text-muted-foreground text-sm ml-1">
-                          ({reservation.pet_breed})
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1">
+                        <span className="font-medium">{reservation.pet_name}</span>
+                        {reservation.pet_breed && (
+                          <span className="text-muted-foreground text-sm">
+                            ({reservation.pet_breed})
+                          </span>
+                        )}
+                      </div>
+                      {/* Pet Trait Icons */}
+                      <PetTraitBadges traits={reservation.pet_traits || []} maxDisplay={6} />
                     </div>
                   </TableCell>
 
@@ -383,6 +404,20 @@ export function ControlCenterTable({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Manage Traits Dialog */}
+      {selectedPetForTraits && (
+        <ManagePetTraitsDialog
+          open={traitsDialogOpen}
+          onOpenChange={(open) => {
+            setTraitsDialogOpen(open);
+            if (!open) setSelectedPetForTraits(null);
+          }}
+          petId={selectedPetForTraits.id}
+          petName={selectedPetForTraits.name}
+          onTraitsUpdated={onTraitsUpdated}
+        />
+      )}
     </div>
   );
 }
