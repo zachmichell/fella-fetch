@@ -58,43 +58,61 @@ export const DailySummaryTable = () => {
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
     try {
-      // Fetch reservations that START on this date (arriving)
+      // Fetch reservations that START on this date (arriving) - must be accepted (confirmed or checked_in)
       const { data: arrivingData } = await supabase
         .from('reservations')
-        .select('id, service_type, status')
+        .select('id, pet_id, service_type, status, start_date, end_date')
         .eq('start_date', dateStr)
-        .neq('status', 'cancelled');
+        .in('status', ['confirmed', 'checked_in', 'checked_out']);
 
-      // Fetch reservations that END on this date (departing)
-      const { data: departingData } = await supabase
+      // Fetch reservations that END on this date (departing) - must be accepted
+      // This includes: 
+      // 1. Reservations with end_date = today
+      // 2. Same-day services (daycare, grooming, training) where start_date = today and no end_date
+      const { data: departingWithEndDate } = await supabase
         .from('reservations')
-        .select('id, service_type, status')
+        .select('id, pet_id, service_type, status, start_date, end_date')
         .eq('end_date', dateStr)
-        .neq('status', 'cancelled');
+        .in('status', ['confirmed', 'checked_in', 'checked_out']);
 
-      // Fetch overnight reservations (boarding that started before and ends after this date)
-      // Also include boarding that started before this date and either has no end_date or ends after this date
+      // For same-day services without end_date, they depart the same day they arrive
+      const sameDayDeparting = arrivingData?.filter(r => 
+        !r.end_date && ['daycare', 'grooming', 'training'].includes(r.service_type)
+      ) || [];
+
+      // Combine departing: those with end_date today + same-day services starting today
+      const allDepartingIds = new Set([
+        ...(departingWithEndDate?.map(r => r.id) || []),
+        ...sameDayDeparting.map(r => r.id)
+      ]);
+      const departingCount = allDepartingIds.size;
+
+      // Fetch overnight reservations (boarding that spans overnight on this date)
+      // These are boarding reservations where:
+      // - start_date <= today AND (end_date > today OR end_date is null)
       const { data: overnightData } = await supabase
         .from('reservations')
-        .select('id, service_type, status, start_date, end_date')
+        .select('id, pet_id, service_type, status, start_date, end_date')
         .eq('service_type', 'boarding')
-        .lt('start_date', dateStr)
-        .neq('status', 'cancelled');
+        .lte('start_date', dateStr)
+        .in('status', ['confirmed', 'checked_in', 'checked_out']);
 
-      // Filter overnight to only include those that are still here on this date
+      // Filter overnight: must end after today (staying overnight) or have no end date
       const overnightFiltered = overnightData?.filter(r => {
         if (!r.end_date) return true; // No end date means still here
-        return r.end_date > dateStr; // End date is after the selected date
+        return r.end_date > dateStr; // End date is after the selected date (staying tonight)
       }) || [];
 
       // Calculate overall summary
       const arrivingCount = arrivingData?.length || 0;
-      const departingCount = departingData?.length || 0;
       const overnightCount = overnightFiltered.length;
       
-      // Total unique pets for the day = arriving + overnight (departing is subset of overnight or arriving)
-      // Actually: pets in facility = arriving + overnight staying (not departing today)
-      const totalCount = arrivingCount + overnightCount;
+      // Total unique pets for the day:
+      // - All arriving pets
+      // - Plus overnight pets that didn't arrive today (they arrived earlier)
+      const arrivingPetIds = new Set(arrivingData?.map(r => r.pet_id) || []);
+      const overnightNotArrivingToday = overnightFiltered.filter(r => !arrivingPetIds.has(r.pet_id));
+      const totalCount = arrivingCount + overnightNotArrivingToday.length;
 
       setSummary({
         arriving: arrivingCount,
@@ -107,9 +125,23 @@ export const DailySummaryTable = () => {
       const serviceTypes = ['daycare', 'boarding', 'grooming', 'training'];
       const breakdown: ServiceTypeStats[] = serviceTypes.map(st => {
         const arriving = arrivingData?.filter(r => r.service_type === st).length || 0;
-        const departing = departingData?.filter(r => r.service_type === st).length || 0;
+        
+        // Departing for this service type
+        const departingForType = [
+          ...(departingWithEndDate?.filter(r => r.service_type === st) || []),
+          ...sameDayDeparting.filter(r => r.service_type === st)
+        ];
+        const uniqueDepartingIds = new Set(departingForType.map(r => r.id));
+        const departing = uniqueDepartingIds.size;
+        
         const overnight = st === 'boarding' ? overnightCount : 0;
-        const total = arriving + (st === 'boarding' ? overnight : 0);
+        
+        // Total for this type: arriving + overnight that didn't arrive today
+        const arrivingPetIdsForType = new Set(arrivingData?.filter(r => r.service_type === st).map(r => r.pet_id) || []);
+        const overnightNotArrivingForType = st === 'boarding' 
+          ? overnightFiltered.filter(r => !arrivingPetIdsForType.has(r.pet_id)).length 
+          : 0;
+        const total = arriving + overnightNotArrivingForType;
 
         return {
           serviceType: st,
