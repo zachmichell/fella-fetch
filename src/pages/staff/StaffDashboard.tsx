@@ -3,6 +3,7 @@ import { StaffLayout } from '@/components/staff/StaffLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ControlCenterTable, ControlCenterReservation } from '@/components/staff/ControlCenterTable';
 import { AddServiceDialog, type SelectedService } from '@/components/staff/AddServiceDialog';
+import { InactivityAlertDialog } from '@/components/staff/InactivityAlertDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePetActivityLog } from '@/hooks/usePetActivityLog';
@@ -37,6 +38,8 @@ const StaffDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [addServiceOpen, setAddServiceOpen] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState<ControlCenterReservation | null>(null);
+  const [inactivityAlertOpen, setInactivityAlertOpen] = useState(false);
+  const [pendingAcceptReservation, setPendingAcceptReservation] = useState<ControlCenterReservation | null>(null);
 
   const fetchDashboardData = async () => {
     if (!isStaffOrAdmin) {
@@ -359,7 +362,14 @@ const StaffDashboard = () => {
     }
   };
 
-  const handleAcceptReservation = async (reservation: ControlCenterReservation) => {
+  // Initiates the accept flow - first checks for inactivity
+  const handleAcceptReservation = (reservation: ControlCenterReservation) => {
+    setPendingAcceptReservation(reservation);
+    setInactivityAlertOpen(true);
+  };
+
+  // Actually confirms the reservation after inactivity check passes
+  const confirmAcceptReservation = async (reservation: ControlCenterReservation) => {
     try {
       const { error } = await supabase
         .from('reservations')
@@ -572,6 +582,23 @@ const StaffDashboard = () => {
         onOpenChange={setAddServiceOpen}
         petName={selectedReservation?.pet_name || ''}
         onAddServices={handleServicesAdded}
+      />
+
+      {/* Inactivity Alert Dialog */}
+      <InactivityAlertDialog
+        open={inactivityAlertOpen}
+        onOpenChange={setInactivityAlertOpen}
+        petId={pendingAcceptReservation?.pet_id || ''}
+        petName={pendingAcceptReservation?.pet_name || ''}
+        onProceed={() => {
+          if (pendingAcceptReservation) {
+            confirmAcceptReservation(pendingAcceptReservation);
+          }
+          setPendingAcceptReservation(null);
+        }}
+        onCancel={() => {
+          setPendingAcceptReservation(null);
+        }}
       />
     </StaffLayout>
   );
