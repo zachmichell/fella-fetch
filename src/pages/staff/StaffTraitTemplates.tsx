@@ -27,7 +27,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Loader2, Trash2, Sparkles, Search, Bell } from 'lucide-react';
+import { Plus, Loader2, Trash2, Sparkles, Search, Bell, Pencil } from 'lucide-react';
 import {
   traitIcons,
   traitColors,
@@ -55,6 +55,7 @@ const StaffTraitTemplates = () => {
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<TraitTemplate | null>(null);
 
   // Form state
   const [selectedIcon, setSelectedIcon] = useState<TraitIcon | null>(null);
@@ -93,7 +94,38 @@ const StaffTraitTemplates = () => {
     fetchTemplates();
   }, [isStaffOrAdmin]);
 
-  const handleCreateTemplate = async () => {
+  const resetForm = () => {
+    setSelectedIcon(null);
+    setSelectedColor(null);
+    setTraitTitle('');
+    setIsAlert(false);
+    setEditingTemplate(null);
+  };
+
+  const handleOpenDialog = (template?: TraitTemplate) => {
+    if (template) {
+      // Edit mode
+      setEditingTemplate(template);
+      const iconDef = getTraitIcon(template.icon_name);
+      const colorDef = getTraitColor(template.color_key);
+      setSelectedIcon(iconDef || null);
+      setSelectedColor(colorDef || null);
+      setTraitTitle(template.title);
+      setIsAlert(template.is_alert);
+      setActiveCategory(iconDef?.category || 'behavior');
+    } else {
+      // Create mode
+      resetForm();
+    }
+    setIsDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    resetForm();
+  };
+
+  const handleSaveTemplate = async () => {
     if (!selectedIcon || !selectedColor || !traitTitle.trim()) {
       toast({
         title: 'Validation Error',
@@ -105,37 +137,51 @@ const StaffTraitTemplates = () => {
 
     setSaving(true);
     try {
-      const { error } = await supabase.from('trait_templates').insert({
-        icon_name: selectedIcon.id,
-        color_key: selectedColor.key,
-        title: traitTitle.trim(),
-        is_alert: isAlert,
-      });
+      if (editingTemplate) {
+        // Update existing
+        const { error } = await supabase
+          .from('trait_templates')
+          .update({
+            icon_name: selectedIcon.id,
+            color_key: selectedColor.key,
+            title: traitTitle.trim(),
+            is_alert: isAlert,
+          })
+          .eq('id', editingTemplate.id);
 
-      if (error) {
-        if (error.code === '23505') {
-          toast({
-            title: 'Duplicate',
-            description: 'This icon/color/title combination already exists',
-            variant: 'destructive',
-          });
-        } else {
+        if (error) throw error;
+        toast({ title: 'Trait template updated!' });
+      } else {
+        // Create new
+        const { error } = await supabase.from('trait_templates').insert({
+          icon_name: selectedIcon.id,
+          color_key: selectedColor.key,
+          title: traitTitle.trim(),
+          is_alert: isAlert,
+        });
+
+        if (error) {
+          if (error.code === '23505') {
+            toast({
+              title: 'Duplicate',
+              description: 'This icon/color/title combination already exists',
+              variant: 'destructive',
+            });
+            setSaving(false);
+            return;
+          }
           throw error;
         }
-      } else {
         toast({ title: 'Trait template created!' });
-        setSelectedIcon(null);
-        setSelectedColor(null);
-        setTraitTitle('');
-        setIsAlert(false);
-        setIsDialogOpen(false);
-        fetchTemplates();
       }
+
+      handleCloseDialog();
+      fetchTemplates();
     } catch (error) {
-      console.error('Error creating template:', error);
+      console.error('Error saving template:', error);
       toast({
         title: 'Error',
-        description: 'Failed to create trait template',
+        description: `Failed to ${editingTemplate ? 'update' : 'create'} trait template`,
         variant: 'destructive',
       });
     } finally {
@@ -192,18 +238,16 @@ const StaffTraitTemplates = () => {
               Create reusable trait icons that can be quickly assigned to pets
             </p>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" />
-                Create Template
-              </Button>
-            </DialogTrigger>
+          <Button className="gap-2" onClick={() => handleOpenDialog()}>
+            <Plus className="h-4 w-4" />
+            Create Template
+          </Button>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => !open && handleCloseDialog()}>
             <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Create Trait Template</DialogTitle>
+                <DialogTitle>{editingTemplate ? 'Edit Trait Template' : 'Create Trait Template'}</DialogTitle>
                 <DialogDescription>
-                  Define a new trait icon that can be assigned to pets
+                  {editingTemplate ? 'Modify this trait template' : 'Define a new trait icon that can be assigned to pets'}
                 </DialogDescription>
               </DialogHeader>
 
@@ -341,21 +385,21 @@ const StaffTraitTemplates = () => {
                 <div className="flex justify-end gap-3 pt-4">
                   <Button
                     variant="outline"
-                    onClick={() => setIsDialogOpen(false)}
+                    onClick={handleCloseDialog}
                   >
                     Cancel
                   </Button>
                   <Button
-                    onClick={handleCreateTemplate}
+                    onClick={handleSaveTemplate}
                     disabled={saving || !selectedIcon || !selectedColor || !traitTitle.trim()}
                   >
                     {saving ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Creating...
+                        {editingTemplate ? 'Saving...' : 'Creating...'}
                       </>
                     ) : (
-                      'Create Template'
+                      editingTemplate ? 'Save Changes' : 'Create Template'
                     )}
                   </Button>
                 </div>
@@ -447,14 +491,23 @@ const StaffTraitTemplates = () => {
                           </span>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteTemplate(template.id)}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleOpenDialog(template)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteTemplate(template.id)}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
