@@ -104,7 +104,9 @@ export function ShopifyProductSelector({ serviceTypeId, serviceTypeName }: Shopi
         }
       } else {
         // Fetch all products with optional search
-        const result = await fetchShopifyProducts(50, query);
+        // Use proper Storefront API search syntax for title search
+        const searchQuery = query ? `title:*${query}*` : undefined;
+        const result = await fetchShopifyProducts(100, searchQuery);
         if (result?.edges) {
           setShopifyProducts(result.edges);
         }
