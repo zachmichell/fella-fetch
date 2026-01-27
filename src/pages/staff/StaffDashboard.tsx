@@ -11,7 +11,7 @@ import { QuickCheckInDialog } from '@/components/staff/QuickCheckInDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePetActivityLog } from '@/hooks/usePetActivityLog';
-import { ArrowRight, UserCheck, BedDouble } from 'lucide-react';
+import { UserCheck, BedDouble } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -551,36 +551,6 @@ const StaffDashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Quick Actions */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center justify-between">
-                New Reservation
-                <ArrowRight className="h-4 w-4" />
-              </CardTitle>
-              <CardDescription>Book a new appointment</CardDescription>
-            </CardHeader>
-          </Card>
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center justify-between">
-                Add Client
-                <ArrowRight className="h-4 w-4" />
-              </CardTitle>
-              <CardDescription>Register a new client</CardDescription>
-            </CardHeader>
-          </Card>
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center justify-between">
-                Send Report Card
-                <ArrowRight className="h-4 w-4" />
-              </CardTitle>
-              <CardDescription>Update pet parents</CardDescription>
-            </CardHeader>
-          </Card>
-        </div>
       </div>
 
       {/* Add Service Dialog */}
