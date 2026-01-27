@@ -5,25 +5,13 @@ import { ControlCenterTable, ControlCenterReservation } from '@/components/staff
 import { AddServiceDialog, type SelectedService } from '@/components/staff/AddServiceDialog';
 import { InactivityAlertDialog } from '@/components/staff/InactivityAlertDialog';
 import { TraitAlertDialog } from '@/components/staff/TraitAlertDialog';
+import { DailySummaryTable } from '@/components/staff/DailySummaryTable';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePetActivityLog } from '@/hooks/usePetActivityLog';
-import { 
-  Dog, 
-  CheckCircle2, 
-  Clock, 
-  AlertCircle,
-  ArrowRight,
-} from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-
-interface DashboardStats {
-  totalPetsToday: number;
-  checkedIn: number;
-  expectedArrivals: number;
-  pendingCheckouts: number;
-}
 
 interface AlertTrait {
   id: string;
@@ -37,12 +25,6 @@ const StaffDashboard = () => {
   const { isStaffOrAdmin } = useAuth();
   const { toast } = useToast();
   const { logActivity } = usePetActivityLog();
-  const [stats, setStats] = useState<DashboardStats>({
-    totalPetsToday: 0,
-    checkedIn: 0,
-    expectedArrivals: 0,
-    pendingCheckouts: 0,
-  });
   const [reservations, setReservations] = useState<ControlCenterReservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [addServiceOpen, setAddServiceOpen] = useState(false);
@@ -143,18 +125,6 @@ const StaffDashboard = () => {
       })) || [];
 
       setReservations(formattedReservations);
-
-      // Calculate stats
-      const checkedIn = formattedReservations.filter(r => r.status === 'checked_in').length;
-      const expectedArrivals = formattedReservations.filter(r => r.status === 'confirmed' || r.status === 'pending').length;
-      const pendingCheckouts = formattedReservations.filter(r => r.status === 'checked_in').length;
-
-      setStats({
-        totalPetsToday: formattedReservations.length,
-        checkedIn,
-        expectedArrivals,
-        pendingCheckouts,
-      });
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
@@ -537,49 +507,8 @@ const StaffDashboard = () => {
           </p>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Today's Pets</CardTitle>
-              <Dog className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalPetsToday}</div>
-              <p className="text-xs text-muted-foreground">scheduled visits</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Currently In</CardTitle>
-              <CheckCircle2 className="h-4 w-4 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.checkedIn}</div>
-              <p className="text-xs text-muted-foreground">pets in facility</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Expected</CardTitle>
-              <Clock className="h-4 w-4 text-amber-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.expectedArrivals}</div>
-              <p className="text-xs text-muted-foreground">arrivals pending</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending Checkout</CardTitle>
-              <AlertCircle className="h-4 w-4 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.pendingCheckouts}</div>
-              <p className="text-xs text-muted-foreground">ready for pickup</p>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Daily Summary Table */}
+        <DailySummaryTable />
 
         {/* Control Center Table */}
         <Card>
