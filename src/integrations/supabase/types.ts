@@ -184,6 +184,7 @@ export type Database = {
           created_at: string
           icon_name: string
           id: string
+          is_alert: boolean
           pet_id: string
           title: string
         }
@@ -192,6 +193,7 @@ export type Database = {
           created_at?: string
           icon_name: string
           id?: string
+          is_alert?: boolean
           pet_id: string
           title: string
         }
@@ -200,6 +202,7 @@ export type Database = {
           created_at?: string
           icon_name?: string
           id?: string
+          is_alert?: boolean
           pet_id?: string
           title?: string
         }
@@ -654,6 +657,7 @@ export type Database = {
           created_at: string
           icon_name: string
           id: string
+          is_alert: boolean
           title: string
         }
         Insert: {
@@ -661,6 +665,7 @@ export type Database = {
           created_at?: string
           icon_name: string
           id?: string
+          is_alert?: boolean
           title: string
         }
         Update: {
@@ -668,6 +673,7 @@ export type Database = {
           created_at?: string
           icon_name?: string
           id?: string
+          is_alert?: boolean
           title?: string
         }
         Relationships: []

@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ControlCenterTable, ControlCenterReservation } from '@/components/staff/ControlCenterTable';
 import { AddServiceDialog, type SelectedService } from '@/components/staff/AddServiceDialog';
 import { InactivityAlertDialog } from '@/components/staff/InactivityAlertDialog';
+import { TraitAlertDialog } from '@/components/staff/TraitAlertDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePetActivityLog } from '@/hooks/usePetActivityLog';
@@ -24,6 +25,14 @@ interface DashboardStats {
   pendingCheckouts: number;
 }
 
+interface AlertTrait {
+  id: string;
+  icon_name: string;
+  color_key: string;
+  title: string;
+  is_alert: boolean;
+}
+
 const StaffDashboard = () => {
   const { isStaffOrAdmin } = useAuth();
   const { toast } = useToast();
@@ -40,6 +49,12 @@ const StaffDashboard = () => {
   const [selectedReservation, setSelectedReservation] = useState<ControlCenterReservation | null>(null);
   const [inactivityAlertOpen, setInactivityAlertOpen] = useState(false);
   const [pendingAcceptReservation, setPendingAcceptReservation] = useState<ControlCenterReservation | null>(null);
+  
+  // Trait alert state
+  const [traitAlertOpen, setTraitAlertOpen] = useState(false);
+  const [traitAlertTraits, setTraitAlertTraits] = useState<AlertTrait[]>([]);
+  const [traitAlertPetName, setTraitAlertPetName] = useState('');
+  const [pendingTraitAction, setPendingTraitAction] = useState<{ type: 'checkin' | 'checkout'; reservation: ControlCenterReservation } | null>(null);
 
   const fetchDashboardData = async () => {
     if (!isStaffOrAdmin) {
@@ -151,7 +166,27 @@ const StaffDashboard = () => {
     fetchDashboardData();
   }, [isStaffOrAdmin]);
 
-  const handleCheckIn = async (reservation: ControlCenterReservation) => {
+  // Check for alert traits before proceeding with an action
+  const checkForAlertTraits = (reservation: ControlCenterReservation): AlertTrait[] => {
+    const alertTraits = (reservation.pet_traits || []).filter(t => t.is_alert) as AlertTrait[];
+    return alertTraits;
+  };
+
+  // Initiates check-in - first checks for alert traits
+  const handleCheckIn = (reservation: ControlCenterReservation) => {
+    const alertTraits = checkForAlertTraits(reservation);
+    if (alertTraits.length > 0) {
+      setTraitAlertTraits(alertTraits);
+      setTraitAlertPetName(reservation.pet_name);
+      setPendingTraitAction({ type: 'checkin', reservation });
+      setTraitAlertOpen(true);
+    } else {
+      performCheckIn(reservation);
+    }
+  };
+
+  // Actually performs the check-in
+  const performCheckIn = async (reservation: ControlCenterReservation) => {
     try {
       const checkInTime = new Date().toISOString();
       const { error } = await supabase
@@ -245,7 +280,21 @@ const StaffDashboard = () => {
     }
   };
 
-  const handleCheckOut = async (reservation: ControlCenterReservation) => {
+  // Initiates check-out - first checks for alert traits
+  const handleCheckOut = (reservation: ControlCenterReservation) => {
+    const alertTraits = checkForAlertTraits(reservation);
+    if (alertTraits.length > 0) {
+      setTraitAlertTraits(alertTraits);
+      setTraitAlertPetName(reservation.pet_name);
+      setPendingTraitAction({ type: 'checkout', reservation });
+      setTraitAlertOpen(true);
+    } else {
+      performCheckOut(reservation);
+    }
+  };
+
+  // Actually performs the check-out
+  const performCheckOut = async (reservation: ControlCenterReservation) => {
     try {
       const checkOutTime = new Date().toISOString();
       const { error } = await supabase
@@ -293,6 +342,18 @@ const StaffDashboard = () => {
         description: 'Please try again',
         variant: 'destructive' 
       });
+    }
+  };
+
+  // Handle trait alert acknowledgment
+  const handleTraitAlertAcknowledge = () => {
+    if (pendingTraitAction) {
+      if (pendingTraitAction.type === 'checkin') {
+        performCheckIn(pendingTraitAction.reservation);
+      } else if (pendingTraitAction.type === 'checkout') {
+        performCheckOut(pendingTraitAction.reservation);
+      }
+      setPendingTraitAction(null);
     }
   };
 
@@ -599,6 +660,15 @@ const StaffDashboard = () => {
         onCancel={() => {
           setPendingAcceptReservation(null);
         }}
+      />
+
+      {/* Trait Alert Dialog */}
+      <TraitAlertDialog
+        open={traitAlertOpen}
+        onOpenChange={setTraitAlertOpen}
+        petName={traitAlertPetName}
+        alertTraits={traitAlertTraits}
+        onAcknowledge={handleTraitAlertAcknowledge}
       />
     </StaffLayout>
   );
