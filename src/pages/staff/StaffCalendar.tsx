@@ -107,13 +107,13 @@ const StaffCalendar = () => {
       counts[r.service_type] = (counts[r.service_type] || 0) + 1;
     });
 
-    // Convert to array with config
-    return Object.entries(counts).map(([type, count]) => ({
+    // Return all service types, even if count is 0
+    return Object.keys(serviceConfig).map((type) => ({
       type,
-      count,
-      icon: serviceConfig[type]?.icon || <Dog className="h-3.5 w-3.5" />,
-      color: serviceConfig[type]?.color || 'text-gray-700',
-      bgColor: serviceConfig[type]?.bgColor || 'bg-gray-100',
+      count: counts[type] || 0,
+      icon: serviceConfig[type].icon,
+      color: serviceConfig[type].color,
+      bgColor: serviceConfig[type].bgColor,
     }));
   };
 
@@ -189,41 +189,33 @@ const StaffCalendar = () => {
                       key={`content-${index}`}
                       className="min-h-[140px] border rounded-lg p-3 space-y-2"
                     >
-                      {total === 0 ? (
-                        <p className="text-xs text-muted-foreground text-center py-4">
-                          No reservations
-                        </p>
-                      ) : (
-                        <>
-                          {/* Service type counts */}
-                          <div className="space-y-1.5">
-                            {serviceCounts.map((service) => (
-                              <div 
-                                key={service.type}
-                                className={`flex items-center justify-between px-2 py-1.5 rounded ${service.bgColor}`}
-                              >
-                                <div className={`flex items-center gap-1.5 ${service.color}`}>
-                                  {service.icon}
-                                  <span className="text-xs font-medium capitalize">
-                                    {serviceConfig[service.type]?.label || service.type}
-                                  </span>
-                                </div>
-                                <span className={`text-sm font-semibold ${service.color}`}>
-                                  {service.count}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                          
-                          {/* Total */}
-                          <div className="pt-1 border-t">
-                            <div className="flex items-center justify-between text-xs text-muted-foreground">
-                              <span>Total</span>
-                              <span className="font-semibold text-foreground">{total}</span>
+                      {/* Service type counts - always show all types */}
+                      <div className="space-y-1.5">
+                        {serviceCounts.map((service) => (
+                          <div 
+                            key={service.type}
+                            className={`flex items-center justify-between px-2 py-1.5 rounded ${service.bgColor} ${service.count === 0 ? 'opacity-50' : ''}`}
+                          >
+                            <div className={`flex items-center gap-1.5 ${service.color}`}>
+                              {service.icon}
+                              <span className="text-xs font-medium capitalize">
+                                {serviceConfig[service.type]?.label || service.type}
+                              </span>
                             </div>
+                            <span className={`text-sm font-semibold ${service.color}`}>
+                              {service.count}
+                            </span>
                           </div>
-                        </>
-                      )}
+                        ))}
+                      </div>
+                      
+                      {/* Total */}
+                      <div className="pt-1 border-t">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>Total</span>
+                          <span className="font-semibold text-foreground">{total}</span>
+                        </div>
+                      </div>
                     </div>
                   );
                 })}
