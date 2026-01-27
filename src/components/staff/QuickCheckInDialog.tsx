@@ -16,6 +16,8 @@ import { CalendarIcon, Search, X, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { usePetActivityLog } from '@/hooks/usePetActivityLog';
+import { fetchCollectionProducts, getCollectionIdFromGid, ShopifyProduct } from '@/lib/shopify';
+import { TraitAlertDialog } from './TraitAlertDialog';
 
 interface ServiceType {
   id: string;
@@ -33,17 +35,32 @@ interface Pet {
   client_name: string;
 }
 
+interface PetTrait {
+  id: string;
+  icon_name: string;
+  color_key: string;
+  title: string;
+  is_alert: boolean;
+}
+
 interface Addon {
   id: string;
   title: string;
   price: string;
   selected: boolean;
+  variantId?: string;
 }
 
 interface QuickCheckInDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+}
+
+// Helper to get current time in HH:mm format
+function getCurrentTime(): string {
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 }
 
 export function QuickCheckInDialog({ open, onOpenChange, onSuccess }: QuickCheckInDialogProps) {
@@ -55,6 +72,7 @@ export function QuickCheckInDialog({ open, onOpenChange, onSuccess }: QuickCheck
   const [searchResults, setSearchResults] = useState<Pet[]>([]);
   const [searching, setSearching] = useState(false);
   const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
+  const [selectedPetTraits, setSelectedPetTraits] = useState<PetTrait[]>([]);
   
   // Service type state
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
@@ -63,7 +81,7 @@ export function QuickCheckInDialog({ open, onOpenChange, onSuccess }: QuickCheck
   // Date/time state
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
-  const [startTime, setStartTime] = useState('09:00');
+  const [startTime, setStartTime] = useState(getCurrentTime());
   const [endTime, setEndTime] = useState('17:00');
   
   // Add-ons state
@@ -75,6 +93,17 @@ export function QuickCheckInDialog({ open, onOpenChange, onSuccess }: QuickCheck
   
   // Submission state
   const [submitting, setSubmitting] = useState(false);
+  
+  // Trait alert state
+  const [traitAlertOpen, setTraitAlertOpen] = useState(false);
+  const [alertTraits, setAlertTraits] = useState<PetTrait[]>([]);
+
+  // Reset start time when dialog opens
+  useEffect(() => {
+    if (open) {
+      setStartTime(getCurrentTime());
+    }
+  }, [open]);
 
   // Fetch service types on mount
   useEffect(() => {
@@ -96,7 +125,7 @@ export function QuickCheckInDialog({ open, onOpenChange, onSuccess }: QuickCheck
     }
   }, [open]);
 
-  // Fetch add-ons from Shopify collections mapped as 'addons' or 'services'
+  // Fetch add-ons from Shopify collections mapped as 'addons'
   useEffect(() => {
     const fetchAddons = async () => {
       setLoadingAddons(true);
@@ -104,21 +133,51 @@ export function QuickCheckInDialog({ open, onOpenChange, onSuccess }: QuickCheck
         // Get addon collection mappings
         const { data: mappings } = await supabase
           .from('shopify_collection_mappings')
-          .select('shopify_collection_id')
-          .in('category', ['addons', 'services']);
+          .select('shopify_collection_id, shopify_collection_title')
+          .eq('category', 'addons');
         
         if (mappings && mappings.length > 0) {
-          // For now, we'll use mock data since we don't have direct Shopify API access here
-          // In production, this would fetch from Shopify Storefront API
-          setAddons([
-            { id: '1', title: 'Nail Trim', price: '$15.00', selected: false },
-            { id: '2', title: 'Bath', price: '$25.00', selected: false },
-            { id: '3', title: 'Teeth Brushing', price: '$10.00', selected: false },
-            { id: '4', title: 'Ear Cleaning', price: '$12.00', selected: false },
-          ]);
+          const allAddons: Addon[] = [];
+          
+          // Fetch products from each addon collection
+          for (const mapping of mappings) {
+            // Extract handle from collection ID or use a query approach
+            // The collection ID is stored as the numeric ID, we need to fetch by handle
+            // For now, we'll use the title to create a handle
+            const handle = mapping.shopify_collection_title.toLowerCase().replace(/\s+/g, '-');
+            
+            try {
+              const products = await fetchCollectionProducts(handle, 50);
+              
+              products.forEach((product: ShopifyProduct) => {
+                const variant = product.node.variants.edges[0]?.node;
+                if (variant) {
+                  allAddons.push({
+                    id: product.node.id,
+                    title: product.node.title,
+                    price: `$${parseFloat(variant.price.amount).toFixed(2)}`,
+                    selected: false,
+                    variantId: variant.id,
+                  });
+                }
+              });
+            } catch (err) {
+              console.error(`Error fetching products for collection ${handle}:`, err);
+            }
+          }
+          
+          // Remove duplicates by ID
+          const uniqueAddons = allAddons.filter((addon, index, self) => 
+            index === self.findIndex(a => a.id === addon.id)
+          );
+          
+          setAddons(uniqueAddons);
+        } else {
+          setAddons([]);
         }
       } catch (error) {
         console.error('Error fetching addons:', error);
+        setAddons([]);
       } finally {
         setLoadingAddons(false);
       }
@@ -129,7 +188,7 @@ export function QuickCheckInDialog({ open, onOpenChange, onSuccess }: QuickCheck
     }
   }, [open]);
 
-  // Search for pets/clients
+  // Search for pets/clients - fixed to search properly
   useEffect(() => {
     const searchPets = async () => {
       if (searchQuery.length < 2) {
@@ -139,7 +198,8 @@ export function QuickCheckInDialog({ open, onOpenChange, onSuccess }: QuickCheck
       
       setSearching(true);
       try {
-        const { data, error } = await supabase
+        // First search pets by name
+        const { data: petsByName, error: petError } = await supabase
           .from('pets')
           .select(`
             id,
@@ -152,19 +212,69 @@ export function QuickCheckInDialog({ open, onOpenChange, onSuccess }: QuickCheck
             )
           `)
           .eq('is_active', true)
-          .or(`name.ilike.%${searchQuery}%,clients.first_name.ilike.%${searchQuery}%,clients.last_name.ilike.%${searchQuery}%`)
+          .ilike('name', `%${searchQuery}%`)
           .limit(10);
-        
-        if (!error && data) {
-          const results: Pet[] = data.map((pet: any) => ({
+
+        // Also search by client name
+        const { data: clientMatches, error: clientError } = await supabase
+          .from('clients')
+          .select('id, first_name, last_name')
+          .or(`first_name.ilike.%${searchQuery}%,last_name.ilike.%${searchQuery}%`)
+          .limit(10);
+
+        let results: Pet[] = [];
+
+        // Add pets found by pet name
+        if (!petError && petsByName) {
+          results = petsByName.map((pet: any) => ({
             id: pet.id,
             name: pet.name,
             breed: pet.breed,
             client_id: pet.client_id,
             client_name: pet.clients ? `${pet.clients.first_name} ${pet.clients.last_name}` : 'Unknown',
           }));
-          setSearchResults(results);
         }
+
+        // If we found clients, fetch their pets too
+        if (!clientError && clientMatches && clientMatches.length > 0) {
+          const clientIds = clientMatches.map(c => c.id);
+          
+          const { data: petsByClient } = await supabase
+            .from('pets')
+            .select(`
+              id,
+              name,
+              breed,
+              client_id,
+              clients (
+                first_name,
+                last_name
+              )
+            `)
+            .eq('is_active', true)
+            .in('client_id', clientIds)
+            .limit(20);
+
+          if (petsByClient) {
+            const additionalPets = petsByClient.map((pet: any) => ({
+              id: pet.id,
+              name: pet.name,
+              breed: pet.breed,
+              client_id: pet.client_id,
+              client_name: pet.clients ? `${pet.clients.first_name} ${pet.clients.last_name}` : 'Unknown',
+            }));
+
+            // Merge and deduplicate
+            const existingIds = new Set(results.map(p => p.id));
+            additionalPets.forEach(pet => {
+              if (!existingIds.has(pet.id)) {
+                results.push(pet);
+              }
+            });
+          }
+        }
+
+        setSearchResults(results.slice(0, 10));
       } catch (error) {
         console.error('Error searching pets:', error);
       } finally {
@@ -175,6 +285,27 @@ export function QuickCheckInDialog({ open, onOpenChange, onSuccess }: QuickCheck
     const debounce = setTimeout(searchPets, 300);
     return () => clearTimeout(debounce);
   }, [searchQuery]);
+
+  // Fetch pet traits when a pet is selected
+  useEffect(() => {
+    const fetchPetTraits = async () => {
+      if (!selectedPet) {
+        setSelectedPetTraits([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('pet_traits')
+        .select('id, icon_name, color_key, title, is_alert')
+        .eq('pet_id', selectedPet.id);
+
+      if (!error && data) {
+        setSelectedPetTraits(data);
+      }
+    };
+
+    fetchPetTraits();
+  }, [selectedPet]);
 
   const handleSelectPet = (pet: Pet) => {
     setSelectedPet(pet);
@@ -188,7 +319,7 @@ export function QuickCheckInDialog({ open, onOpenChange, onSuccess }: QuickCheck
     ));
   };
 
-  const handleSubmit = async () => {
+  const handleSubmitClick = () => {
     if (!selectedPet || !selectedServiceType) {
       toast({
         title: 'Missing information',
@@ -197,6 +328,19 @@ export function QuickCheckInDialog({ open, onOpenChange, onSuccess }: QuickCheck
       });
       return;
     }
+
+    // Check for alert traits
+    const alerts = selectedPetTraits.filter(t => t.is_alert);
+    if (alerts.length > 0) {
+      setAlertTraits(alerts);
+      setTraitAlertOpen(true);
+    } else {
+      performCheckIn();
+    }
+  };
+
+  const performCheckIn = async () => {
+    if (!selectedPet || !selectedServiceType) return;
 
     setSubmitting(true);
     try {
@@ -227,6 +371,8 @@ export function QuickCheckInDialog({ open, onOpenChange, onSuccess }: QuickCheck
         await supabase.rpc('deduct_daycare_credit', { p_client_id: selectedPet.client_id });
       }
 
+      const selectedAddons = addons.filter(a => a.selected);
+
       // Log the activity
       await logActivity({
         petId: selectedPet.id,
@@ -238,7 +384,7 @@ export function QuickCheckInDialog({ open, onOpenChange, onSuccess }: QuickCheck
           service_type: selectedServiceType,
           check_in_time: checkInTime,
           is_drop_in: true,
-          addons: addons.filter(a => a.selected).map(a => a.title),
+          addons: selectedAddons.map(a => ({ title: a.title, price: a.price })),
         }
       });
 
@@ -267,253 +413,277 @@ export function QuickCheckInDialog({ open, onOpenChange, onSuccess }: QuickCheck
     setSearchQuery('');
     setSearchResults([]);
     setSelectedPet(null);
+    setSelectedPetTraits([]);
     setSelectedServiceType('');
     setStartDate(new Date());
     setEndDate(undefined);
-    setStartTime('09:00');
+    setStartTime(getCurrentTime());
     setEndTime('17:00');
     setAddons(prev => prev.map(a => ({ ...a, selected: false })));
     setNotes('');
+    setAlertTraits([]);
   };
 
-  const selectedService = serviceTypes.find(st => st.name === selectedServiceType);
   const isBoarding = selectedServiceType === 'boarding';
   const selectedAddons = addons.filter(a => a.selected);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle>Quick Check In</DialogTitle>
-        </DialogHeader>
-        
-        <ScrollArea className="flex-1 pr-4">
-          <div className="space-y-6 py-2">
-            {/* Pet Search */}
-            <div className="space-y-2">
-              <Label>Search Pet or Client</Label>
-              {selectedPet ? (
-                <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/50">
-                  <div>
-                    <p className="font-medium">{selectedPet.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedPet.breed ? `${selectedPet.breed} • ` : ''}{selectedPet.client_name}
-                    </p>
-                  </div>
-                  <Button 
-                    variant="ghost" 
-                    size="icon"
-                    onClick={() => setSelectedPet(null)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search by pet or client name..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9"
-                  />
-                  {(searchResults.length > 0 || searching) && (
-                    <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-lg">
-                      {searching ? (
-                        <div className="p-4 text-center text-muted-foreground">
-                          <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
-                          Searching...
-                        </div>
-                      ) : (
-                        <ul className="py-1">
-                          {searchResults.map((pet) => (
-                            <li
-                              key={pet.id}
-                              className="px-3 py-2 hover:bg-muted cursor-pointer"
-                              onClick={() => handleSelectPet(pet)}
-                            >
-                              <p className="font-medium">{pet.name}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {pet.breed ? `${pet.breed} • ` : ''}{pet.client_name}
-                              </p>
-                            </li>
-                          ))}
-                        </ul>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Quick Check In</DialogTitle>
+          </DialogHeader>
+          
+          <ScrollArea className="flex-1 pr-4">
+            <div className="space-y-6 py-2">
+              {/* Pet Search */}
+              <div className="space-y-2">
+                <Label>Search Pet or Client</Label>
+                {selectedPet ? (
+                  <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/50">
+                    <div>
+                      <p className="font-medium">{selectedPet.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {selectedPet.breed ? `${selectedPet.breed} • ` : ''}{selectedPet.client_name}
+                      </p>
+                      {selectedPetTraits.filter(t => t.is_alert).length > 0 && (
+                        <p className="text-xs text-destructive mt-1">
+                          ⚠️ Has {selectedPetTraits.filter(t => t.is_alert).length} alert trait(s)
+                        </p>
                       )}
                     </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Service Type */}
-            <div className="space-y-2">
-              <Label>Service Type</Label>
-              <Select value={selectedServiceType} onValueChange={setSelectedServiceType}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select service type" />
-                </SelectTrigger>
-                <SelectContent className="bg-popover">
-                  {serviceTypes.map((st) => (
-                    <SelectItem key={st.id} value={st.name}>
-                      {st.display_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Dates */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Start Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !startDate && "text-muted-foreground"
-                      )}
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => setSelectedPet(null)}
                     >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {startDate ? format(startDate, "MMM d, yyyy") : "Pick date"}
+                      <X className="h-4 w-4" />
                     </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 bg-popover" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={startDate}
-                      onSelect={(date) => date && setStartDate(date)}
-                      initialFocus
-                      className="pointer-events-auto"
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search by pet or client name..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9"
                     />
-                  </PopoverContent>
-                </Popover>
+                    {(searchResults.length > 0 || searching) && (
+                      <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border rounded-md shadow-lg">
+                        {searching ? (
+                          <div className="p-4 text-center text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
+                            Searching...
+                          </div>
+                        ) : (
+                          <ul className="py-1 max-h-60 overflow-auto">
+                            {searchResults.map((pet) => (
+                              <li
+                                key={pet.id}
+                                className="px-3 py-2 hover:bg-muted cursor-pointer"
+                                onClick={() => handleSelectPet(pet)}
+                              >
+                                <p className="font-medium">{pet.name}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {pet.breed ? `${pet.breed} • ` : ''}{pet.client_name}
+                                </p>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
-              {isBoarding && (
+              {/* Service Type */}
+              <div className="space-y-2">
+                <Label>Service Type</Label>
+                <Select value={selectedServiceType} onValueChange={setSelectedServiceType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select service type" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover">
+                    {serviceTypes.map((st) => (
+                      <SelectItem key={st.id} value={st.name}>
+                        {st.display_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Dates */}
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>End Date</Label>
+                  <Label>Start Date</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
                         className={cn(
                           "w-full justify-start text-left font-normal",
-                          !endDate && "text-muted-foreground"
+                          !startDate && "text-muted-foreground"
                         )}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {endDate ? format(endDate, "MMM d, yyyy") : "Pick date"}
+                        {startDate ? format(startDate, "MMM d, yyyy") : "Pick date"}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0 bg-popover" align="start">
                       <Calendar
                         mode="single"
-                        selected={endDate}
-                        onSelect={setEndDate}
-                        disabled={(date) => date < startDate}
+                        selected={startDate}
+                        onSelect={(date) => date && setStartDate(date)}
                         initialFocus
                         className="pointer-events-auto"
                       />
                     </PopoverContent>
                   </Popover>
                 </div>
-              )}
-            </div>
 
-            {/* Times */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Start Time</Label>
-                <Input
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                />
+                {isBoarding && (
+                  <div className="space-y-2">
+                    <Label>End Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !endDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {endDate ? format(endDate, "MMM d, yyyy") : "Pick date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0 bg-popover" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={endDate}
+                          onSelect={setEndDate}
+                          disabled={(date) => date < startDate}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                )}
               </div>
-              <div className="space-y-2">
-                <Label>End Time</Label>
-                <Input
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                />
-              </div>
-            </div>
 
-            {/* Add-ons */}
-            <div className="space-y-2">
-              <Label>Add-ons (Optional)</Label>
-              {loadingAddons ? (
-                <div className="text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
-                  Loading add-ons...
+              {/* Times */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Start Time</Label>
+                  <Input
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                  />
                 </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  {addons.map((addon) => (
-                    <div
-                      key={addon.id}
-                      className={cn(
-                        "flex items-center space-x-2 p-2 border rounded-md cursor-pointer transition-colors",
-                        addon.selected ? "border-primary bg-primary/5" : "hover:bg-muted/50"
-                      )}
-                      onClick={() => handleToggleAddon(addon.id)}
-                    >
-                      <Checkbox checked={addon.selected} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{addon.title}</p>
-                        <p className="text-xs text-muted-foreground">{addon.price}</p>
+                <div className="space-y-2">
+                  <Label>End Time</Label>
+                  <Input
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Add-ons */}
+              <div className="space-y-2">
+                <Label>Add-ons (Optional)</Label>
+                {loadingAddons ? (
+                  <div className="text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
+                    Loading add-ons...
+                  </div>
+                ) : addons.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No add-ons available. Configure add-on collections in Shopify Settings.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {addons.map((addon) => (
+                      <div
+                        key={addon.id}
+                        className={cn(
+                          "flex items-center space-x-2 p-2 border rounded-md cursor-pointer transition-colors",
+                          addon.selected ? "border-primary bg-primary/5" : "hover:bg-muted/50"
+                        )}
+                        onClick={() => handleToggleAddon(addon.id)}
+                      >
+                        <Checkbox checked={addon.selected} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{addon.title}</p>
+                          <p className="text-xs text-muted-foreground">{addon.price}</p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {selectedAddons.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {selectedAddons.map((addon) => (
-                    <Badge key={addon.id} variant="secondary" className="text-xs">
-                      {addon.title}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </div>
+                    ))}
+                  </div>
+                )}
+                {selectedAddons.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {selectedAddons.map((addon) => (
+                      <Badge key={addon.id} variant="secondary" className="text-xs">
+                        {addon.title}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
 
-            {/* Notes */}
-            <div className="space-y-2">
-              <Label>Notes (Optional)</Label>
-              <Textarea
-                placeholder="Any special instructions or notes..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={2}
-              />
+              {/* Notes */}
+              <div className="space-y-2">
+                <Label>Notes (Optional)</Label>
+                <Textarea
+                  placeholder="Any special instructions or notes..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={2}
+                />
+              </div>
             </div>
-          </div>
-        </ScrollArea>
+          </ScrollArea>
 
-        <DialogFooter className="pt-4 border-t">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleSubmit} 
-            disabled={!selectedPet || !selectedServiceType || submitting}
-          >
-            {submitting ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                Checking In...
-              </>
-            ) : (
-              'Check In Now'
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <DialogFooter className="pt-4 border-t">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSubmitClick} 
+              disabled={!selectedPet || !selectedServiceType || submitting}
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Checking In...
+                </>
+              ) : (
+                'Check In Now'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Trait Alert Dialog */}
+      <TraitAlertDialog
+        open={traitAlertOpen}
+        onOpenChange={setTraitAlertOpen}
+        petName={selectedPet?.name || ''}
+        alertTraits={alertTraits}
+        onAcknowledge={() => {
+          setTraitAlertOpen(false);
+          performCheckIn();
+        }}
+      />
+    </>
   );
 }
