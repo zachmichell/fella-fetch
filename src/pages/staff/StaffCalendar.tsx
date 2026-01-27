@@ -364,7 +364,7 @@ const StaffCalendar = () => {
                   return (
                     <div 
                       key={index}
-                      className={`min-h-[100px] border rounded-lg p-1.5 ${
+                      className={`min-h-[140px] border rounded-lg p-1.5 ${
                         !isCurrentMonth ? 'bg-muted/30 opacity-50' : ''
                       }`}
                     >
@@ -385,7 +385,7 @@ const StaffCalendar = () => {
                       
                       {/* Compact service counts */}
                       <div className="space-y-0.5">
-                        {serviceCounts.filter(s => s.count > 0).slice(0, 4).map((service) => {
+                        {serviceCounts.filter(s => s.count > 0).slice(0, 8).map((service) => {
                           const Icon = service.icon;
                           return (
                             <div 
@@ -404,9 +404,9 @@ const StaffCalendar = () => {
                             </div>
                           );
                         })}
-                        {serviceCounts.filter(s => s.count > 0).length > 4 && (
+                        {serviceCounts.filter(s => s.count > 0).length > 8 && (
                           <div className="text-[9px] text-muted-foreground text-center">
-                            +{serviceCounts.filter(s => s.count > 0).length - 4} more
+                            +{serviceCounts.filter(s => s.count > 0).length - 8} more
                           </div>
                         )}
                         {total === 0 && isCurrentMonth && (
