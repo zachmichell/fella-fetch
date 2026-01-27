@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,7 +16,7 @@ const passwordSchema = z.string().min(6, 'Password must be at least 6 characters
 
 const StaffLogin = () => {
   const navigate = useNavigate();
-  const { signIn, signUp } = useAuth();
+  const { user, loading: authLoading, signIn, signUp, signOut, isStaffOrAdmin } = useAuth();
   const { toast } = useToast();
   
   const [isLoading, setIsLoading] = useState(false);
@@ -25,6 +26,24 @@ const StaffLogin = () => {
   const [signupPassword, setSignupPassword] = useState('');
   const [signupFirstName, setSignupFirstName] = useState('');
   const [signupLastName, setSignupLastName] = useState('');
+
+  // Redirect if already logged in as staff
+  useEffect(() => {
+    if (!authLoading && user && isStaffOrAdmin) {
+      navigate('/staff');
+    }
+  }, [user, authLoading, isStaffOrAdmin, navigate]);
+
+  const checkUserIsStaff = async (userId: string): Promise<boolean> => {
+    const { data, error } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .maybeSingle();
+    
+    if (error || !data) return false;
+    return data.role === 'staff' || data.role === 'admin';
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,9 +64,9 @@ const StaffLogin = () => {
 
     setIsLoading(true);
     const { error } = await signIn(loginEmail, loginPassword);
-    setIsLoading(false);
 
     if (error) {
+      setIsLoading(false);
       toast({
         title: 'Login Failed',
         description: error.message === 'Invalid login credentials' 
@@ -58,6 +77,23 @@ const StaffLogin = () => {
       return;
     }
 
+    // Check if user has staff/admin role
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (currentUser) {
+      const isStaff = await checkUserIsStaff(currentUser.id);
+      if (!isStaff) {
+        await signOut();
+        setIsLoading(false);
+        toast({
+          title: 'Access Denied',
+          description: 'This login is for staff members only. Please use the client portal.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
+    setIsLoading(false);
     toast({
       title: 'Welcome back!',
       description: 'You have successfully logged in.',
