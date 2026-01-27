@@ -1,26 +1,17 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { StaffLayout } from '@/components/staff/StaffLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
+import { ControlCenterTable, ControlCenterReservation } from '@/components/staff/ControlCenterTable';
+import { AddServiceDialog } from '@/components/staff/AddServiceDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePetActivityLog } from '@/hooks/usePetActivityLog';
 import { 
   Dog, 
-  Users, 
-  Calendar, 
-  Clock, 
   CheckCircle2, 
+  Clock, 
   AlertCircle,
   ArrowRight,
-  LogIn,
-  LogOut as LogOutIcon,
-  Loader2,
-  Search,
-  X,
-  Undo2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -30,21 +21,6 @@ interface DashboardStats {
   checkedIn: number;
   expectedArrivals: number;
   pendingCheckouts: number;
-}
-
-interface TodayReservation {
-  id: string;
-  pet_id: string;
-  pet_name: string;
-  client_id: string;
-  client_name: string;
-  service_type: string;
-  status: string;
-  start_time: string | null;
-  checked_in_at: string | null;
-  checked_out_at: string | null;
-  daycare_credits: number;
-  boarding_credits: number;
 }
 
 const StaffDashboard = () => {
@@ -57,20 +33,10 @@ const StaffDashboard = () => {
     expectedArrivals: 0,
     pendingCheckouts: 0,
   });
-  const [todayReservations, setTodayReservations] = useState<TodayReservation[]>([]);
+  const [reservations, setReservations] = useState<ControlCenterReservation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-
-  // Filter reservations based on search query
-  const filteredReservations = useMemo(() => {
-    if (!searchQuery.trim()) return todayReservations;
-    
-    const query = searchQuery.toLowerCase();
-    return todayReservations.filter(reservation => 
-      reservation.pet_name.toLowerCase().includes(query) ||
-      reservation.client_name.toLowerCase().includes(query)
-    );
-  }, [todayReservations, searchQuery]);
+  const [addServiceOpen, setAddServiceOpen] = useState(false);
+  const [selectedReservation, setSelectedReservation] = useState<ControlCenterReservation | null>(null);
 
   const fetchDashboardData = async () => {
     if (!isStaffOrAdmin) {
@@ -81,20 +47,24 @@ const StaffDashboard = () => {
     const today = format(new Date(), 'yyyy-MM-dd');
 
     try {
-      // Fetch today's reservations with pet and client info
-      const { data: reservations, error } = await supabase
+      const { data, error } = await supabase
         .from('reservations')
         .select(`
           id,
           pet_id,
           service_type,
           status,
+          start_date,
+          end_date,
           start_time,
+          end_time,
           checked_in_at,
           checked_out_at,
+          notes,
           pets (
             id,
             name,
+            breed,
             clients (
               id,
               first_name,
@@ -105,28 +75,34 @@ const StaffDashboard = () => {
           )
         `)
         .eq('start_date', today)
+        .neq('status', 'cancelled')
         .order('start_time', { ascending: true });
 
       if (error) throw error;
 
-      const formattedReservations = reservations?.map((r: any) => ({
+      const formattedReservations: ControlCenterReservation[] = data?.map((r: any) => ({
         id: r.id,
         pet_id: r.pets?.id || r.pet_id,
         pet_name: r.pets?.name || 'Unknown',
+        pet_breed: r.pets?.breed || null,
         client_id: r.pets?.clients?.id || '',
         client_name: r.pets?.clients 
           ? `${r.pets.clients.first_name} ${r.pets.clients.last_name}`
           : 'Unknown',
         service_type: r.service_type,
         status: r.status,
+        start_date: r.start_date,
+        end_date: r.end_date,
         start_time: r.start_time,
+        end_time: r.end_time,
+        lodging: null, // Will be implemented with lodging feature
         checked_in_at: r.checked_in_at,
         checked_out_at: r.checked_out_at,
         daycare_credits: r.pets?.clients?.daycare_credits ?? 0,
         boarding_credits: r.pets?.clients?.boarding_credits ?? 0,
       })) || [];
 
-      setTodayReservations(formattedReservations);
+      setReservations(formattedReservations);
 
       // Calculate stats
       const checkedIn = formattedReservations.filter(r => r.status === 'checked_in').length;
@@ -150,7 +126,7 @@ const StaffDashboard = () => {
     fetchDashboardData();
   }, [isStaffOrAdmin]);
 
-  const handleCheckIn = async (reservationId: string, petId: string, petName: string, serviceType: string, clientId: string) => {
+  const handleCheckIn = async (reservation: ControlCenterReservation) => {
     try {
       const checkInTime = new Date().toISOString();
       const { error } = await supabase
@@ -159,36 +135,34 @@ const StaffDashboard = () => {
           status: 'checked_in',
           checked_in_at: checkInTime
         })
-        .eq('id', reservationId);
+        .eq('id', reservation.id);
 
       if (error) throw error;
 
       // If daycare, deduct 1 credit atomically on check-in
-      if (serviceType === 'daycare' && clientId) {
+      if (reservation.service_type === 'daycare' && reservation.client_id) {
         const { data: newCredits, error: creditError } = await supabase
-          .rpc('deduct_daycare_credit', { p_client_id: clientId });
+          .rpc('deduct_daycare_credit', { p_client_id: reservation.client_id });
         
         if (creditError) {
           console.error('Error deducting daycare credit:', creditError);
-        } else if (newCredits === -1) {
-          console.log('No daycare credits available to deduct');
         }
       }
 
       // Log the check-in activity
       await logActivity({
-        petId,
-        reservationId,
+        petId: reservation.pet_id,
+        reservationId: reservation.id,
         actionType: 'pet_checked_in',
         actionCategory: 'check_in',
-        description: `${petName} checked in for ${serviceType}`,
+        description: `${reservation.pet_name} checked in for ${reservation.service_type}`,
         details: {
-          service_type: serviceType,
+          service_type: reservation.service_type,
           check_in_time: checkInTime,
         }
       });
 
-      toast({ title: 'Pet checked in successfully!' });
+      toast({ title: `${reservation.pet_name} checked in successfully!` });
       fetchDashboardData();
     } catch (error) {
       toast({ 
@@ -199,7 +173,7 @@ const StaffDashboard = () => {
     }
   };
 
-  const handleCheckOut = async (reservationId: string, petId: string, petName: string, serviceType: string, clientId: string, checkedInAt: string | null) => {
+  const handleCheckOut = async (reservation: ControlCenterReservation) => {
     try {
       const checkOutTime = new Date().toISOString();
       const { error } = await supabase
@@ -208,41 +182,38 @@ const StaffDashboard = () => {
           status: 'checked_out',
           checked_out_at: checkOutTime
         })
-        .eq('id', reservationId);
+        .eq('id', reservation.id);
 
       if (error) throw error;
 
       // If boarding, calculate nights and deduct credits atomically on check-out
-      if (serviceType === 'boarding' && clientId && checkedInAt) {
-        const checkInDate = new Date(checkedInAt);
+      if (reservation.service_type === 'boarding' && reservation.client_id && reservation.checked_in_at) {
+        const checkInDate = new Date(reservation.checked_in_at);
         const checkOutDate = new Date(checkOutTime);
-        // Calculate nights (difference in days, minimum 1)
         const nights = Math.max(1, Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24)));
         
-        const { data: newCredits, error: creditError } = await supabase
-          .rpc('deduct_boarding_credits', { p_client_id: clientId, p_nights: nights });
+        const { error: creditError } = await supabase
+          .rpc('deduct_boarding_credits', { p_client_id: reservation.client_id, p_nights: nights });
         
         if (creditError) {
           console.error('Error deducting boarding credits:', creditError);
-        } else if (newCredits === -1) {
-          console.log('Error deducting boarding credits');
         }
       }
 
       // Log the check-out activity
       await logActivity({
-        petId,
-        reservationId,
+        petId: reservation.pet_id,
+        reservationId: reservation.id,
         actionType: 'pet_checked_out',
         actionCategory: 'check_out',
-        description: `${petName} checked out from ${serviceType}`,
+        description: `${reservation.pet_name} checked out from ${reservation.service_type}`,
         details: {
-          service_type: serviceType,
+          service_type: reservation.service_type,
           check_out_time: checkOutTime,
         }
       });
 
-      toast({ title: 'Pet checked out successfully!' });
+      toast({ title: `${reservation.pet_name} checked out successfully!` });
       fetchDashboardData();
     } catch (error) {
       toast({ 
@@ -253,131 +224,64 @@ const StaffDashboard = () => {
     }
   };
 
-  const handleRevertCheckIn = async (reservationId: string, petId: string, petName: string, serviceType: string, clientId: string) => {
+  const handleCancelReservation = async (reservation: ControlCenterReservation) => {
     try {
       const { error } = await supabase
         .from('reservations')
-        .update({ 
-          status: 'confirmed',
-          checked_in_at: null
-        })
-        .eq('id', reservationId);
+        .update({ status: 'cancelled' })
+        .eq('id', reservation.id);
 
       if (error) throw error;
 
-      // If daycare, restore 1 credit atomically
-      if (serviceType === 'daycare' && clientId) {
-        const { data: newCredits, error: creditError } = await supabase
-          .rpc('restore_daycare_credit', { p_client_id: clientId });
-        
-        if (creditError) {
-          console.error('Error restoring daycare credit:', creditError);
-        }
-      }
-
-      // Log the revert activity
+      // Log the cancellation
       await logActivity({
-        petId,
-        reservationId,
-        actionType: 'pet_checked_out',
-        actionCategory: 'check_in',
-        description: `Check-in reverted for ${petName} (${serviceType})`,
+        petId: reservation.pet_id,
+        reservationId: reservation.id,
+        actionType: 'reservation_cancelled',
+        actionCategory: 'reservation',
+        description: `Reservation cancelled for ${reservation.pet_name} (${reservation.service_type})`,
         details: {
-          service_type: serviceType,
-          action: 'revert_check_in',
+          service_type: reservation.service_type,
         }
       });
 
-      toast({ title: 'Check-in reverted successfully!' });
+      toast({ title: 'Reservation cancelled' });
       fetchDashboardData();
     } catch (error) {
       toast({ 
-        title: 'Error reverting check-in', 
+        title: 'Error cancelling reservation', 
         description: 'Please try again',
         variant: 'destructive' 
       });
     }
   };
 
-  const handleRevertCheckOut = async (reservationId: string, petId: string, petName: string, serviceType: string, clientId: string, checkedInAt: string | null, checkedOutAt: string | null) => {
-    try {
-      const { error } = await supabase
-        .from('reservations')
-        .update({ 
-          status: 'checked_in',
-          checked_out_at: null
-        })
-        .eq('id', reservationId);
+  const handleAddService = (reservation: ControlCenterReservation) => {
+    setSelectedReservation(reservation);
+    setAddServiceOpen(true);
+  };
 
-      if (error) throw error;
+  const handleServicesAdded = async (services: string[], notes: string) => {
+    if (!selectedReservation) return;
 
-      // If boarding, restore credits atomically based on nights stayed
-      if (serviceType === 'boarding' && clientId && checkedInAt && checkedOutAt) {
-        const checkInDate = new Date(checkedInAt);
-        const checkOutDate = new Date(checkedOutAt);
-        const nights = Math.max(1, Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24)));
-        
-        const { data: newCredits, error: creditError } = await supabase
-          .rpc('restore_boarding_credits', { p_client_id: clientId, p_nights: nights });
-        
-        if (creditError) {
-          console.error('Error restoring boarding credits:', creditError);
-        }
+    // Log the additional services
+    await logActivity({
+      petId: selectedReservation.pet_id,
+      reservationId: selectedReservation.id,
+      actionType: 'services_added',
+      actionCategory: 'service',
+      description: `Additional services added for ${selectedReservation.pet_name}`,
+      details: {
+        services,
+        notes,
       }
+    });
 
-      // Log the revert activity
-      await logActivity({
-        petId,
-        reservationId,
-        actionType: 'pet_checked_in',
-        actionCategory: 'check_out',
-        description: `Check-out reverted for ${petName} (${serviceType})`,
-        details: {
-          service_type: serviceType,
-          action: 'revert_check_out',
-        }
-      });
-
-      toast({ title: 'Check-out reverted successfully!' });
-      fetchDashboardData();
-    } catch (error) {
-      toast({ 
-        title: 'Error reverting check-out', 
-        description: 'Please try again',
-        variant: 'destructive' 
-      });
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'checked_in':
-        return <Badge className="bg-green-500">In Facility</Badge>;
-      case 'confirmed':
-        return <Badge variant="secondary">Confirmed</Badge>;
-      case 'pending':
-        return <Badge variant="outline">Pending</Badge>;
-      case 'checked_out':
-        return <Badge className="bg-blue-500">Checked Out</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-
-  const getServiceIcon = (type: string) => {
-    const iconClass = "h-4 w-4";
-    switch (type) {
-      case 'daycare':
-        return <Dog className={iconClass} />;
-      case 'boarding':
-        return <Calendar className={iconClass} />;
-      case 'grooming':
-        return <Users className={iconClass} />;
-      case 'training':
-        return <Clock className={iconClass} />;
-      default:
-        return <Dog className={iconClass} />;
-    }
+    toast({ 
+      title: 'Services added', 
+      description: `${services.length} service(s) added for ${selectedReservation.pet_name}` 
+    });
+    setSelectedReservation(null);
   };
 
   return (
@@ -435,134 +339,23 @@ const StaffDashboard = () => {
           </Card>
         </div>
 
-        {/* Today's Schedule */}
+        {/* Control Center Table */}
         <Card>
           <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <CardTitle>Today's Schedule</CardTitle>
-                <CardDescription>
-                  Check-in and check-out pets as they arrive
-                </CardDescription>
-              </div>
-              <div className="relative w-full sm:w-72">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search pet or owner..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-9"
-                />
-                {searchQuery && (
-                  <button 
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-            </div>
+            <CardTitle>Today's Schedule</CardTitle>
+            <CardDescription>
+              Manage check-ins, check-outs, and reservations
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            {loading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : todayReservations.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Dog className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No reservations scheduled for today</p>
-              </div>
-            ) : filteredReservations.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No results found for "{searchQuery}"</p>
-                <Button 
-                  variant="link" 
-                  onClick={() => setSearchQuery('')}
-                  className="mt-2"
-                >
-                  Clear search
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {filteredReservations.map((reservation) => (
-                  <div 
-                    key={reservation.id}
-                    className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="p-2 rounded-full bg-primary/10">
-                        {getServiceIcon(reservation.service_type)}
-                      </div>
-                      <div>
-                        <p className="font-medium">{reservation.pet_name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {reservation.client_name} • {reservation.service_type}
-                          {reservation.start_time && ` • ${reservation.start_time.slice(0, 5)}`}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          <span className={reservation.daycare_credits <= 0 ? 'text-destructive font-medium' : ''}>
-                            Daycare: {reservation.daycare_credits}
-                          </span>
-                          {' • '}
-                          <span className={reservation.boarding_credits <= 0 ? 'text-destructive font-medium' : ''}>
-                            Boarding: {reservation.boarding_credits}
-                          </span>
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {getStatusBadge(reservation.status)}
-                      {reservation.status === 'confirmed' || reservation.status === 'pending' ? (
-                        <Button 
-                          size="sm" 
-                          onClick={() => handleCheckIn(reservation.id, reservation.pet_id, reservation.pet_name, reservation.service_type, reservation.client_id)}
-                          className="gap-1"
-                        >
-                          <LogIn className="h-3 w-3" />
-                          Check In
-                        </Button>
-                      ) : reservation.status === 'checked_in' ? (
-                        <>
-                          <Button 
-                            size="sm" 
-                            variant="ghost"
-                            onClick={() => handleRevertCheckIn(reservation.id, reservation.pet_id, reservation.pet_name, reservation.service_type, reservation.client_id)}
-                            className="gap-1 text-muted-foreground hover:text-foreground"
-                            title="Revert check-in"
-                          >
-                            <Undo2 className="h-3 w-3" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleCheckOut(reservation.id, reservation.pet_id, reservation.pet_name, reservation.service_type, reservation.client_id, reservation.checked_in_at)}
-                            className="gap-1"
-                          >
-                            <LogOutIcon className="h-3 w-3" />
-                            Check Out
-                          </Button>
-                        </>
-                      ) : reservation.status === 'checked_out' ? (
-                        <Button 
-                          size="sm" 
-                          variant="ghost"
-                          onClick={() => handleRevertCheckOut(reservation.id, reservation.pet_id, reservation.pet_name, reservation.service_type, reservation.client_id, reservation.checked_in_at, reservation.checked_out_at)}
-                          className="gap-1 text-muted-foreground hover:text-foreground"
-                          title="Revert check-out"
-                        >
-                          <Undo2 className="h-3 w-3" />
-                          Undo
-                        </Button>
-                      ) : null}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <ControlCenterTable
+              reservations={reservations}
+              loading={loading}
+              onCheckIn={handleCheckIn}
+              onCheckOut={handleCheckOut}
+              onCancelReservation={handleCancelReservation}
+              onAddService={handleAddService}
+            />
           </CardContent>
         </Card>
 
@@ -597,6 +390,14 @@ const StaffDashboard = () => {
           </Card>
         </div>
       </div>
+
+      {/* Add Service Dialog */}
+      <AddServiceDialog
+        open={addServiceOpen}
+        onOpenChange={setAddServiceOpen}
+        petName={selectedReservation?.pet_name || ''}
+        onAddServices={handleServicesAdded}
+      />
     </StaffLayout>
   );
 };

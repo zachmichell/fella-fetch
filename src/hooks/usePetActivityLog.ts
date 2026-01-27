@@ -14,6 +14,7 @@ export type ActionCategory =
   | 'training'
   | 'medical'
   | 'report_card'
+  | 'service'
   | 'general';
 
 export type ActionType =
@@ -39,6 +40,7 @@ export type ActionType =
   | 'medical_note_added'
   | 'report_card_created'
   | 'report_card_sent'
+  | 'services_added'
   | 'general_note_added';
 
 interface LogActivityParams {
