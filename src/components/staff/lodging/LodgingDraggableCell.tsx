@@ -4,11 +4,12 @@ import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal, User, ArrowRightLeft, LogIn, LogOut, GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format, parseISO, isSameDay } from 'date-fns';
+import { parseISO, isSameDay } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
-import { motion } from 'framer-motion';
+import { motion, PanInfo } from 'framer-motion';
+import { useRef, useState } from 'react';
 
 interface LodgingDraggableCellProps {
   reservation: BoardingReservation;
@@ -17,7 +18,7 @@ interface LodgingDraggableCellProps {
   onAssignSuite: (reservation: BoardingReservation) => void;
   isUnassigned?: boolean;
   onDragStart: (reservation: BoardingReservation) => void;
-  onDragEnd: () => void;
+  onDragEnd: (reservation: BoardingReservation, targetSuiteId: string | null | undefined) => void;
 }
 
 export const LodgingDraggableCell = ({
@@ -31,6 +32,8 @@ export const LodgingDraggableCell = ({
 }: LodgingDraggableCellProps) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartPos = useRef<{ x: number; y: number } | null>(null);
 
   const handleCheckIn = async () => {
     try {
@@ -89,16 +92,87 @@ export const LodgingDraggableCell = ({
   const isStartDay = isSameDay(parseISO(reservation.start_date), date);
   const isEndDay = reservation.end_date && isSameDay(parseISO(reservation.end_date), date);
 
+  const handleDragStart = (event: MouseEvent | TouchEvent | PointerEvent) => {
+    setIsDragging(true);
+    
+    // Store initial position
+    if ('clientX' in event) {
+      dragStartPos.current = { x: event.clientX, y: event.clientY };
+    } else if ('touches' in event && event.touches[0]) {
+      dragStartPos.current = { x: event.touches[0].clientX, y: event.touches[0].clientY };
+    }
+    
+    onDragStart(reservation);
+  };
+
+  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    setIsDragging(false);
+    
+    // Check if this was actually a drag (moved more than 10px)
+    const wasDragged = Math.abs(info.offset.x) > 10 || Math.abs(info.offset.y) > 10;
+    
+    if (!wasDragged) {
+      onDragEnd(reservation, undefined);
+      return;
+    }
+
+    // Get the point where the drag ended
+    let clientX: number, clientY: number;
+    if ('clientX' in event) {
+      clientX = event.clientX;
+      clientY = event.clientY;
+    } else if ('changedTouches' in event && event.changedTouches[0]) {
+      clientX = event.changedTouches[0].clientX;
+      clientY = event.changedTouches[0].clientY;
+    } else {
+      onDragEnd(reservation, undefined);
+      return;
+    }
+
+    // Find the drop zone element at the release point
+    // Temporarily hide this element to find what's underneath
+    const draggedElement = event.target as HTMLElement;
+    const originalPointerEvents = draggedElement.style.pointerEvents;
+    draggedElement.style.pointerEvents = 'none';
+    
+    const elementAtPoint = document.elementFromPoint(clientX, clientY);
+    draggedElement.style.pointerEvents = originalPointerEvents;
+
+    // Find the drop zone by traversing up from the element at point
+    let dropZone = elementAtPoint?.closest('[data-suite-id]') as HTMLElement | null;
+    
+    if (dropZone) {
+      const targetSuiteId = dropZone.dataset.suiteId;
+      // Handle 'null' string for unassigned zone
+      const suiteId = targetSuiteId === 'null' ? null : targetSuiteId;
+      onDragEnd(reservation, suiteId);
+    } else {
+      onDragEnd(reservation, undefined);
+    }
+  };
+
+  const handleClick = () => {
+    // Only trigger click if we weren't dragging
+    if (!isDragging) {
+      onPetClick(reservation);
+    }
+  };
+
   return (
     <motion.div
       drag
       dragSnapToOrigin
       dragElastic={0.1}
-      onDragStart={() => onDragStart(reservation)}
-      onDragEnd={onDragEnd}
-      whileDrag={{ scale: 1.05, zIndex: 50, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.2)' }}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      whileDrag={{ 
+        scale: 1.05, 
+        zIndex: 100, 
+        boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)',
+        cursor: 'grabbing',
+      }}
       className={cn(
-        "p-2 rounded cursor-grab active:cursor-grabbing transition-colors min-h-[50px] relative",
+        "p-2 rounded cursor-grab active:cursor-grabbing transition-colors min-h-[50px] relative touch-none",
         reservation.status === 'checked_in' && "bg-green-100 dark:bg-green-900/30",
         reservation.status === 'confirmed' && "bg-blue-100 dark:bg-blue-900/30",
         reservation.status === 'checked_out' && "bg-gray-100 dark:bg-gray-800",
@@ -108,7 +182,7 @@ export const LodgingDraggableCell = ({
       <div className="flex items-start justify-between gap-1">
         <div className="flex items-start gap-1 flex-1 min-w-0">
           <GripVertical className="h-4 w-4 text-muted-foreground/50 flex-shrink-0 mt-0.5" />
-          <div className="flex-1 min-w-0" onClick={() => onPetClick(reservation)}>
+          <div className="flex-1 min-w-0" onClick={handleClick}>
             <div className="font-medium text-sm truncate">{reservation.pet_name}</div>
             <div className="text-xs text-muted-foreground truncate">{reservation.client_name}</div>
             
