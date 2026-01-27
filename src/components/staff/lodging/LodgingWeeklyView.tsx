@@ -1,12 +1,13 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { format, addDays, isSameDay, isWithinInterval, parseISO } from 'date-fns';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BoardingReservation } from '@/pages/staff/StaffLodgingCalendar';
-import { LodgingCell } from './LodgingCell';
+import { LodgingDropZone } from './LodgingDropZone';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface Suite {
   id: string;
@@ -31,6 +32,8 @@ export const LodgingWeeklyView = ({
   onCreateBooking,
 }: LodgingWeeklyViewProps) => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [draggingReservation, setDraggingReservation] = useState<BoardingReservation | null>(null);
 
   // Generate week days
   const weekDays = useMemo(() => {
@@ -106,11 +109,11 @@ export const LodgingWeeklyView = ({
     },
   });
 
-  // Get reservation for a specific suite and day
-  const getReservationForCell = (suiteId: string, date: Date): BoardingReservation | undefined => {
-    if (!reservations) return undefined;
+  // Get ALL reservations for a specific suite and day (allows multiple pets)
+  const getReservationsForCell = (suiteId: string, date: Date): BoardingReservation[] => {
+    if (!reservations) return [];
 
-    return reservations.find((r) => {
+    return reservations.filter((r) => {
       if (r.suite_id !== suiteId) return false;
       
       const resStart = parseISO(r.start_date);
@@ -136,6 +139,43 @@ export const LodgingWeeklyView = ({
         isSameDay(date, resEnd) || 
         isWithinInterval(date, { start: resStart, end: resEnd });
     });
+  };
+
+  // Handle dropping a reservation onto a suite
+  const handleDropReservation = async (reservation: BoardingReservation, targetSuiteId: string | null) => {
+    try {
+      const { error } = await supabase
+        .from('reservations')
+        .update({ suite_id: targetSuiteId })
+        .eq('id', reservation.id);
+
+      if (error) throw error;
+
+      const suiteName = targetSuiteId 
+        ? suites?.find(s => s.id === targetSuiteId)?.name || 'suite'
+        : 'Unassigned';
+
+      toast({
+        title: 'Suite updated',
+        description: `${reservation.pet_name} moved to ${suiteName}`,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['boarding-reservations'] });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to move pet',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDragStart = (reservation: BoardingReservation) => {
+    setDraggingReservation(reservation);
+  };
+
+  const handleDragEnd = () => {
+    setDraggingReservation(null);
   };
 
   const isLoading = suitesLoading || reservationsLoading;
@@ -192,7 +232,7 @@ export const LodgingWeeklyView = ({
                   )}
                 </td>
                 {weekDays.map((day) => {
-                  const reservation = getReservationForCell(suite.id, day);
+                  const cellReservations = getReservationsForCell(suite.id, day);
                   return (
                     <td
                       key={day.toISOString()}
@@ -201,13 +241,17 @@ export const LodgingWeeklyView = ({
                         isSameDay(day, new Date()) && "bg-primary/5"
                       )}
                     >
-                      <LodgingCell
-                        reservation={reservation}
+                      <LodgingDropZone
+                        reservations={cellReservations}
                         date={day}
                         suiteId={suite.id}
                         onPetClick={onPetClick}
                         onAssignSuite={onAssignSuite}
                         onCreateBooking={onCreateBooking}
+                        onDropReservation={handleDropReservation}
+                        draggingReservation={draggingReservation}
+                        onDragStart={handleDragStart}
+                        onDragEnd={handleDragEnd}
                       />
                     </td>
                   );
@@ -230,20 +274,19 @@ export const LodgingWeeklyView = ({
                       isSameDay(day, new Date()) && "bg-primary/5"
                     )}
                   >
-                    <div className="space-y-1">
-                      {unassigned.map((r) => (
-                        <LodgingCell
-                          key={r.id}
-                          reservation={r}
-                          date={day}
-                          suiteId={null}
-                          onPetClick={onPetClick}
-                          onAssignSuite={onAssignSuite}
-                          onCreateBooking={onCreateBooking}
-                          isUnassigned
-                        />
-                      ))}
-                    </div>
+                    <LodgingDropZone
+                      reservations={unassigned}
+                      date={day}
+                      suiteId={null}
+                      onPetClick={onPetClick}
+                      onAssignSuite={onAssignSuite}
+                      onCreateBooking={onCreateBooking}
+                      onDropReservation={handleDropReservation}
+                      draggingReservation={draggingReservation}
+                      onDragStart={handleDragStart}
+                      onDragEnd={handleDragEnd}
+                      isUnassigned
+                    />
                   </td>
                 );
               })}
