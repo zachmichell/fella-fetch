@@ -38,6 +38,7 @@ interface ShopifyVariant {
 interface ShopifyProduct {
   id: string;
   title: string;
+  productType: string;
   variants: { edges: Array<{ node: ShopifyVariant }> };
 }
 
@@ -50,23 +51,22 @@ interface DurationEntry {
   hasChanged: boolean;
 }
 
-const COLLECTION_PRODUCTS_QUERY = `
-  query GetCollectionProducts($handle: String!) {
-    collection(handle: $handle) {
-      products(first: 100) {
-        edges {
-          node {
-            id
-            title
-            variants(first: 50) {
-              edges {
-                node {
-                  id
-                  title
-                  price {
-                    amount
-                    currencyCode
-                  }
+const GROOM_PRODUCTS_QUERY = `
+  query GetGroomProducts {
+    products(first: 100, query: "tag:Groom") {
+      edges {
+        node {
+          id
+          title
+          productType
+          variants(first: 50) {
+            edges {
+              node {
+                id
+                title
+                price {
+                  amount
+                  currencyCode
                 }
               }
             }
@@ -84,10 +84,7 @@ async function fetchGroomProducts(): Promise<ShopifyProduct[]> {
       'Content-Type': 'application/json',
       'X-Shopify-Storefront-Access-Token': SHOPIFY_STOREFRONT_TOKEN,
     },
-    body: JSON.stringify({ 
-      query: COLLECTION_PRODUCTS_QUERY,
-      variables: { handle: 'groom' }
-    }),
+    body: JSON.stringify({ query: GROOM_PRODUCTS_QUERY }),
   });
 
   if (!response.ok) {
@@ -99,7 +96,11 @@ async function fetchGroomProducts(): Promise<ShopifyProduct[]> {
     throw new Error(`Shopify error: ${data.errors.map((e: { message: string }) => e.message).join(', ')}`);
   }
 
-  return data.data.collection?.products?.edges?.map((edge: { node: ShopifyProduct }) => edge.node) || [];
+  // Filter to only include products with Groom/Grooming product type
+  const products = data.data.products?.edges?.map((edge: { node: ShopifyProduct }) => edge.node) || [];
+  return products.filter((p: ShopifyProduct) => 
+    p.productType === 'Groom' || p.productType === 'Grooming'
+  );
 }
 
 export function GroomerDurationsDialog({
