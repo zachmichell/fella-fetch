@@ -90,26 +90,41 @@ export function ShopifyProductSelector({ serviceTypeId, serviceTypeName }: Shopi
   const loadProducts = async (query?: string, collectionHandle?: string) => {
     setIsLoadingProducts(true);
     try {
-      if (collectionHandle && collectionHandle !== 'all') {
-        // Fetch products from specific collection
-        const products = await fetchCollectionProducts(collectionHandle, 100);
-        // Filter by search query if provided
-        if (query) {
-          const filtered = products.filter((p: ShopifyProduct) => 
-            p.node.title.toLowerCase().includes(query.toLowerCase())
+      // Always fetch all products and filter client-side for better results
+      // The Storefront API search has limitations with special characters and wildcards
+      const result = await fetchShopifyProducts(250);
+      
+      if (result?.edges) {
+        let products = result.edges;
+        
+        // Filter by collection if selected (client-side since collection products may be incomplete)
+        if (collectionHandle && collectionHandle !== 'all') {
+          // Also fetch collection products to know which product types match
+          const collectionProducts = await fetchCollectionProducts(collectionHandle, 100);
+          const collectionProductIds = new Set(
+            collectionProducts.map((p: ShopifyProduct) => p.node.id)
           );
-          setShopifyProducts(filtered);
-        } else {
-          setShopifyProducts(products);
+          
+          // Filter by product type matching collection title OR if product is in collection
+          const selectedCollection = collections.find(c => c.node.handle === collectionHandle);
+          const collectionTitle = selectedCollection?.node.title?.toUpperCase();
+          
+          products = products.filter((p: ShopifyProduct) => 
+            collectionProductIds.has(p.node.id) || 
+            p.node.productType?.toUpperCase() === collectionTitle
+          );
         }
-      } else {
-        // Fetch all products with optional search
-        // Use proper Storefront API search syntax for title search
-        const searchQuery = query ? `title:*${query}*` : undefined;
-        const result = await fetchShopifyProducts(100, searchQuery);
-        if (result?.edges) {
-          setShopifyProducts(result.edges);
+        
+        // Filter by search query (client-side for better matching)
+        if (query) {
+          const lowerQuery = query.toLowerCase();
+          products = products.filter((p: ShopifyProduct) => 
+            p.node.title.toLowerCase().includes(lowerQuery) ||
+            p.node.description?.toLowerCase().includes(lowerQuery)
+          );
         }
+        
+        setShopifyProducts(products);
       }
     } catch (error) {
       console.error('Error loading products:', error);
