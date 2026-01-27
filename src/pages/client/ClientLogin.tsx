@@ -1,49 +1,34 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { useShopifyCustomer } from '@/contexts/ShopifyCustomerContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Dog, Loader2, ArrowLeft } from 'lucide-react';
+import { Dog, Loader2, ArrowLeft, ShoppingBag } from 'lucide-react';
 import { z } from 'zod';
 
 const emailSchema = z.string().email('Please enter a valid email address');
-const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
+const passwordSchema = z.string().min(1, 'Password is required');
 
 const ClientLogin = () => {
   const navigate = useNavigate();
-  const { user, signIn, signUp, signOut, loading: authLoading, isStaffOrAdmin } = useAuth();
+  const { login, isAuthenticated, loading: authLoading } = useShopifyCustomer();
   const { toast } = useToast();
-  const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    firstName: '',
-    lastName: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (!authLoading && user && !isStaffOrAdmin) {
+    if (!authLoading && isAuthenticated) {
       navigate('/portal');
     }
-  }, [user, authLoading, isStaffOrAdmin, navigate]);
-
-  const checkUserIsStaff = async (userId: string): Promise<boolean> => {
-    const { data, error } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', userId)
-      .maybeSingle();
-    
-    if (error || !data) return false;
-    return data.role === 'staff' || data.role === 'admin';
-  };
+  }, [isAuthenticated, authLoading, navigate]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -58,15 +43,6 @@ const ClientLogin = () => {
       newErrors.password = passwordResult.error.errors[0].message;
     }
 
-    if (isSignUp) {
-      if (!formData.firstName.trim()) {
-        newErrors.firstName = 'First name is required';
-      }
-      if (!formData.lastName.trim()) {
-        newErrors.lastName = 'Last name is required';
-      }
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -79,63 +55,17 @@ const ClientLogin = () => {
     setLoading(true);
 
     try {
-      if (isSignUp) {
-        const { error } = await signUp(
-          formData.email,
-          formData.password,
-          formData.firstName,
-          formData.lastName
-        );
+      const { error } = await login(formData.email, formData.password);
 
-        if (error) {
-          if (error.message.includes('already registered')) {
-            toast({
-              title: 'Account exists',
-              description: 'This email is already registered. Please sign in instead.',
-              variant: 'destructive',
-            });
-          } else {
-            toast({
-              title: 'Sign up failed',
-              description: error.message,
-              variant: 'destructive',
-            });
-          }
-        } else {
-          toast({
-            title: 'Account created!',
-            description: 'Please check your email to confirm your account, or sign in now if email confirmation is disabled.',
-          });
-          setIsSignUp(false);
-        }
+      if (error) {
+        toast({
+          title: 'Sign in failed',
+          description: error || 'Invalid email or password. Please try again.',
+          variant: 'destructive',
+        });
       } else {
-        const { error } = await signIn(formData.email, formData.password);
-
-        if (error) {
-          toast({
-            title: 'Sign in failed',
-            description: 'Invalid email or password. Please try again.',
-            variant: 'destructive',
-          });
-        } else {
-          // Check if user is staff - they should use staff login
-          const { data: { user: currentUser } } = await supabase.auth.getUser();
-          if (currentUser) {
-            const isStaff = await checkUserIsStaff(currentUser.id);
-            if (isStaff) {
-              await signOut();
-              toast({
-                title: 'Staff Account Detected',
-                description: 'Please use the staff login portal to access your account.',
-                variant: 'destructive',
-              });
-              return;
-            }
-          }
-          
-          toast({ title: 'Welcome back!' });
-          navigate('/portal');
-        }
+        toast({ title: 'Welcome back!' });
+        navigate('/portal');
       }
     } finally {
       setLoading(false);
@@ -183,46 +113,14 @@ const ClientLogin = () => {
 
           <Card className="border-border/50 shadow-xl">
             <CardHeader className="text-center pb-2">
-              <CardTitle className="text-xl">
-                {isSignUp ? 'Create Account' : 'Welcome Back'}
-              </CardTitle>
-              <CardDescription>
-                {isSignUp
-                  ? 'Sign up to manage your pets and bookings'
-                  : 'Sign in to view your pets and appointments'}
+              <CardTitle className="text-xl">Welcome Back</CardTitle>
+              <CardDescription className="flex items-center justify-center gap-2">
+                <ShoppingBag className="h-4 w-4" />
+                Sign in with your Shopify account
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
-                {isSignUp && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="firstName">First Name</Label>
-                      <Input
-                        id="firstName"
-                        value={formData.firstName}
-                        onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                        placeholder="John"
-                      />
-                      {errors.firstName && (
-                        <p className="text-xs text-destructive">{errors.firstName}</p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="lastName">Last Name</Label>
-                      <Input
-                        id="lastName"
-                        value={formData.lastName}
-                        onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                        placeholder="Doe"
-                      />
-                      {errors.lastName && (
-                        <p className="text-xs text-destructive">{errors.lastName}</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <Input
@@ -254,27 +152,16 @@ const ClientLogin = () => {
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : isSignUp ? (
-                    'Create Account'
                   ) : (
                     'Sign In'
                   )}
                 </Button>
               </form>
 
-              <div className="mt-6 text-center">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsSignUp(!isSignUp);
-                    setErrors({});
-                  }}
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {isSignUp
-                    ? 'Already have an account? Sign in'
-                    : "Don't have an account? Sign up"}
-                </button>
+              <div className="mt-6 p-4 rounded-lg bg-muted/50 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Use your Shopify store account credentials to sign in and view your purchase history.
+                </p>
               </div>
 
               <div className="mt-4 pt-4 border-t border-border/50 text-center">

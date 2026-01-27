@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useShopifyCustomer } from '@/contexts/ShopifyCustomerContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -46,6 +47,7 @@ import {
   Pencil,
 } from 'lucide-react';
 import AIAssistantChat from '@/components/client/AIAssistantChat';
+import OrderHistory from '@/components/client/OrderHistory';
 import { format, isPast, isFuture, isToday, parseISO } from 'date-fns';
 import Header from '@/components/layout/Header';
 
@@ -90,7 +92,7 @@ interface ClientData {
 
 const ClientPortal = () => {
   const navigate = useNavigate();
-  const { user, signOut, loading: authLoading } = useAuth();
+  const { customer, logout: shopifyLogout, loading: shopifyLoading, isAuthenticated } = useShopifyCustomer();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [clientData, setClientData] = useState<ClientData | null>(null);
@@ -98,17 +100,9 @@ const ClientPortal = () => {
   const [noClientRecord, setNoClientRecord] = useState(false);
   const [addPetOpen, setAddPetOpen] = useState(false);
   const [addingPet, setAddingPet] = useState(false);
-  const [editProfileOpen, setEditProfileOpen] = useState(false);
-  const [editingProfile, setEditingProfile] = useState(false);
   const [editPetOpen, setEditPetOpen] = useState(false);
   const [editingPet, setEditingPet] = useState(false);
   const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
-  const [profileForm, setProfileForm] = useState({
-    first_name: '',
-    last_name: '',
-    phone: '',
-    address: '',
-  });
   const [petForm, setPetForm] = useState({
     name: '',
     breed: '',
@@ -125,23 +119,27 @@ const ClientPortal = () => {
     weight: '',
     color: '',
   });
+
   useEffect(() => {
-    if (!authLoading && !user) {
+    if (!shopifyLoading && !isAuthenticated) {
       navigate('/login');
     }
-  }, [user, authLoading, navigate]);
+  }, [isAuthenticated, shopifyLoading, navigate]);
 
   useEffect(() => {
-    if (user) {
+    if (isAuthenticated && customer?.email) {
       fetchClientData();
     }
-  }, [user]);
+  }, [isAuthenticated, customer?.email]);
 
   const fetchClientData = async () => {
-    if (!user) return;
+    if (!customer?.email) {
+      setLoading(false);
+      return;
+    }
 
     try {
-      // Fetch client record linked to this user
+      // Fetch client record linked to this email
       const { data: clientRecord, error: clientError } = await supabase
         .from('clients')
         .select(`
@@ -166,7 +164,7 @@ const ClientPortal = () => {
             photo_url
           )
         `)
-        .eq('user_id', user.id)
+        .eq('email', customer.email)
         .maybeSingle();
 
       if (clientError) throw clientError;
@@ -216,7 +214,7 @@ const ClientPortal = () => {
   };
 
   const handleSignOut = async () => {
-    await signOut();
+    await shopifyLogout();
     navigate('/');
   };
 
@@ -261,61 +259,6 @@ const ClientPortal = () => {
       });
     } finally {
       setAddingPet(false);
-    }
-  };
-
-  const openEditProfile = () => {
-    if (clientData) {
-      setProfileForm({
-        first_name: clientData.first_name || '',
-        last_name: clientData.last_name || '',
-        phone: clientData.phone || '',
-        address: clientData.address || '',
-      });
-      setEditProfileOpen(true);
-    }
-  };
-
-  const handleEditProfile = async () => {
-    if (!clientData || !profileForm.first_name.trim() || !profileForm.last_name.trim()) {
-      toast({
-        title: 'Error',
-        description: 'First and last name are required',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setEditingProfile(true);
-    try {
-      const { error } = await supabase
-        .from('clients')
-        .update({
-          first_name: profileForm.first_name.trim(),
-          last_name: profileForm.last_name.trim(),
-          phone: profileForm.phone.trim() || null,
-          address: profileForm.address.trim() || null,
-        })
-        .eq('id', clientData.id);
-
-      if (error) throw error;
-
-      toast({
-        title: 'Profile Updated',
-        description: 'Your profile has been updated successfully',
-      });
-
-      setEditProfileOpen(false);
-      fetchClientData();
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update profile. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setEditingProfile(false);
     }
   };
 
@@ -408,7 +351,7 @@ const ClientPortal = () => {
     isPast(parseISO(r.start_date)) && !isToday(parseISO(r.start_date))
   ).slice(0, 10);
 
-  if (authLoading || loading) {
+  if (shopifyLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -429,7 +372,7 @@ const ClientPortal = () => {
                 </div>
                 <CardTitle>No Client Profile Found</CardTitle>
                 <CardDescription>
-                  Your account isn't linked to a client profile yet. Please contact us to set up your account.
+                  Your Shopify account isn't linked to a client profile yet. Please contact us to set up your account.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -447,6 +390,9 @@ const ClientPortal = () => {
     );
   }
 
+  // Use Shopify customer data if no client data, otherwise merge them
+  const displayName = clientData?.first_name || customer?.firstName || 'Customer';
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -462,10 +408,10 @@ const ClientPortal = () => {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h1 className="text-3xl font-display font-semibold tracking-tight">
-                  Welcome, {clientData?.first_name}!
+                  Welcome, {displayName}!
                 </h1>
                 <p className="text-muted-foreground mt-1">
-                  Manage your pets and view your appointments
+                  Manage your pets and view your purchase history
                 </p>
               </div>
               <div className="flex gap-3">
@@ -488,291 +434,236 @@ const ClientPortal = () => {
                 {/* Profile Card */}
                 <Card>
                   <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <User className="h-5 w-5" />
-                        Your Profile
-                      </CardTitle>
-                      <Button size="sm" variant="ghost" onClick={openEditProfile} className="gap-1">
-                        <Pencil className="h-4 w-4" />
-                        Edit
-                      </Button>
-                    </div>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <User className="h-5 w-5" />
+                      Your Profile
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="flex items-center gap-2 text-sm">
                       <User className="h-4 w-4 text-muted-foreground" />
-                      <span>{clientData?.first_name} {clientData?.last_name}</span>
+                      <span>
+                        {customer?.firstName} {customer?.lastName}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <Mail className="h-4 w-4 text-muted-foreground" />
-                      <span>{clientData?.email || 'No email'}</span>
+                      <span>{customer?.email || 'No email'}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <Phone className="h-4 w-4 text-muted-foreground" />
-                      <span>{clientData?.phone || 'No phone'}</span>
+                      <span>{customer?.phone || clientData?.phone || 'No phone'}</span>
                     </div>
-                    {clientData?.address && (
+                    {customer?.defaultAddress && (
                       <div className="flex items-start gap-2 text-sm">
                         <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                        <span>{clientData.address}</span>
+                        <span>
+                          {[
+                            customer.defaultAddress.address1,
+                            customer.defaultAddress.city,
+                            customer.defaultAddress.province,
+                            customer.defaultAddress.zip,
+                          ].filter(Boolean).join(', ')}
+                        </span>
                       </div>
                     )}
                   </CardContent>
                 </Card>
 
-                {/* Edit Profile Dialog */}
-                <Dialog open={editProfileOpen} onOpenChange={setEditProfileOpen}>
-                  <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                      <DialogTitle>Edit Profile</DialogTitle>
-                      <DialogDescription>
-                        Update your contact information.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="grid gap-2">
-                          <Label htmlFor="edit-first-name">First Name *</Label>
-                          <Input
-                            id="edit-first-name"
-                            value={profileForm.first_name}
-                            onChange={(e) => setProfileForm(prev => ({ ...prev, first_name: e.target.value }))}
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="edit-last-name">Last Name *</Label>
-                          <Input
-                            id="edit-last-name"
-                            value={profileForm.last_name}
-                            onChange={(e) => setProfileForm(prev => ({ ...prev, last_name: e.target.value }))}
-                          />
-                        </div>
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="edit-phone">Phone</Label>
-                        <Input
-                          id="edit-phone"
-                          value={profileForm.phone}
-                          onChange={(e) => setProfileForm(prev => ({ ...prev, phone: e.target.value }))}
-                          placeholder="(555) 123-4567"
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="edit-address">Address</Label>
-                        <Textarea
-                          id="edit-address"
-                          value={profileForm.address}
-                          onChange={(e) => setProfileForm(prev => ({ ...prev, address: e.target.value }))}
-                          placeholder="123 Main St, City, State"
-                          rows={2}
-                        />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setEditProfileOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button onClick={handleEditProfile} disabled={editingProfile}>
-                        {editingProfile && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                        Save Changes
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-
-                {/* Pets Card */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <Dog className="h-5 w-5" />
-                        Your Pets ({clientData?.pets?.length || 0})
-                      </CardTitle>
-                      <Dialog open={addPetOpen} onOpenChange={setAddPetOpen}>
-                        <DialogTrigger asChild>
-                          <Button size="sm" variant="outline" className="gap-1">
-                            <Plus className="h-4 w-4" />
-                            Add Pet
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-md">
-                          <DialogHeader>
-                            <DialogTitle>Add a New Pet</DialogTitle>
-                            <DialogDescription>
-                              Enter your pet's information below.
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="grid gap-4 py-4">
-                            <div className="grid gap-2">
-                              <Label htmlFor="pet-name">Name *</Label>
-                              <Input
-                                id="pet-name"
-                                value={newPet.name}
-                                onChange={(e) => setNewPet(prev => ({ ...prev, name: e.target.value }))}
-                                placeholder="Enter pet's name"
-                              />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="grid gap-2">
-                                <Label htmlFor="pet-breed">Breed</Label>
-                                <Input
-                                  id="pet-breed"
-                                  value={newPet.breed}
-                                  onChange={(e) => setNewPet(prev => ({ ...prev, breed: e.target.value }))}
-                                  placeholder="e.g., Golden Retriever"
-                                />
-                              </div>
-                              <div className="grid gap-2">
-                                <Label htmlFor="pet-color">Color</Label>
-                                <Input
-                                  id="pet-color"
-                                  value={newPet.color}
-                                  onChange={(e) => setNewPet(prev => ({ ...prev, color: e.target.value }))}
-                                  placeholder="e.g., Golden"
-                                />
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="grid gap-2">
-                                <Label htmlFor="pet-gender">Gender</Label>
-                                <Select
-                                  value={newPet.gender}
-                                  onValueChange={(value) => setNewPet(prev => ({ ...prev, gender: value }))}
-                                >
-                                  <SelectTrigger id="pet-gender">
-                                    <SelectValue placeholder="Select" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="Male">Male</SelectItem>
-                                    <SelectItem value="Female">Female</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div className="grid gap-2">
-                                <Label htmlFor="pet-weight">Weight (lbs)</Label>
-                                <Input
-                                  id="pet-weight"
-                                  type="number"
-                                  value={newPet.weight}
-                                  onChange={(e) => setNewPet(prev => ({ ...prev, weight: e.target.value }))}
-                                  placeholder="e.g., 50"
-                                />
-                              </div>
-                            </div>
-                            <div className="grid gap-2">
-                              <Label htmlFor="pet-dob">Date of Birth</Label>
-                              <Input
-                                id="pet-dob"
-                                type="date"
-                                value={newPet.date_of_birth}
-                                onChange={(e) => setNewPet(prev => ({ ...prev, date_of_birth: e.target.value }))}
-                              />
-                            </div>
-                          </div>
-                          <DialogFooter>
-                            <Button variant="outline" onClick={() => setAddPetOpen(false)}>
-                              Cancel
-                            </Button>
-                            <Button onClick={handleAddPet} disabled={addingPet}>
-                              {addingPet && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {/* Pets Card - Only show if client data exists */}
+                {clientData && (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <Dog className="h-5 w-5" />
+                          Your Pets ({clientData?.pets?.length || 0})
+                        </CardTitle>
+                        <Dialog open={addPetOpen} onOpenChange={setAddPetOpen}>
+                          <DialogTrigger asChild>
+                            <Button size="sm" variant="outline" className="gap-1">
+                              <Plus className="h-4 w-4" />
                               Add Pet
                             </Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    {clientData?.pets && clientData.pets.length > 0 ? (
-                      <div className="space-y-4">
-                        {clientData.pets.map((pet) => (
-                          <div
-                            key={pet.id}
-                            className="p-4 rounded-lg border bg-muted/30"
-                          >
-                            <div className="flex items-start justify-between">
-                              <div className="flex items-center gap-3">
-                                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                                  <Dog className="h-6 w-6 text-primary" />
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-md">
+                            <DialogHeader>
+                              <DialogTitle>Add a New Pet</DialogTitle>
+                              <DialogDescription>
+                                Enter your pet's information below.
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                              <div className="grid gap-2">
+                                <Label htmlFor="pet-name">Name *</Label>
+                                <Input
+                                  id="pet-name"
+                                  value={newPet.name}
+                                  onChange={(e) => setNewPet(prev => ({ ...prev, name: e.target.value }))}
+                                  placeholder="Enter pet's name"
+                                />
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="grid gap-2">
+                                  <Label htmlFor="pet-breed">Breed</Label>
+                                  <Input
+                                    id="pet-breed"
+                                    value={newPet.breed}
+                                    onChange={(e) => setNewPet(prev => ({ ...prev, breed: e.target.value }))}
+                                    placeholder="e.g., Golden Retriever"
+                                  />
                                 </div>
-                                <div>
-                                  <p className="font-semibold">{pet.name}</p>
-                                  <p className="text-sm text-muted-foreground">
-                                    {pet.breed || 'Unknown breed'}
-                                  </p>
+                                <div className="grid gap-2">
+                                  <Label htmlFor="pet-color">Color</Label>
+                                  <Input
+                                    id="pet-color"
+                                    value={newPet.color}
+                                    onChange={(e) => setNewPet(prev => ({ ...prev, color: e.target.value }))}
+                                    placeholder="e.g., Golden"
+                                  />
                                 </div>
                               </div>
-                              <Button 
-                                size="sm" 
-                                variant="ghost" 
-                                onClick={() => openEditPet(pet)}
-                                className="gap-1"
-                              >
-                                <Pencil className="h-4 w-4" />
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="grid gap-2">
+                                  <Label htmlFor="pet-gender">Gender</Label>
+                                  <Select
+                                    value={newPet.gender}
+                                    onValueChange={(value) => setNewPet(prev => ({ ...prev, gender: value }))}
+                                  >
+                                    <SelectTrigger id="pet-gender">
+                                      <SelectValue placeholder="Select" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="Male">Male</SelectItem>
+                                      <SelectItem value="Female">Female</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="grid gap-2">
+                                  <Label htmlFor="pet-weight">Weight (lbs)</Label>
+                                  <Input
+                                    id="pet-weight"
+                                    type="number"
+                                    value={newPet.weight}
+                                    onChange={(e) => setNewPet(prev => ({ ...prev, weight: e.target.value }))}
+                                    placeholder="e.g., 50"
+                                  />
+                                </div>
+                              </div>
+                              <div className="grid gap-2">
+                                <Label htmlFor="pet-dob">Date of Birth</Label>
+                                <Input
+                                  id="pet-dob"
+                                  type="date"
+                                  value={newPet.date_of_birth}
+                                  onChange={(e) => setNewPet(prev => ({ ...prev, date_of_birth: e.target.value }))}
+                                />
+                              </div>
+                            </div>
+                            <DialogFooter>
+                              <Button variant="outline" onClick={() => setAddPetOpen(false)}>
+                                Cancel
                               </Button>
-                            </div>
-                            
-                            <Separator className="my-3" />
-                            
-                            <div>
-                              <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
-                                <Syringe className="h-3 w-3" />
-                                Vaccinations
-                              </p>
-                              <div className="flex flex-wrap gap-2">
-                                <Badge 
-                                  variant="outline"
-                                  className={isVaccinationExpired(pet.vaccination_rabies) 
-                                    ? 'border-destructive text-destructive' 
-                                    : 'border-green-500 text-green-600'}
+                              <Button onClick={handleAddPet} disabled={addingPet}>
+                                {addingPet && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                                Add Pet
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {clientData?.pets && clientData.pets.length > 0 ? (
+                        <div className="space-y-4">
+                          {clientData.pets.map((pet) => (
+                            <div
+                              key={pet.id}
+                              className="p-4 rounded-lg border bg-muted/30"
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex items-center gap-3">
+                                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                                    <Dog className="h-6 w-6 text-primary" />
+                                  </div>
+                                  <div>
+                                    <p className="font-semibold">{pet.name}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      {pet.breed || 'Unknown breed'}
+                                    </p>
+                                  </div>
+                                </div>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  onClick={() => openEditPet(pet)}
+                                  className="gap-1"
                                 >
-                                  Rabies {isVaccinationExpired(pet.vaccination_rabies) && (
-                                    <AlertCircle className="h-3 w-3 ml-1" />
-                                  )}
-                                </Badge>
-                                <Badge 
-                                  variant="outline"
-                                  className={isVaccinationExpired(pet.vaccination_bordetella) 
-                                    ? 'border-destructive text-destructive' 
-                                    : 'border-green-500 text-green-600'}
-                                >
-                                  Bordetella {isVaccinationExpired(pet.vaccination_bordetella) && (
-                                    <AlertCircle className="h-3 w-3 ml-1" />
-                                  )}
-                                </Badge>
-                                <Badge 
-                                  variant="outline"
-                                  className={isVaccinationExpired(pet.vaccination_distemper) 
-                                    ? 'border-destructive text-destructive' 
-                                    : 'border-green-500 text-green-600'}
-                                >
-                                  DHPP {isVaccinationExpired(pet.vaccination_distemper) && (
-                                    <AlertCircle className="h-3 w-3 ml-1" />
-                                  )}
-                                </Badge>
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              
+                              <Separator className="my-3" />
+                              
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                                  <Syringe className="h-3 w-3" />
+                                  Vaccinations
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                  <Badge 
+                                    variant="outline"
+                                    className={isVaccinationExpired(pet.vaccination_rabies) 
+                                      ? 'border-destructive text-destructive' 
+                                      : 'border-green-500 text-green-600'}
+                                  >
+                                    Rabies {isVaccinationExpired(pet.vaccination_rabies) && (
+                                      <AlertCircle className="h-3 w-3 ml-1" />
+                                    )}
+                                  </Badge>
+                                  <Badge 
+                                    variant="outline"
+                                    className={isVaccinationExpired(pet.vaccination_bordetella) 
+                                      ? 'border-destructive text-destructive' 
+                                      : 'border-green-500 text-green-600'}
+                                  >
+                                    Bordetella {isVaccinationExpired(pet.vaccination_bordetella) && (
+                                      <AlertCircle className="h-3 w-3 ml-1" />
+                                    )}
+                                  </Badge>
+                                  <Badge 
+                                    variant="outline"
+                                    className={isVaccinationExpired(pet.vaccination_distemper) 
+                                      ? 'border-destructive text-destructive' 
+                                      : 'border-green-500 text-green-600'}
+                                  >
+                                    DHPP {isVaccinationExpired(pet.vaccination_distemper) && (
+                                      <AlertCircle className="h-3 w-3 ml-1" />
+                                    )}
+                                  </Badge>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-6 text-muted-foreground">
-                        <Dog className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                        <p>No pets registered yet</p>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="mt-3 gap-1"
-                          onClick={() => setAddPetOpen(true)}
-                        >
-                          <Plus className="h-4 w-4" />
-                          Add Your First Pet
-                        </Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-6 text-muted-foreground">
+                          <Dog className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                          <p>No pets registered yet</p>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="mt-3 gap-1"
+                            onClick={() => setAddPetOpen(true)}
+                          >
+                            <Plus className="h-4 w-4" />
+                            Add Your First Pet
+                          </Button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Edit Pet Dialog */}
                 <Dialog open={editPetOpen} onOpenChange={setEditPetOpen}>
@@ -859,14 +750,19 @@ const ClientPortal = () => {
                 </Dialog>
               </div>
 
+              {/* Middle Column - Purchase History */}
+              <div className="lg:col-span-1 space-y-6">
+                <OrderHistory />
+              </div>
+
               {/* Right Column - Appointments */}
-              <div className="lg:col-span-2 space-y-6">
+              <div className="lg:col-span-1 space-y-6">
                 {/* Upcoming Appointments */}
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-lg flex items-center gap-2">
                       <CalendarDays className="h-5 w-5" />
-                      Upcoming Appointments ({upcomingReservations.length})
+                      Upcoming Appointments
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -875,43 +771,41 @@ const ClientPortal = () => {
                         {upcomingReservations.map((reservation) => (
                           <div
                             key={reservation.id}
-                            className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/30 transition-colors"
+                            className="p-3 rounded-lg border bg-muted/30"
                           >
-                            <div className="flex items-center gap-4">
-                              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                                <Calendar className="h-6 w-6 text-primary" />
-                              </div>
+                            <div className="flex items-start justify-between mb-2">
                               <div>
-                                <div className="flex items-center gap-2">
-                                  <p className="font-semibold capitalize">
-                                    {reservation.service_type}
-                                  </p>
-                                  <Badge className={getStatusColor(reservation.status)}>
-                                    {reservation.status.replace('_', ' ')}
-                                  </Badge>
-                                </div>
-                                <p className="text-sm text-muted-foreground">
-                                  {reservation.pet?.name} • {format(parseISO(reservation.start_date), 'EEEE, MMMM d, yyyy')}
+                                <p className="font-medium">{reservation.pet.name}</p>
+                                <p className="text-sm text-muted-foreground capitalize">
+                                  {reservation.service_type}
                                 </p>
-                                {reservation.start_time && (
-                                  <p className="text-sm text-muted-foreground flex items-center gap-1">
-                                    <Clock className="h-3 w-3" />
-                                    {reservation.start_time}
-                                    {reservation.end_time && ` - ${reservation.end_time}`}
-                                  </p>
-                                )}
                               </div>
+                              <Badge variant="outline" className={getStatusColor(reservation.status)}>
+                                {reservation.status.replace('_', ' ')}
+                              </Badge>
                             </div>
-                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                {format(parseISO(reservation.start_date), 'MMM d, yyyy')}
+                              </div>
+                              {reservation.start_time && (
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {format(parseISO(`2000-01-01T${reservation.start_time}`), 'h:mm a')}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center py-8 text-muted-foreground">
+                      <div className="text-center py-6 text-muted-foreground">
                         <Calendar className="h-12 w-12 mx-auto mb-2 opacity-50" />
                         <p>No upcoming appointments</p>
-                        <Link to="/book" className="mt-2 inline-block">
-                          <Button variant="outline" size="sm">
+                        <Link to="/book">
+                          <Button variant="outline" size="sm" className="mt-3 gap-1">
+                            <Plus className="h-4 w-4" />
                             Book Now
                           </Button>
                         </Link>
@@ -921,62 +815,51 @@ const ClientPortal = () => {
                 </Card>
 
                 {/* Past Appointments */}
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <History className="h-5 w-5" />
-                      Past Appointments
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {pastReservations.length > 0 ? (
+                {pastReservations.length > 0 && (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <History className="h-5 w-5" />
+                        Past Appointments
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
                       <div className="space-y-2">
-                        {pastReservations.map((reservation) => (
+                        {pastReservations.slice(0, 5).map((reservation) => (
                           <div
                             key={reservation.id}
-                            className="flex items-center justify-between p-3 rounded-lg border bg-muted/20"
+                            className="p-2 rounded-lg flex items-center justify-between text-sm"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
-                                <Calendar className="h-5 w-5 text-muted-foreground" />
-                              </div>
-                              <div>
-                                <p className="font-medium capitalize text-sm">
-                                  {reservation.service_type} - {reservation.pet?.name}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {format(parseISO(reservation.start_date), 'MMM d, yyyy')}
-                                </p>
-                              </div>
+                              <span className="font-medium">{reservation.pet.name}</span>
+                              <span className="text-muted-foreground capitalize">
+                                {reservation.service_type}
+                              </span>
                             </div>
-                            <Badge variant="outline" className="text-xs">
-                              {reservation.status.replace('_', ' ')}
-                            </Badge>
+                            <span className="text-muted-foreground">
+                              {format(parseISO(reservation.start_date), 'MMM d')}
+                            </span>
                           </div>
                         ))}
                       </div>
-                    ) : (
-                      <div className="text-center py-6 text-muted-foreground">
-                        <p className="text-sm">No past appointments</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             </div>
+
+            {/* AI Assistant */}
+            {clientData && (
+              <AIAssistantChat
+                clientId={clientData.id}
+                clientName={`${clientData.first_name} ${clientData.last_name}`}
+                threadId={clientData.thread_id}
+                onThreadIdUpdate={() => fetchClientData()}
+              />
+            )}
           </motion.div>
         </div>
       </main>
-
-      {/* AI Assistant Chat */}
-      {clientData && (
-        <AIAssistantChat 
-          clientId={clientData.id} 
-          clientName={clientData.first_name}
-          threadId={clientData.thread_id}
-          onThreadIdUpdate={(threadId) => setClientData(prev => prev ? { ...prev, thread_id: threadId } : null)}
-        />
-      )}
     </div>
   );
 };
