@@ -53,7 +53,7 @@ interface DurationEntry {
 
 const GROOM_PRODUCTS_QUERY = `
   query GetGroomProducts {
-    products(first: 100, query: "tag:Groom") {
+    products(first: 100, query: "product_type:Groom") {
       edges {
         node {
           id
