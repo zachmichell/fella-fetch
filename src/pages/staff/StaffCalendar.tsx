@@ -1,37 +1,60 @@
 import { useEffect, useState } from 'react';
 import { StaffLayout } from '@/components/staff/StaffLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
   ChevronLeft, 
   ChevronRight, 
-  Plus,
+  Loader2,
   Dog,
-  Loader2
+  BedDouble,
+  Scissors,
+  GraduationCap
 } from 'lucide-react';
 import { format, addDays, startOfWeek, addWeeks, subWeeks, isSameDay } from 'date-fns';
 
 interface Reservation {
   id: string;
-  pet_name: string;
-  client_name: string;
   service_type: string;
   status: string;
   start_date: string;
-  end_date: string | null;
-  start_time: string | null;
-  end_time: string | null;
 }
 
-const serviceColors: Record<string, string> = {
-  daycare: 'bg-blue-100 text-blue-800 border-blue-200',
-  boarding: 'bg-purple-100 text-purple-800 border-purple-200',
-  grooming: 'bg-pink-100 text-pink-800 border-pink-200',
-  training: 'bg-green-100 text-green-800 border-green-200',
+interface ServiceCount {
+  type: string;
+  count: number;
+  icon: React.ReactNode;
+  color: string;
+  bgColor: string;
+}
+
+const serviceConfig: Record<string, { icon: React.ReactNode; color: string; bgColor: string; label: string }> = {
+  daycare: { 
+    icon: <Dog className="h-3.5 w-3.5" />, 
+    color: 'text-blue-700', 
+    bgColor: 'bg-blue-100',
+    label: 'Daycare'
+  },
+  boarding: { 
+    icon: <BedDouble className="h-3.5 w-3.5" />, 
+    color: 'text-purple-700', 
+    bgColor: 'bg-purple-100',
+    label: 'Boarding'
+  },
+  grooming: { 
+    icon: <Scissors className="h-3.5 w-3.5" />, 
+    color: 'text-pink-700', 
+    bgColor: 'bg-pink-100',
+    label: 'Grooming'
+  },
+  training: { 
+    icon: <GraduationCap className="h-3.5 w-3.5" />, 
+    color: 'text-green-700', 
+    bgColor: 'bg-green-100',
+    label: 'Training'
+  },
 };
 
 const StaffCalendar = () => {
@@ -39,7 +62,6 @@ const StaffCalendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<string>('all');
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -56,43 +78,14 @@ const StaffCalendar = () => {
     try {
       const { data, error } = await supabase
         .from('reservations')
-        .select(`
-          id,
-          service_type,
-          status,
-          start_date,
-          end_date,
-          start_time,
-          end_time,
-          pets (
-            name,
-            clients (
-              first_name,
-              last_name
-            )
-          )
-        `)
+        .select('id, service_type, status, start_date')
         .gte('start_date', startDate)
         .lte('start_date', endDate)
-        .order('start_time', { ascending: true });
+        .neq('status', 'cancelled');
 
       if (error) throw error;
 
-      const formattedReservations = data?.map((r: any) => ({
-        id: r.id,
-        pet_name: r.pets?.name || 'Unknown',
-        client_name: r.pets?.clients 
-          ? `${r.pets.clients.first_name} ${r.pets.clients.last_name}`
-          : 'Unknown',
-        service_type: r.service_type,
-        status: r.status,
-        start_date: r.start_date,
-        end_date: r.end_date,
-        start_time: r.start_time,
-        end_time: r.end_time,
-      })) || [];
-
-      setReservations(formattedReservations);
+      setReservations(data || []);
     } catch (error) {
       console.error('Error fetching reservations:', error);
     } finally {
@@ -104,12 +97,29 @@ const StaffCalendar = () => {
     fetchReservations();
   }, [currentDate, isStaffOrAdmin]);
 
-  const getReservationsForDay = (date: Date) => {
+  const getServiceCountsForDay = (date: Date): ServiceCount[] => {
     const dateStr = format(date, 'yyyy-MM-dd');
-    return reservations.filter(r => {
-      if (activeTab !== 'all' && r.service_type !== activeTab) return false;
-      return r.start_date === dateStr;
+    const dayReservations = reservations.filter(r => r.start_date === dateStr);
+    
+    // Count by service type
+    const counts: Record<string, number> = {};
+    dayReservations.forEach(r => {
+      counts[r.service_type] = (counts[r.service_type] || 0) + 1;
     });
+
+    // Convert to array with config
+    return Object.entries(counts).map(([type, count]) => ({
+      type,
+      count,
+      icon: serviceConfig[type]?.icon || <Dog className="h-3.5 w-3.5" />,
+      color: serviceConfig[type]?.color || 'text-gray-700',
+      bgColor: serviceConfig[type]?.bgColor || 'bg-gray-100',
+    }));
+  };
+
+  const getTotalForDay = (date: Date): number => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    return reservations.filter(r => r.start_date === dateStr).length;
   };
 
   const goToToday = () => setCurrentDate(new Date());
@@ -123,26 +133,11 @@ const StaffCalendar = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Calendar</h1>
-            <p className="text-muted-foreground">Manage reservations and appointments</p>
+            <p className="text-muted-foreground">Weekly overview of reservations</p>
           </div>
-          <Button className="gap-2">
-            <Plus className="h-4 w-4" />
-            New Reservation
-          </Button>
         </div>
 
-        {/* Filter Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="all">All Services</TabsTrigger>
-            <TabsTrigger value="daycare">Daycare</TabsTrigger>
-            <TabsTrigger value="boarding">Boarding</TabsTrigger>
-            <TabsTrigger value="grooming">Grooming</TabsTrigger>
-            <TabsTrigger value="training">Training</TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        {/* Calendar Navigation */}
+        {/* Calendar */}
         <Card>
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
@@ -186,31 +181,48 @@ const StaffCalendar = () => {
 
                 {/* Day Content */}
                 {weekDays.map((day, index) => {
-                  const dayReservations = getReservationsForDay(day);
+                  const serviceCounts = getServiceCountsForDay(day);
+                  const total = getTotalForDay(day);
+                  
                   return (
                     <div 
                       key={`content-${index}`}
-                      className="min-h-[200px] border rounded-lg p-2 space-y-1"
+                      className="min-h-[140px] border rounded-lg p-3 space-y-2"
                     >
-                      {dayReservations.length === 0 ? (
+                      {total === 0 ? (
                         <p className="text-xs text-muted-foreground text-center py-4">
                           No reservations
                         </p>
                       ) : (
-                        dayReservations.map((reservation) => (
-                          <div 
-                            key={reservation.id}
-                            className={`p-2 rounded border text-xs cursor-pointer hover:opacity-80 transition-opacity ${
-                              serviceColors[reservation.service_type] || 'bg-gray-100'
-                            }`}
-                          >
-                            <p className="font-medium truncate">{reservation.pet_name}</p>
-                            <p className="truncate opacity-75">{reservation.client_name}</p>
-                            {reservation.start_time && (
-                              <p className="opacity-75">{reservation.start_time.slice(0, 5)}</p>
-                            )}
+                        <>
+                          {/* Service type counts */}
+                          <div className="space-y-1.5">
+                            {serviceCounts.map((service) => (
+                              <div 
+                                key={service.type}
+                                className={`flex items-center justify-between px-2 py-1.5 rounded ${service.bgColor}`}
+                              >
+                                <div className={`flex items-center gap-1.5 ${service.color}`}>
+                                  {service.icon}
+                                  <span className="text-xs font-medium capitalize">
+                                    {serviceConfig[service.type]?.label || service.type}
+                                  </span>
+                                </div>
+                                <span className={`text-sm font-semibold ${service.color}`}>
+                                  {service.count}
+                                </span>
+                              </div>
+                            ))}
                           </div>
-                        ))
+                          
+                          {/* Total */}
+                          <div className="pt-1 border-t">
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                              <span>Total</span>
+                              <span className="font-semibold text-foreground">{total}</span>
+                            </div>
+                          </div>
+                        </>
                       )}
                     </div>
                   );
@@ -222,22 +234,14 @@ const StaffCalendar = () => {
 
         {/* Legend */}
         <div className="flex flex-wrap gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-blue-200 border border-blue-300" />
-            <span className="text-sm text-muted-foreground">Daycare</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-purple-200 border border-purple-300" />
-            <span className="text-sm text-muted-foreground">Boarding</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-pink-200 border border-pink-300" />
-            <span className="text-sm text-muted-foreground">Grooming</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-green-200 border border-green-300" />
-            <span className="text-sm text-muted-foreground">Training</span>
-          </div>
+          {Object.entries(serviceConfig).map(([type, config]) => (
+            <div key={type} className="flex items-center gap-2">
+              <div className={`w-6 h-6 rounded flex items-center justify-center ${config.bgColor} ${config.color}`}>
+                {config.icon}
+              </div>
+              <span className="text-sm text-muted-foreground">{config.label}</span>
+            </div>
+          ))}
         </div>
       </div>
     </StaffLayout>
