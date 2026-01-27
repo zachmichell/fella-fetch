@@ -178,6 +178,58 @@ const COLLECTIONS_QUERY = `
   }
 `;
 
+const COLLECTION_PRODUCTS_QUERY = `
+  query GetCollectionProducts($handle: String!, $first: Int!) {
+    collection(handle: $handle) {
+      id
+      title
+      products(first: $first) {
+        edges {
+          node {
+            id
+            title
+            description
+            handle
+            productType
+            vendor
+            priceRange {
+              minVariantPrice {
+                amount
+                currencyCode
+              }
+            }
+            images(first: 1) {
+              edges {
+                node {
+                  url
+                  altText
+                }
+              }
+            }
+            variants(first: 10) {
+              edges {
+                node {
+                  id
+                  title
+                  price {
+                    amount
+                    currencyCode
+                  }
+                  availableForSale
+                  selectedOptions {
+                    name
+                    value
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
 export async function fetchShopifyProducts(first: number = 50, query?: string, after?: string) {
   const data = await storefrontApiRequest(PRODUCTS_QUERY, { first, query, after });
   return data?.data?.products;
@@ -186,6 +238,11 @@ export async function fetchShopifyProducts(first: number = 50, query?: string, a
 export async function fetchShopifyCollections(first: number = 50, after?: string) {
   const data = await storefrontApiRequest(COLLECTIONS_QUERY, { first, after });
   return data?.data?.collections;
+}
+
+export async function fetchCollectionProducts(handle: string, first: number = 50) {
+  const data = await storefrontApiRequest(COLLECTION_PRODUCTS_QUERY, { handle, first });
+  return data?.data?.collection?.products?.edges || [];
 }
 
 export function getProductIdFromGid(gid: string): string {

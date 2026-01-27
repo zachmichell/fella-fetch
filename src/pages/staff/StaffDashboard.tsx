@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { StaffLayout } from '@/components/staff/StaffLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ControlCenterTable, ControlCenterReservation } from '@/components/staff/ControlCenterTable';
-import { AddServiceDialog } from '@/components/staff/AddServiceDialog';
+import { AddServiceDialog, type SelectedService } from '@/components/staff/AddServiceDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePetActivityLog } from '@/hooks/usePetActivityLog';
@@ -317,7 +317,7 @@ const StaffDashboard = () => {
     setAddServiceOpen(true);
   };
 
-  const handleServicesAdded = async (services: string[], notes: string) => {
+  const handleServicesAdded = async (services: SelectedService[], notes: string) => {
     if (!selectedReservation) return;
 
     // Log the additional services
@@ -328,7 +328,7 @@ const StaffDashboard = () => {
       actionCategory: 'service',
       description: `Additional services added for ${selectedReservation.pet_name}`,
       details: {
-        services,
+        services: services.map(s => ({ id: s.id, title: s.title, price: s.price })),
         notes,
       }
     });
