@@ -33,8 +33,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Check, ChevronsUpDown, Scissors } from 'lucide-react';
+import { Check, ChevronsUpDown, Scissors, Clock, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+
+const SHOPIFY_API_VERSION = '2025-07';
+const SHOPIFY_STORE_PERMANENT_DOMAIN = 'fella-fetch.myshopify.com';
+const SHOPIFY_STOREFRONT_URL = `https://${SHOPIFY_STORE_PERMANENT_DOMAIN}/api/${SHOPIFY_API_VERSION}/graphql.json`;
+const SHOPIFY_STOREFRONT_TOKEN = 'a04512bd10f188f5e1fe71bf8bb4517f';
 
 interface CreateGroomingDialogProps {
   open: boolean;
@@ -56,6 +62,28 @@ interface PetWithClient {
   };
 }
 
+interface ShopifyVariant {
+  id: string;
+  title: string;
+  price: { amount: string; currencyCode: string };
+}
+
+interface ShopifyProduct {
+  id: string;
+  title: string;
+  productType: string;
+  variants: { edges: Array<{ node: ShopifyVariant }> };
+}
+
+interface ServiceOption {
+  productId: string;
+  productTitle: string;
+  variantId: string;
+  variantTitle: string;
+  price: string;
+  displayName: string;
+}
+
 // Generate time options in 15-min increments
 const generateTimeOptions = () => {
   const options: string[] = [];
@@ -69,13 +97,55 @@ const generateTimeOptions = () => {
 
 const TIME_OPTIONS = generateTimeOptions();
 
-const DURATION_OPTIONS = [
-  { value: '30', label: '30 minutes' },
-  { value: '45', label: '45 minutes' },
-  { value: '60', label: '1 hour' },
-  { value: '90', label: '1.5 hours' },
-  { value: '120', label: '2 hours' },
-];
+const DEFAULT_DURATION = 60; // Default duration in minutes if no custom duration set
+
+const GROOM_PRODUCTS_QUERY = `
+  query GetGroomProducts {
+    products(first: 100, query: "product_type:Groom") {
+      edges {
+        node {
+          id
+          title
+          productType
+          variants(first: 50) {
+            edges {
+              node {
+                id
+                title
+                price {
+                  amount
+                  currencyCode
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
+async function fetchGroomProducts(): Promise<ShopifyProduct[]> {
+  const response = await fetch(SHOPIFY_STOREFRONT_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Shopify-Storefront-Access-Token': SHOPIFY_STOREFRONT_TOKEN,
+    },
+    body: JSON.stringify({ query: GROOM_PRODUCTS_QUERY }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  const data = await response.json();
+  if (data.errors) {
+    throw new Error(`Shopify error: ${data.errors.map((e: { message: string }) => e.message).join(', ')}`);
+  }
+
+  return data.data.products?.edges?.map((edge: { node: ShopifyProduct }) => edge.node) || [];
+}
 
 export const CreateGroomingDialog = ({
   open,
@@ -91,19 +161,80 @@ export const CreateGroomingDialog = ({
   const [selectedPetId, setSelectedPetId] = useState<string>('');
   const [petSearchOpen, setPetSearchOpen] = useState(false);
   const [selectedStartTime, setSelectedStartTime] = useState<string>(startTime || '09:00');
-  const [duration, setDuration] = useState<string>('60');
+  const [selectedService, setSelectedService] = useState<string>('');
+  const [serviceSearchOpen, setServiceSearchOpen] = useState(false);
+  const [duration, setDuration] = useState<number>(DEFAULT_DURATION);
+  const [isCustomDuration, setIsCustomDuration] = useState(false);
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Fetch Shopify grooming products
+  const { data: products = [] } = useQuery({
+    queryKey: ['shopify-groom-products'],
+    queryFn: fetchGroomProducts,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Build service options from products
+  const serviceOptions: ServiceOption[] = products.flatMap((product) =>
+    product.variants.edges.map(({ node: variant }) => ({
+      productId: product.id,
+      productTitle: product.title,
+      variantId: variant.id,
+      variantTitle: variant.title,
+      price: variant.price.amount,
+      displayName: variant.title === 'Default Title' 
+        ? product.title 
+        : `${product.title} - ${variant.title}`,
+    }))
+  );
+
+  const selectedServiceOption = serviceOptions.find(s => s.variantId === selectedService);
+
+  // Fetch groomer's custom durations
+  const { data: groomerDurations = [] } = useQuery({
+    queryKey: ['groomer-durations', groomerId],
+    queryFn: async () => {
+      if (!groomerId) return [];
+      const { data, error } = await supabase
+        .from('groomer_service_durations')
+        .select('*')
+        .eq('groomer_id', groomerId);
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!groomerId,
+  });
 
   // Reset form when dialog opens
   useEffect(() => {
     if (open) {
       setSelectedStartTime(startTime || '09:00');
       setSelectedPetId('');
-      setDuration('60');
+      setSelectedService('');
+      setDuration(DEFAULT_DURATION);
+      setIsCustomDuration(false);
       setNotes('');
     }
   }, [open, startTime]);
+
+  // Auto-update duration when service or groomer changes
+  useEffect(() => {
+    if (selectedService && groomerId) {
+      const customDuration = groomerDurations.find(
+        (d) => d.shopify_variant_id === selectedService
+      );
+      
+      if (customDuration) {
+        setDuration(customDuration.duration_minutes);
+        setIsCustomDuration(true);
+      } else {
+        setDuration(DEFAULT_DURATION);
+        setIsCustomDuration(false);
+      }
+    }
+  }, [selectedService, groomerId, groomerDurations]);
 
   // Fetch all active pets with their clients
   const { data: pets = [] } = useQuery({
@@ -134,7 +265,7 @@ export const CreateGroomingDialog = ({
   const calculateEndTime = () => {
     if (!selectedStartTime) return '';
     const startDate = parse(selectedStartTime, 'HH:mm', new Date());
-    const endDate = addMinutes(startDate, parseInt(duration));
+    const endDate = addMinutes(startDate, duration);
     return format(endDate, 'HH:mm');
   };
 
@@ -153,6 +284,12 @@ export const CreateGroomingDialog = ({
     try {
       const endTime = calculateEndTime();
       
+      // Include service info in notes if selected
+      const serviceNote = selectedServiceOption 
+        ? `Service: ${selectedServiceOption.displayName} ($${parseFloat(selectedServiceOption.price).toFixed(2)})`
+        : '';
+      const fullNotes = [serviceNote, notes].filter(Boolean).join('\n');
+      
       const { error } = await supabase.from('reservations').insert({
         pet_id: selectedPetId,
         service_type: 'grooming',
@@ -161,7 +298,8 @@ export const CreateGroomingDialog = ({
         start_time: `${selectedStartTime}:00`,
         end_time: `${endTime}:00`,
         groomer_id: groomerId,
-        notes: notes || null,
+        notes: fullNotes || null,
+        price: selectedServiceOption ? parseFloat(selectedServiceOption.price) : null,
       });
 
       if (error) throw error;
@@ -187,9 +325,18 @@ export const CreateGroomingDialog = ({
 
   const handleClose = () => {
     setSelectedPetId('');
-    setDuration('60');
+    setSelectedService('');
+    setDuration(DEFAULT_DURATION);
     setNotes('');
     onOpenChange(false);
+  };
+
+  const formatDuration = (mins: number) => {
+    if (mins < 60) return `${mins} min`;
+    const hours = Math.floor(mins / 60);
+    const remainingMins = mins % 60;
+    if (remainingMins === 0) return `${hours}h`;
+    return `${hours}h ${remainingMins}m`;
   };
 
   return (
@@ -272,7 +419,72 @@ export const CreateGroomingDialog = ({
             </Popover>
           </div>
 
-          {/* Time & Duration Selection */}
+          {/* Service Selection */}
+          <div className="space-y-2">
+            <Label>Service</Label>
+            <Popover open={serviceSearchOpen} onOpenChange={setServiceSearchOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={serviceSearchOpen}
+                  className="w-full justify-between"
+                >
+                  {selectedServiceOption ? (
+                    <span className="truncate">{selectedServiceOption.displayName}</span>
+                  ) : (
+                    <span className="text-muted-foreground">Select a service...</span>
+                  )}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[400px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search services..." />
+                  <CommandList>
+                    <CommandEmpty>No service found.</CommandEmpty>
+                    <CommandGroup>
+                      {serviceOptions.map((service) => {
+                        const hasDuration = groomerDurations.some(
+                          (d) => d.shopify_variant_id === service.variantId
+                        );
+                        return (
+                          <CommandItem
+                            key={service.variantId}
+                            value={service.displayName}
+                            onSelect={() => {
+                              setSelectedService(service.variantId);
+                              setServiceSearchOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedService === service.variantId ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <div className="flex flex-col flex-1">
+                              <span className="font-medium">{service.displayName}</span>
+                              <span className="text-xs text-muted-foreground">
+                                ${parseFloat(service.price).toFixed(2)}
+                                {hasDuration && groomerId && (
+                                  <span className="ml-2 text-primary">
+                                    • Custom duration set
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                          </CommandItem>
+                        );
+                      })}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* Time Selection */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Start Time *</Label>
@@ -291,35 +503,47 @@ export const CreateGroomingDialog = ({
             </div>
 
             <div className="space-y-2">
-              <Label>Duration</Label>
-              <Select value={duration} onValueChange={setDuration}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {DURATION_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label className="flex items-center gap-2">
+                Duration
+                {isCustomDuration && (
+                  <Badge variant="secondary" className="text-xs font-normal">
+                    <Clock className="h-3 w-3 mr-1" />
+                    {groomerName}'s speed
+                  </Badge>
+                )}
+              </Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min={15}
+                  max={480}
+                  step={15}
+                  value={duration}
+                  onChange={(e) => setDuration(parseInt(e.target.value) || DEFAULT_DURATION)}
+                  className="w-24"
+                />
+                <span className="text-sm text-muted-foreground">minutes</span>
+              </div>
             </div>
           </div>
 
           {/* End time preview */}
-          <div className="text-sm text-muted-foreground">
-            Appointment ends at: {format(parse(calculateEndTime(), 'HH:mm', new Date()), 'h:mm a')}
+          <div className="flex items-center gap-2 text-sm p-3 rounded-md bg-muted/50">
+            <Info className="h-4 w-4 text-muted-foreground" />
+            <span>
+              Appointment: {format(parse(selectedStartTime, 'HH:mm', new Date()), 'h:mm a')} → {format(parse(calculateEndTime(), 'HH:mm', new Date()), 'h:mm a')}
+              <span className="text-muted-foreground ml-1">({formatDuration(duration)})</span>
+            </span>
           </div>
 
           {/* Notes */}
           <div className="space-y-2">
-            <Label>Notes (include add-ons: bath, nail trim, etc.)</Label>
+            <Label>Additional Notes</Label>
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g., Full groom with bath and nail trim"
-              rows={3}
+              placeholder="e.g., Extra brushing needed, sensitive ears..."
+              rows={2}
             />
           </div>
         </div>
