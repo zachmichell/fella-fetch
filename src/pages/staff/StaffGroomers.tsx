@@ -18,7 +18,8 @@ import {
   Loader2,
   Save,
   Mail,
-  Phone
+  Phone,
+  Clock
 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
@@ -40,6 +41,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
+import { GroomerDurationsDialog } from '@/components/staff/grooming/GroomerDurationsDialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface Groomer {
   id: string;
@@ -77,6 +80,7 @@ const StaffGroomers = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingGroomer, setEditingGroomer] = useState<Groomer | null>(null);
   const [deleteConfirmGroomer, setDeleteConfirmGroomer] = useState<Groomer | null>(null);
+  const [durationsGroomer, setDurationsGroomer] = useState<Groomer | null>(null);
   const [formData, setFormData] = useState<GroomerFormData>({
     name: '',
     email: '',
@@ -376,6 +380,18 @@ const StaffGroomers = () => {
                     </div>
 
                     <div className="flex items-center gap-2">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setDurationsGroomer(groomer)}
+                          >
+                            <Clock className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Set service durations</TooltipContent>
+                      </Tooltip>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -528,6 +544,14 @@ const StaffGroomers = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Groomer Durations Dialog */}
+      <GroomerDurationsDialog
+        open={!!durationsGroomer}
+        onOpenChange={(open) => !open && setDurationsGroomer(null)}
+        groomerId={durationsGroomer?.id ?? ''}
+        groomerName={durationsGroomer?.name ?? ''}
+      />
     </StaffLayout>
   );
 };
