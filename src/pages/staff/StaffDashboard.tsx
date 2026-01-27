@@ -6,6 +6,7 @@ import { AddServiceDialog, type SelectedService } from '@/components/staff/AddSe
 import { InactivityAlertDialog } from '@/components/staff/InactivityAlertDialog';
 import { TraitAlertDialog } from '@/components/staff/TraitAlertDialog';
 import { DailySummaryTable } from '@/components/staff/DailySummaryTable';
+import { QuickCheckInDialog } from '@/components/staff/QuickCheckInDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePetActivityLog } from '@/hooks/usePetActivityLog';
@@ -32,6 +33,7 @@ const StaffDashboard = () => {
   const [selectedReservation, setSelectedReservation] = useState<ControlCenterReservation | null>(null);
   const [inactivityAlertOpen, setInactivityAlertOpen] = useState(false);
   const [pendingAcceptReservation, setPendingAcceptReservation] = useState<ControlCenterReservation | null>(null);
+  const [quickCheckInOpen, setQuickCheckInOpen] = useState(false);
   
   // Trait alert state
   const [traitAlertOpen, setTraitAlertOpen] = useState(false);
@@ -509,7 +511,7 @@ const StaffDashboard = () => {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" className="gap-2">
+            <Button variant="outline" className="gap-2" onClick={() => setQuickCheckInOpen(true)}>
               <UserCheck className="h-4 w-4" />
               Quick Check In
             </Button>
@@ -611,6 +613,13 @@ const StaffDashboard = () => {
         petName={traitAlertPetName}
         alertTraits={traitAlertTraits}
         onAcknowledge={handleTraitAlertAcknowledge}
+      />
+
+      {/* Quick Check In Dialog */}
+      <QuickCheckInDialog
+        open={quickCheckInOpen}
+        onOpenChange={setQuickCheckInOpen}
+        onSuccess={fetchDashboardData}
       />
     </StaffLayout>
   );
