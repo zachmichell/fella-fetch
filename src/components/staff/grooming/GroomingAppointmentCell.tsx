@@ -123,26 +123,12 @@ export const GroomingAppointmentCell = ({
           </div>
           <div className="text-xs text-muted-foreground truncate">{appointment.client_name}</div>
           
-          {/* Service type badge */}
-          <div className="flex flex-wrap gap-1 mt-1">
+          {/* Service type badge - one service per slot */}
+          <div className="mt-1">
             <Badge variant="secondary" className="text-xs py-0 gap-1">
               <Scissors className="h-3 w-3" />
               Grooming
             </Badge>
-            
-            {/* Add-ons would be shown here as badges */}
-            {appointment.notes?.toLowerCase().includes('nail') && (
-              <Badge variant="outline" className="text-xs py-0 gap-1">
-                <Sparkles className="h-3 w-3" />
-                Nails
-              </Badge>
-            )}
-            {appointment.notes?.toLowerCase().includes('bath') && (
-              <Badge variant="outline" className="text-xs py-0 gap-1">
-                <Sparkles className="h-3 w-3" />
-                Bath
-              </Badge>
-            )}
           </div>
         </div>
 
