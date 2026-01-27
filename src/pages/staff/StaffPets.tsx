@@ -52,7 +52,7 @@ import {
   X
 } from 'lucide-react';
 import { format, differenceInYears, differenceInMonths } from 'date-fns';
-
+import { PetTraitsSection } from '@/components/staff/PetTraitsSection';
 interface Pet {
   id: string;
   name: string;
@@ -760,6 +760,9 @@ const StaffPets = () => {
                         </div>
                       </CardContent>
                     </Card>
+
+                    {/* Pet Traits */}
+                    <PetTraitsSection petId={selectedPet.id} petName={selectedPet.name} />
 
                     {/* Care Notes */}
                     <Card>

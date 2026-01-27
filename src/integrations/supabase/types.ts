@@ -478,6 +478,30 @@ export type Database = {
         }
         Relationships: []
       }
+      trait_templates: {
+        Row: {
+          color_key: string
+          created_at: string
+          icon_name: string
+          id: string
+          title: string
+        }
+        Insert: {
+          color_key: string
+          created_at?: string
+          icon_name: string
+          id?: string
+          title: string
+        }
+        Update: {
+          color_key?: string
+          created_at?: string
+          icon_name?: string
+          id?: string
+          title?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string

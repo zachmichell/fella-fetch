@@ -25,6 +25,7 @@ import StaffReportCards from "./pages/staff/StaffReportCards";
 import StaffTimeClock from "./pages/staff/StaffTimeClock";
 import StaffAnalytics from "./pages/staff/StaffAnalytics";
 import StaffUsers from "./pages/staff/StaffUsers";
+import StaffTraitTemplates from "./pages/staff/StaffTraitTemplates";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,7 @@ const App = () => (
             <Route path="/staff/time-clock" element={<StaffTimeClock />} />
             <Route path="/staff/analytics" element={<StaffAnalytics />} />
             <Route path="/staff/users" element={<StaffUsers />} />
+            <Route path="/staff/trait-templates" element={<StaffTraitTemplates />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
