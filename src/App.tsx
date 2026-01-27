@@ -32,6 +32,7 @@ import StaffShopifySettings from "./pages/staff/StaffShopifySettings";
 import StaffServiceTypes from "./pages/staff/StaffServiceTypes";
 import StaffSettings from "./pages/staff/StaffSettings";
 import StaffSuites from "./pages/staff/StaffSuites";
+import StaffGroomers from "./pages/staff/StaffGroomers";
 
 const queryClient = new QueryClient();
 
@@ -69,6 +70,7 @@ const App = () => (
             <Route path="/staff/service-types" element={<StaffServiceTypes />} />
             <Route path="/staff/shopify-settings" element={<StaffShopifySettings />} />
             <Route path="/staff/suites" element={<StaffSuites />} />
+            <Route path="/staff/groomers" element={<StaffGroomers />} />
             <Route path="/staff/settings" element={<StaffSettings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
