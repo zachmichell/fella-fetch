@@ -155,7 +155,7 @@ export function ControlCenterTable({
   const getFilteredByTab = () => {
     switch (activeTab) {
       case 'expected':
-        return reservations.filter(r => r.status === 'confirmed' || r.status === 'pending');
+        return reservations.filter(r => r.status === 'confirmed');
       case 'going_home':
         return reservations.filter(r => r.status === 'checked_in');
       case 'checked_in':
@@ -178,7 +178,7 @@ export function ControlCenterTable({
   });
 
   // Tab counts
-  const expectedCount = reservations.filter(r => r.status === 'confirmed' || r.status === 'pending').length;
+  const expectedCount = reservations.filter(r => r.status === 'confirmed').length;
   const goingHomeCount = reservations.filter(r => r.status === 'checked_in').length;
   const checkedInCount = reservations.filter(r => r.status === 'checked_in').length;
   const requestedCount = reservations.filter(r => r.status === 'pending').length;
