@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -35,6 +35,8 @@ import { PetTraitBadges, type PetTrait } from './PetTraitBadges';
 import { ManagePetTraitsDialog } from './ManagePetTraitsDialog';
 import { CancelReservationDialog } from './CancelReservationDialog';
 import { DeclineReservationDialog } from './DeclineReservationDialog';
+import { supabase } from '@/integrations/supabase/client';
+import { usePetInactivityDays } from '@/hooks/useSystemSettings';
 
 export interface ControlCenterReservation {
   id: string;
@@ -106,6 +108,48 @@ export function ControlCenterTable({
   const [selectedReservation, setSelectedReservation] = useState<ControlCenterReservation | null>(null);
   const [traitsDialogOpen, setTraitsDialogOpen] = useState(false);
   const [selectedPetForTraits, setSelectedPetForTraits] = useState<{ id: string; name: string } | null>(null);
+  const [petLastActivity, setPetLastActivity] = useState<Record<string, number | null>>({});
+  
+  const { inactivityDays } = usePetInactivityDays();
+
+  // Fetch last activity for pets in requested tab
+  useEffect(() => {
+    const requestedPets = reservations
+      .filter(r => r.status === 'pending')
+      .map(r => r.pet_id);
+    
+    if (requestedPets.length === 0) return;
+
+    const fetchLastActivity = async () => {
+      const activityMap: Record<string, number | null> = {};
+      
+      for (const petId of requestedPets) {
+        // Get last completed reservation (not the current pending one)
+        const { data } = await supabase
+          .from('reservations')
+          .select('start_date')
+          .eq('pet_id', petId)
+          .in('status', ['checked_out', 'confirmed', 'checked_in'])
+          .order('start_date', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (data) {
+          const lastDate = new Date(data.start_date);
+          const today = new Date();
+          const diffTime = today.getTime() - lastDate.getTime();
+          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+          activityMap[petId] = diffDays;
+        } else {
+          activityMap[petId] = null; // New pet, no history
+        }
+      }
+      
+      setPetLastActivity(activityMap);
+    };
+
+    fetchLastActivity();
+  }, [reservations]);
 
   // Filter by tab
   const getFilteredByTab = () => {
@@ -353,6 +397,22 @@ export function ControlCenterTable({
                           </span>
                         )}
                       </div>
+                      {/* Show days since last reservation for Requested tab */}
+                      {activeTab === 'requested' && reservation.status === 'pending' && (
+                        <div className="text-xs mt-0.5">
+                          {petLastActivity[reservation.pet_id] !== undefined ? (
+                            petLastActivity[reservation.pet_id] === null ? (
+                              <span className="text-muted-foreground italic">New pet - no history</span>
+                            ) : (
+                              <span className={petLastActivity[reservation.pet_id]! >= inactivityDays ? 'text-destructive font-medium' : 'text-muted-foreground'}>
+                                {petLastActivity[reservation.pet_id]} days since last visit
+                              </span>
+                            )
+                          ) : (
+                            <span className="text-muted-foreground">Loading...</span>
+                          )}
+                        </div>
+                      )}
                       {/* Pet Trait Icons */}
                       <PetTraitBadges traits={reservation.pet_traits || []} maxDisplay={6} />
                     </div>
