@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { StaffLayout } from '@/components/staff/StaffLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
@@ -9,6 +10,7 @@ import {
   ChevronRight, 
   Loader2,
   Calendar as CalendarIcon,
+  CalendarDays,
   Dog,
   BedDouble,
   Scissors,
@@ -20,8 +22,23 @@ import {
   Star,
   type LucideIcon
 } from 'lucide-react';
-import { format, addDays, startOfWeek, addWeeks, subWeeks, isSameDay } from 'date-fns';
-import { traitColors } from '@/lib/petTraitIcons';
+import { 
+  format, 
+  addDays, 
+  startOfWeek, 
+  startOfMonth,
+  endOfMonth,
+  addWeeks, 
+  subWeeks, 
+  addMonths,
+  subMonths,
+  isSameDay,
+  isSameMonth,
+  eachDayOfInterval,
+  getDay
+} from 'date-fns';
+
+type ViewMode = 'weekly' | 'monthly';
 
 interface Reservation {
   id: string;
@@ -82,13 +99,22 @@ const colorMap: Record<string, { bg: string; text: string }> = {
 
 const StaffCalendar = () => {
   const { isStaffOrAdmin } = useAuth();
+  const [viewMode, setViewMode] = useState<ViewMode>('weekly');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Weekly view calculations
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+
+  // Monthly view calculations
+  const monthStart = startOfMonth(currentDate);
+  const monthEnd = endOfMonth(currentDate);
+  const calendarStart = startOfWeek(monthStart, { weekStartsOn: 0 });
+  const calendarEnd = addDays(startOfWeek(monthEnd, { weekStartsOn: 0 }), 6);
+  const monthDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
   const fetchData = async () => {
     if (!isStaffOrAdmin) {
@@ -96,8 +122,16 @@ const StaffCalendar = () => {
       return;
     }
 
-    const startDate = format(weekDays[0], 'yyyy-MM-dd');
-    const endDate = format(weekDays[6], 'yyyy-MM-dd');
+    let startDate: string;
+    let endDate: string;
+
+    if (viewMode === 'weekly') {
+      startDate = format(weekDays[0], 'yyyy-MM-dd');
+      endDate = format(weekDays[6], 'yyyy-MM-dd');
+    } else {
+      startDate = format(calendarStart, 'yyyy-MM-dd');
+      endDate = format(calendarEnd, 'yyyy-MM-dd');
+    }
 
     try {
       // Fetch service types and reservations in parallel
@@ -129,7 +163,7 @@ const StaffCalendar = () => {
 
   useEffect(() => {
     fetchData();
-  }, [currentDate, isStaffOrAdmin]);
+  }, [currentDate, viewMode, isStaffOrAdmin]);
 
   const getServiceCountsForDay = (date: Date): ServiceCount[] => {
     const dateStr = format(date, 'yyyy-MM-dd');
@@ -165,8 +199,29 @@ const StaffCalendar = () => {
   };
 
   const goToToday = () => setCurrentDate(new Date());
-  const goToPrevWeek = () => setCurrentDate(subWeeks(currentDate, 1));
-  const goToNextWeek = () => setCurrentDate(addWeeks(currentDate, 1));
+  
+  const goToPrevious = () => {
+    if (viewMode === 'weekly') {
+      setCurrentDate(subWeeks(currentDate, 1));
+    } else {
+      setCurrentDate(subMonths(currentDate, 1));
+    }
+  };
+  
+  const goToNext = () => {
+    if (viewMode === 'weekly') {
+      setCurrentDate(addWeeks(currentDate, 1));
+    } else {
+      setCurrentDate(addMonths(currentDate, 1));
+    }
+  };
+
+  const getHeaderText = () => {
+    if (viewMode === 'weekly') {
+      return `${format(weekDays[0], 'MMM d')} - ${format(weekDays[6], 'MMM d, yyyy')}`;
+    }
+    return format(currentDate, 'MMMM yyyy');
+  };
 
   return (
     <StaffLayout>
@@ -175,8 +230,25 @@ const StaffCalendar = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Calendar</h1>
-            <p className="text-muted-foreground">Weekly overview of reservations</p>
+            <p className="text-muted-foreground">
+              {viewMode === 'weekly' ? 'Weekly' : 'Monthly'} overview of reservations
+            </p>
           </div>
+          
+          <ToggleGroup
+            type="single"
+            value={viewMode}
+            onValueChange={(value) => value && setViewMode(value as ViewMode)}
+          >
+            <ToggleGroupItem value="weekly" aria-label="Weekly view">
+              <CalendarIcon className="h-4 w-4 mr-2" />
+              Week
+            </ToggleGroupItem>
+            <ToggleGroupItem value="monthly" aria-label="Monthly view">
+              <CalendarDays className="h-4 w-4 mr-2" />
+              Month
+            </ToggleGroupItem>
+          </ToggleGroup>
         </div>
 
         {/* Calendar */}
@@ -185,15 +257,15 @@ const StaffCalendar = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-1">
-                  <Button variant="outline" size="icon" onClick={goToPrevWeek}>
+                  <Button variant="outline" size="icon" onClick={goToPrevious}>
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="icon" onClick={goToNextWeek}>
+                  <Button variant="outline" size="icon" onClick={goToNext}>
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
                 <CardTitle className="text-lg">
-                  {format(weekDays[0], 'MMM d')} - {format(weekDays[6], 'MMM d, yyyy')}
+                  {getHeaderText()}
                 </CardTitle>
               </div>
               <Button variant="outline" onClick={goToToday}>Today</Button>
@@ -210,7 +282,8 @@ const StaffCalendar = () => {
                 <p>No service types configured</p>
                 <p className="text-sm">Add service types in Settings → Service Types</p>
               </div>
-            ) : (
+            ) : viewMode === 'weekly' ? (
+              /* Weekly View */
               <div className="grid grid-cols-7 gap-2">
                 {/* Day Headers */}
                 {weekDays.map((day, index) => (
@@ -266,6 +339,74 @@ const StaffCalendar = () => {
                           <span>Total</span>
                           <span className="font-semibold text-foreground">{total}</span>
                         </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              /* Monthly View */
+              <div className="grid grid-cols-7 gap-1">
+                {/* Day of Week Headers */}
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                  <div key={day} className="text-center p-2 text-xs font-medium text-muted-foreground">
+                    {day}
+                  </div>
+                ))}
+
+                {/* Calendar Days */}
+                {monthDays.map((day, index) => {
+                  const serviceCounts = getServiceCountsForDay(day);
+                  const total = getTotalForDay(day);
+                  const isCurrentMonth = isSameMonth(day, currentDate);
+                  const isToday = isSameDay(day, new Date());
+                  
+                  return (
+                    <div 
+                      key={index}
+                      className={`min-h-[100px] border rounded-lg p-1.5 ${
+                        !isCurrentMonth ? 'bg-muted/30 opacity-50' : ''
+                      }`}
+                    >
+                      {/* Date header */}
+                      <div className={`text-right mb-1 ${
+                        isToday 
+                          ? 'flex justify-end'
+                          : ''
+                      }`}>
+                        <span className={`text-xs font-medium ${
+                          isToday 
+                            ? 'bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center' 
+                            : 'text-muted-foreground'
+                        }`}>
+                          {format(day, 'd')}
+                        </span>
+                      </div>
+                      
+                      {/* Compact service counts */}
+                      <div className="space-y-0.5">
+                        {serviceCounts.filter(s => s.count > 0).slice(0, 4).map((service) => {
+                          const Icon = service.icon;
+                          return (
+                            <div 
+                              key={service.id}
+                              className={`flex items-center justify-between px-1 py-0.5 rounded ${service.bgColor}`}
+                            >
+                              <Icon className={`h-2.5 w-2.5 ${service.color}`} />
+                              <span className={`text-[9px] font-semibold ${service.color}`}>
+                                {service.count}
+                              </span>
+                            </div>
+                          );
+                        })}
+                        {serviceCounts.filter(s => s.count > 0).length > 4 && (
+                          <div className="text-[9px] text-muted-foreground text-center">
+                            +{serviceCounts.filter(s => s.count > 0).length - 4} more
+                          </div>
+                        )}
+                        {total === 0 && isCurrentMonth && (
+                          <div className="text-[9px] text-muted-foreground text-center py-1">—</div>
+                        )}
                       </div>
                     </div>
                   );
