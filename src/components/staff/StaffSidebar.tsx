@@ -13,7 +13,8 @@ import {
   Sparkles,
   ShoppingBag,
   Layers,
-  BedDouble
+  BedDouble,
+  Scissors
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
@@ -36,6 +37,7 @@ const mainNavItems = [
   { title: 'Dashboard', url: '/staff', icon: LayoutDashboard },
   { title: 'Calendar', url: '/staff/calendar', icon: Calendar },
   { title: 'Lodging', url: '/staff/lodging', icon: BedDouble },
+  { title: 'Grooming', url: '/staff/grooming', icon: Scissors },
   { title: 'Clients', url: '/staff/clients', icon: Users },
   { title: 'Pets', url: '/staff/pets', icon: Dog },
 ];
