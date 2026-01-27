@@ -5,7 +5,10 @@ import { LodgingWeeklyView } from '@/components/staff/lodging/LodgingWeeklyView'
 import { LodgingMonthlyView } from '@/components/staff/lodging/LodgingMonthlyView';
 import { LodgingPetDetailsDialog } from '@/components/staff/lodging/LodgingPetDetailsDialog';
 import { LodgingAssignSuiteDialog } from '@/components/staff/lodging/LodgingAssignSuiteDialog';
+import { CreateBoardingDialog } from '@/components/staff/lodging/CreateBoardingDialog';
 import { startOfWeek, startOfMonth } from 'date-fns';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 export type ViewMode = 'weekly' | 'monthly';
 
@@ -31,6 +34,24 @@ const StaffLodgingCalendar = () => {
   const [petDetailsOpen, setPetDetailsOpen] = useState(false);
   const [assignSuiteOpen, setAssignSuiteOpen] = useState(false);
   const [reservationToAssign, setReservationToAssign] = useState<BoardingReservation | null>(null);
+  
+  // Create booking dialog state
+  const [createBookingOpen, setCreateBookingOpen] = useState(false);
+  const [createBookingSuiteId, setCreateBookingSuiteId] = useState<string | null>(null);
+  const [createBookingDate, setCreateBookingDate] = useState<Date | null>(null);
+
+  // Fetch suites for name lookup
+  const { data: suites } = useQuery({
+    queryKey: ['suites'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('suites')
+        .select('id, name')
+        .eq('is_active', true);
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const handlePetClick = (reservation: BoardingReservation) => {
     setSelectedReservation(reservation);
@@ -43,8 +64,14 @@ const StaffLodgingCalendar = () => {
   };
 
   const handleCreateBooking = (suiteId: string, date: Date) => {
-    // TODO: Open create booking dialog with prefilled suite and date
-    console.log('Create booking for suite', suiteId, 'on', date);
+    setCreateBookingSuiteId(suiteId);
+    setCreateBookingDate(date);
+    setCreateBookingOpen(true);
+  };
+
+  const getSuiteName = (suiteId: string | null) => {
+    if (!suiteId) return null;
+    return suites?.find(s => s.id === suiteId)?.name || null;
   };
 
   return (
@@ -83,6 +110,14 @@ const StaffLodgingCalendar = () => {
           open={assignSuiteOpen}
           onOpenChange={setAssignSuiteOpen}
           reservation={reservationToAssign}
+        />
+
+        <CreateBoardingDialog
+          open={createBookingOpen}
+          onOpenChange={setCreateBookingOpen}
+          suiteId={createBookingSuiteId}
+          suiteName={getSuiteName(createBookingSuiteId)}
+          startDate={createBookingDate}
         />
       </div>
     </StaffLayout>
