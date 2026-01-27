@@ -8,65 +8,89 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Loader2,
+  Calendar as CalendarIcon,
   Dog,
   BedDouble,
   Scissors,
-  GraduationCap
+  GraduationCap,
+  Clock,
+  Sparkles,
+  ClipboardList,
+  Package,
+  Star,
+  type LucideIcon
 } from 'lucide-react';
 import { format, addDays, startOfWeek, addWeeks, subWeeks, isSameDay } from 'date-fns';
+import { traitColors } from '@/lib/petTraitIcons';
 
 interface Reservation {
   id: string;
   service_type: string;
   status: string;
   start_date: string;
+  notes: string | null;
+}
+
+interface ServiceType {
+  id: string;
+  name: string;
+  display_name: string;
+  category: string;
+  color: string | null;
+  icon_name: string | null;
+  is_active: boolean | null;
+  sort_order: number | null;
 }
 
 interface ServiceCount {
-  type: string;
+  id: string;
+  name: string;
+  displayName: string;
   count: number;
-  icon: React.ReactNode;
   color: string;
   bgColor: string;
+  icon: LucideIcon;
 }
 
-const serviceConfig: Record<string, { icon: React.ReactNode; color: string; bgColor: string; label: string }> = {
-  daycare: { 
-    icon: <Dog className="h-3.5 w-3.5" />, 
-    color: 'text-blue-700', 
-    bgColor: 'bg-blue-100',
-    label: 'Daycare'
-  },
-  boarding: { 
-    icon: <BedDouble className="h-3.5 w-3.5" />, 
-    color: 'text-purple-700', 
-    bgColor: 'bg-purple-100',
-    label: 'Boarding'
-  },
-  grooming: { 
-    icon: <Scissors className="h-3.5 w-3.5" />, 
-    color: 'text-pink-700', 
-    bgColor: 'bg-pink-100',
-    label: 'Grooming'
-  },
-  training: { 
-    icon: <GraduationCap className="h-3.5 w-3.5" />, 
-    color: 'text-green-700', 
-    bgColor: 'bg-green-100',
-    label: 'Training'
-  },
+// Icon mapping for service types
+const iconMap: Record<string, LucideIcon> = {
+  'dog': Dog,
+  'bed-double': BedDouble,
+  'scissors': Scissors,
+  'graduation-cap': GraduationCap,
+  'clock': Clock,
+  'sparkles': Sparkles,
+  'clipboard-list': ClipboardList,
+  'package': Package,
+  'star': Star,
+  'calendar': CalendarIcon,
+};
+
+// Color mapping with bg and text variants
+const colorMap: Record<string, { bg: string; text: string }> = {
+  'blue': { bg: 'bg-blue-100', text: 'text-blue-700' },
+  'purple': { bg: 'bg-purple-100', text: 'text-purple-700' },
+  'pink': { bg: 'bg-pink-100', text: 'text-pink-700' },
+  'green': { bg: 'bg-green-100', text: 'text-green-700' },
+  'orange': { bg: 'bg-orange-100', text: 'text-orange-700' },
+  'red': { bg: 'bg-red-100', text: 'text-red-700' },
+  'yellow': { bg: 'bg-yellow-100', text: 'text-yellow-700' },
+  'teal': { bg: 'bg-teal-100', text: 'text-teal-700' },
+  'gray': { bg: 'bg-gray-100', text: 'text-gray-700' },
+  'indigo': { bg: 'bg-indigo-100', text: 'text-indigo-700' },
 };
 
 const StaffCalendar = () => {
   const { isStaffOrAdmin } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
   const [loading, setLoading] = useState(true);
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
-  const fetchReservations = async () => {
+  const fetchData = async () => {
     if (!isStaffOrAdmin) {
       setLoading(false);
       return;
@@ -76,45 +100,63 @@ const StaffCalendar = () => {
     const endDate = format(weekDays[6], 'yyyy-MM-dd');
 
     try {
-      const { data, error } = await supabase
-        .from('reservations')
-        .select('id, service_type, status, start_date')
-        .gte('start_date', startDate)
-        .lte('start_date', endDate)
-        .neq('status', 'cancelled');
+      // Fetch service types and reservations in parallel
+      const [serviceTypesRes, reservationsRes] = await Promise.all([
+        supabase
+          .from('service_types')
+          .select('*')
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true }),
+        supabase
+          .from('reservations')
+          .select('id, service_type, status, start_date, notes')
+          .gte('start_date', startDate)
+          .lte('start_date', endDate)
+          .neq('status', 'cancelled')
+      ]);
 
-      if (error) throw error;
+      if (serviceTypesRes.error) throw serviceTypesRes.error;
+      if (reservationsRes.error) throw reservationsRes.error;
 
-      setReservations(data || []);
+      setServiceTypes(serviceTypesRes.data || []);
+      setReservations(reservationsRes.data || []);
     } catch (error) {
-      console.error('Error fetching reservations:', error);
+      console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchReservations();
+    fetchData();
   }, [currentDate, isStaffOrAdmin]);
 
   const getServiceCountsForDay = (date: Date): ServiceCount[] => {
     const dateStr = format(date, 'yyyy-MM-dd');
     const dayReservations = reservations.filter(r => r.start_date === dateStr);
     
-    // Count by service type
+    // Count by service type name (matching the enum values stored in reservations)
     const counts: Record<string, number> = {};
     dayReservations.forEach(r => {
       counts[r.service_type] = (counts[r.service_type] || 0) + 1;
     });
 
-    // Return all service types, even if count is 0
-    return Object.keys(serviceConfig).map((type) => ({
-      type,
-      count: counts[type] || 0,
-      icon: serviceConfig[type].icon,
-      color: serviceConfig[type].color,
-      bgColor: serviceConfig[type].bgColor,
-    }));
+    // Map service types to counts
+    return serviceTypes.map((st) => {
+      const colorKey = st.color || 'gray';
+      const colors = colorMap[colorKey] || colorMap['gray'];
+      const IconComponent = iconMap[st.icon_name || 'calendar'] || CalendarIcon;
+      
+      return {
+        id: st.id,
+        name: st.name,
+        displayName: st.display_name,
+        count: counts[st.name] || 0,
+        color: colors.text,
+        bgColor: colors.bg,
+        icon: IconComponent,
+      };
+    });
   };
 
   const getTotalForDay = (date: Date): number => {
@@ -162,6 +204,12 @@ const StaffCalendar = () => {
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
+            ) : serviceTypes.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <CalendarIcon className="h-12 w-12 mb-4 opacity-50" />
+                <p>No service types configured</p>
+                <p className="text-sm">Add service types in Settings → Service Types</p>
+              </div>
             ) : (
               <div className="grid grid-cols-7 gap-2">
                 {/* Day Headers */}
@@ -187,26 +235,29 @@ const StaffCalendar = () => {
                   return (
                     <div 
                       key={`content-${index}`}
-                      className="min-h-[140px] border rounded-lg p-3 space-y-2"
+                      className="min-h-[160px] border rounded-lg p-2 space-y-1"
                     >
                       {/* Service type counts - always show all types */}
-                      <div className="space-y-1.5">
-                        {serviceCounts.map((service) => (
-                          <div 
-                            key={service.type}
-                            className={`flex items-center justify-between px-2 py-1.5 rounded ${service.bgColor} ${service.count === 0 ? 'opacity-50' : ''}`}
-                          >
-                            <div className={`flex items-center gap-1.5 ${service.color}`}>
-                              {service.icon}
-                              <span className="text-xs font-medium capitalize">
-                                {serviceConfig[service.type]?.label || service.type}
+                      <div className="space-y-1">
+                        {serviceCounts.map((service) => {
+                          const Icon = service.icon;
+                          return (
+                            <div 
+                              key={service.id}
+                              className={`flex items-center justify-between px-2 py-1 rounded ${service.bgColor} ${service.count === 0 ? 'opacity-40' : ''}`}
+                            >
+                              <div className={`flex items-center gap-1 ${service.color}`}>
+                                <Icon className="h-3 w-3 flex-shrink-0" />
+                                <span className="text-[10px] font-medium truncate max-w-[60px]">
+                                  {service.displayName}
+                                </span>
+                              </div>
+                              <span className={`text-xs font-semibold ${service.color}`}>
+                                {service.count}
                               </span>
                             </div>
-                            <span className={`text-sm font-semibold ${service.color}`}>
-                              {service.count}
-                            </span>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                       
                       {/* Total */}
@@ -225,16 +276,24 @@ const StaffCalendar = () => {
         </Card>
 
         {/* Legend */}
-        <div className="flex flex-wrap gap-4">
-          {Object.entries(serviceConfig).map(([type, config]) => (
-            <div key={type} className="flex items-center gap-2">
-              <div className={`w-6 h-6 rounded flex items-center justify-center ${config.bgColor} ${config.color}`}>
-                {config.icon}
-              </div>
-              <span className="text-sm text-muted-foreground">{config.label}</span>
-            </div>
-          ))}
-        </div>
+        {serviceTypes.length > 0 && (
+          <div className="flex flex-wrap gap-3">
+            {serviceTypes.map((st) => {
+              const colorKey = st.color || 'gray';
+              const colors = colorMap[colorKey] || colorMap['gray'];
+              const IconComponent = iconMap[st.icon_name || 'calendar'] || CalendarIcon;
+              
+              return (
+                <div key={st.id} className="flex items-center gap-2">
+                  <div className={`w-6 h-6 rounded flex items-center justify-center ${colors.bg} ${colors.text}`}>
+                    <IconComponent className="h-3.5 w-3.5" />
+                  </div>
+                  <span className="text-sm text-muted-foreground">{st.display_name}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </StaffLayout>
   );
