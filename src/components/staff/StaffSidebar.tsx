@@ -12,7 +12,8 @@ import {
   UserCog,
   Sparkles,
   ShoppingBag,
-  Layers
+  Layers,
+  BedDouble
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
@@ -34,6 +35,7 @@ import { Separator } from '@/components/ui/separator';
 const mainNavItems = [
   { title: 'Dashboard', url: '/staff', icon: LayoutDashboard },
   { title: 'Calendar', url: '/staff/calendar', icon: Calendar },
+  { title: 'Lodging', url: '/staff/lodging', icon: BedDouble },
   { title: 'Clients', url: '/staff/clients', icon: Users },
   { title: 'Pets', url: '/staff/pets', icon: Dog },
 ];

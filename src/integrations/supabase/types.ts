@@ -406,6 +406,7 @@ export type Database = {
           start_date: string
           start_time: string | null
           status: Database["public"]["Enums"]["reservation_status"]
+          suite_id: string | null
           updated_at: string
         }
         Insert: {
@@ -424,6 +425,7 @@ export type Database = {
           start_date: string
           start_time?: string | null
           status?: Database["public"]["Enums"]["reservation_status"]
+          suite_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -442,6 +444,7 @@ export type Database = {
           start_date?: string
           start_time?: string | null
           status?: Database["public"]["Enums"]["reservation_status"]
+          suite_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -450,6 +453,13 @@ export type Database = {
             columns: ["pet_id"]
             isOneToOne: false
             referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservations_suite_id_fkey"
+            columns: ["suite_id"]
+            isOneToOne: false
+            referencedRelation: "suites"
             referencedColumns: ["id"]
           },
         ]
@@ -621,6 +631,39 @@ export type Database = {
           id?: string
           notes?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      suites: {
+        Row: {
+          capacity: number
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          capacity?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          capacity?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number | null
+          updated_at?: string
         }
         Relationships: []
       }
