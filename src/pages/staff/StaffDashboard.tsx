@@ -244,7 +244,7 @@ const StaffDashboard = () => {
     }
   };
 
-  const handleCancelReservation = async (reservation: ControlCenterReservation) => {
+  const handleCancelReservation = async (reservation: ControlCenterReservation, useCredit: boolean) => {
     try {
       const { error } = await supabase
         .from('reservations')
@@ -253,19 +253,53 @@ const StaffDashboard = () => {
 
       if (error) throw error;
 
+      // If useCredit is true, deduct the appropriate credit
+      if (useCredit && reservation.client_id) {
+        if (reservation.service_type === 'daycare') {
+          const { error: creditError } = await supabase
+            .rpc('deduct_daycare_credit', { p_client_id: reservation.client_id });
+          
+          if (creditError) {
+            console.error('Error deducting daycare credit:', creditError);
+            toast({ 
+              title: 'Reservation cancelled', 
+              description: 'But failed to deduct credit',
+              variant: 'destructive' 
+            });
+          }
+        } else if (reservation.service_type === 'boarding') {
+          // For cancellation, deduct 1 night as a penalty
+          const { error: creditError } = await supabase
+            .rpc('deduct_boarding_credits', { p_client_id: reservation.client_id, p_nights: 1 });
+          
+          if (creditError) {
+            console.error('Error deducting boarding credit:', creditError);
+            toast({ 
+              title: 'Reservation cancelled', 
+              description: 'But failed to deduct credit',
+              variant: 'destructive' 
+            });
+          }
+        }
+      }
+
       // Log the cancellation
       await logActivity({
         petId: reservation.pet_id,
         reservationId: reservation.id,
         actionType: 'reservation_cancelled',
         actionCategory: 'reservation',
-        description: `Reservation cancelled for ${reservation.pet_name} (${reservation.service_type})`,
+        description: `Reservation cancelled for ${reservation.pet_name} (${reservation.service_type})${useCredit ? ' - credit deducted' : ''}`,
         details: {
           service_type: reservation.service_type,
+          credit_used: useCredit,
         }
       });
 
-      toast({ title: 'Reservation cancelled' });
+      toast({ 
+        title: 'Reservation cancelled',
+        description: useCredit ? '1 credit was deducted' : 'No credits were deducted'
+      });
       fetchDashboardData();
     } catch (error) {
       toast({ 
