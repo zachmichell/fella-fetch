@@ -9,7 +9,8 @@ import { DailySummaryTable } from '@/components/staff/DailySummaryTable';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePetActivityLog } from '@/hooks/usePetActivityLog';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, UserCheck, BedDouble } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
@@ -499,12 +500,24 @@ const StaffDashboard = () => {
   return (
     <StaffLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Control Center</h1>
-          <p className="text-muted-foreground">
-            {format(new Date(), 'EEEE, MMMM d, yyyy')}
-          </p>
+        {/* Header with Quick Actions */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Control Center</h1>
+            <p className="text-muted-foreground">
+              {format(new Date(), 'EEEE, MMMM d, yyyy')}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" className="gap-2">
+              <UserCheck className="h-4 w-4" />
+              Quick Check In
+            </Button>
+            <Button variant="outline" className="gap-2">
+              <BedDouble className="h-4 w-4" />
+              Lodging Calendar
+            </Button>
+          </div>
         </div>
 
         {/* Daily Summary Table */}
