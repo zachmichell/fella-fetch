@@ -4,11 +4,23 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { Settings, AlertTriangle, Save, Loader2 } from 'lucide-react';
+import { Settings, AlertTriangle, Save, Loader2, Clock } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
+const TIMEZONES = [
+  { value: 'America/New_York', label: 'Eastern Time (ET)' },
+  { value: 'America/Chicago', label: 'Central Time (CT)' },
+  { value: 'America/Denver', label: 'Mountain Time (MT)' },
+  { value: 'America/Phoenix', label: 'Arizona (MST)' },
+  { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
+  { value: 'America/Anchorage', label: 'Alaska Time (AKT)' },
+  { value: 'Pacific/Honolulu', label: 'Hawaii Time (HST)' },
+  { value: 'America/Puerto_Rico', label: 'Atlantic Time (AST)' },
+];
 
 const StaffSettings = () => {
   const { isAdmin } = useAuth();
@@ -16,12 +28,17 @@ const StaffSettings = () => {
   const { getSetting, updateSetting, isLoading } = useSystemSettings();
   
   const [inactivityDays, setInactivityDays] = useState<string>('90');
-  const [isSaving, setIsSaving] = useState(false);
+  const [timezone, setTimezone] = useState<string>('America/New_York');
+  const [isSavingInactivity, setIsSavingInactivity] = useState(false);
+  const [isSavingTimezone, setIsSavingTimezone] = useState(false);
 
   useEffect(() => {
     if (!isLoading) {
-      const currentValue = getSetting<number>('pet_inactivity_days', 90);
-      setInactivityDays(String(currentValue));
+      const currentInactivity = getSetting<number>('pet_inactivity_days', 90);
+      setInactivityDays(String(currentInactivity));
+      
+      const currentTimezone = getSetting<string>('business_timezone', 'America/New_York');
+      setTimezone(currentTimezone);
     }
   }, [isLoading, getSetting]);
 
@@ -37,7 +54,7 @@ const StaffSettings = () => {
       return;
     }
 
-    setIsSaving(true);
+    setIsSavingInactivity(true);
     try {
       await updateSetting.mutateAsync({ key: 'pet_inactivity_days', value: days });
       toast({
@@ -51,7 +68,27 @@ const StaffSettings = () => {
         variant: 'destructive',
       });
     } finally {
-      setIsSaving(false);
+      setIsSavingInactivity(false);
+    }
+  };
+
+  const handleSaveTimezone = async () => {
+    setIsSavingTimezone(true);
+    try {
+      await updateSetting.mutateAsync({ key: 'business_timezone', value: timezone });
+      const selectedTz = TIMEZONES.find(tz => tz.value === timezone);
+      toast({
+        title: 'Settings saved',
+        description: `Business timezone set to ${selectedTz?.label || timezone}`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error saving settings',
+        description: 'Please try again',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingTimezone(false);
     }
   };
 
@@ -85,6 +122,57 @@ const StaffSettings = () => {
           </p>
         </div>
 
+        {/* Business Timezone Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-blue-500" />
+              Business Timezone
+            </CardTitle>
+            <CardDescription>
+              Set the timezone used for displaying times throughout the staff portal.
+              This affects check-in/out times, reservations, and scheduling.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-2 max-w-xs">
+              <Label htmlFor="timezone">Timezone</Label>
+              <div className="flex gap-2">
+                <Select
+                  value={timezone}
+                  onValueChange={setTimezone}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger className="w-[220px]">
+                    <SelectValue placeholder="Select timezone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIMEZONES.map((tz) => (
+                      <SelectItem key={tz.value} value={tz.value}>
+                        {tz.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button 
+                  onClick={handleSaveTimezone}
+                  disabled={isSavingTimezone || isLoading}
+                >
+                  {isSavingTimezone ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  <span className="ml-2">Save</span>
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                All times in the portal will be displayed in this timezone.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Pet Inactivity Settings */}
         <Card>
           <CardHeader>
@@ -113,9 +201,9 @@ const StaffSettings = () => {
                 />
                 <Button 
                   onClick={handleSaveInactivityDays}
-                  disabled={isSaving || isLoading}
+                  disabled={isSavingInactivity || isLoading}
                 >
-                  {isSaving ? (
+                  {isSavingInactivity ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <Save className="h-4 w-4" />
