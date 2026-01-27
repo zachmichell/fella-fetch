@@ -66,7 +66,7 @@ const CATEGORIES = [
 ];
 
 const CREDIT_FIELDS = [
-  { value: '', label: 'No credits' },
+  { value: 'none', label: 'No credits' },
   { value: 'daycare_credits', label: 'Daycare Credits' },
   { value: 'boarding_credits', label: 'Boarding Credits' },
 ];
@@ -376,9 +376,9 @@ export default function StaffServiceTypes() {
                   <div className="space-y-2">
                     <Label>Credit Type</Label>
                     <Select
-                      value={formData.credit_field || ''}
+                      value={formData.credit_field || 'none'}
                       onValueChange={(value) => 
-                        setFormData({ ...formData, credit_field: value || null })
+                        setFormData({ ...formData, credit_field: value === 'none' ? null : value })
                       }
                     >
                       <SelectTrigger>
