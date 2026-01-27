@@ -9,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { motion, PanInfo } from 'framer-motion';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 
 interface LodgingDraggableCellProps {
   reservation: BoardingReservation;
@@ -33,7 +33,20 @@ export const LodgingDraggableCell = ({
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [isDragging, setIsDragging] = useState(false);
-  const dragStartPos = useRef<{ x: number; y: number } | null>(null);
+  const pointerPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const dragRef = useRef<HTMLDivElement>(null);
+
+  // Track pointer position globally when dragging
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handlePointerMove = (e: PointerEvent) => {
+      pointerPos.current = { x: e.clientX, y: e.clientY };
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    return () => window.removeEventListener('pointermove', handlePointerMove);
+  }, [isDragging]);
 
   const handleCheckIn = async () => {
     try {
@@ -92,20 +105,12 @@ export const LodgingDraggableCell = ({
   const isStartDay = isSameDay(parseISO(reservation.start_date), date);
   const isEndDay = reservation.end_date && isSameDay(parseISO(reservation.end_date), date);
 
-  const handleDragStart = (event: MouseEvent | TouchEvent | PointerEvent) => {
+  const handleDragStart = () => {
     setIsDragging(true);
-    
-    // Store initial position
-    if ('clientX' in event) {
-      dragStartPos.current = { x: event.clientX, y: event.clientY };
-    } else if ('touches' in event && event.touches[0]) {
-      dragStartPos.current = { x: event.touches[0].clientX, y: event.touches[0].clientY };
-    }
-    
     onDragStart(reservation);
   };
 
-  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+  const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     setIsDragging(false);
     
     // Check if this was actually a drag (moved more than 10px)
@@ -116,30 +121,24 @@ export const LodgingDraggableCell = ({
       return;
     }
 
-    // Get the point where the drag ended
-    let clientX: number, clientY: number;
-    if ('clientX' in event) {
-      clientX = event.clientX;
-      clientY = event.clientY;
-    } else if ('changedTouches' in event && event.changedTouches[0]) {
-      clientX = event.changedTouches[0].clientX;
-      clientY = event.changedTouches[0].clientY;
-    } else {
-      onDragEnd(reservation, undefined);
-      return;
-    }
+    // Use the tracked pointer position
+    const { x: clientX, y: clientY } = pointerPos.current;
 
-    // Find the drop zone element at the release point
-    // Temporarily hide this element to find what's underneath
-    const draggedElement = event.target as HTMLElement;
-    const originalPointerEvents = draggedElement.style.pointerEvents;
-    draggedElement.style.pointerEvents = 'none';
+    // Temporarily hide the dragged element to find what's underneath
+    if (dragRef.current) {
+      dragRef.current.style.pointerEvents = 'none';
+    }
     
     const elementAtPoint = document.elementFromPoint(clientX, clientY);
-    draggedElement.style.pointerEvents = originalPointerEvents;
+    
+    if (dragRef.current) {
+      dragRef.current.style.pointerEvents = '';
+    }
 
     // Find the drop zone by traversing up from the element at point
-    let dropZone = elementAtPoint?.closest('[data-suite-id]') as HTMLElement | null;
+    const dropZone = elementAtPoint?.closest('[data-suite-id]') as HTMLElement | null;
+    
+    console.log('Drop detection:', { clientX, clientY, elementAtPoint, dropZone, suiteId: dropZone?.dataset.suiteId });
     
     if (dropZone) {
       const targetSuiteId = dropZone.dataset.suiteId;
@@ -160,11 +159,13 @@ export const LodgingDraggableCell = ({
 
   return (
     <motion.div
+      ref={dragRef}
       drag
       dragSnapToOrigin
       dragElastic={0.1}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      whileHover={{ cursor: 'grab' }}
       whileDrag={{ 
         scale: 1.05, 
         zIndex: 100, 
@@ -172,12 +173,13 @@ export const LodgingDraggableCell = ({
         cursor: 'grabbing',
       }}
       className={cn(
-        "p-2 rounded cursor-grab active:cursor-grabbing transition-colors min-h-[50px] relative touch-none",
+        "p-2 rounded transition-colors min-h-[50px] relative touch-none select-none",
         reservation.status === 'checked_in' && "bg-green-100 dark:bg-green-900/30",
         reservation.status === 'confirmed' && "bg-blue-100 dark:bg-blue-900/30",
         reservation.status === 'checked_out' && "bg-gray-100 dark:bg-gray-800",
         isUnassigned && "bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700"
       )}
+      style={{ cursor: 'grab' }}
     >
       <div className="flex items-start justify-between gap-1">
         <div className="flex items-start gap-1 flex-1 min-w-0">
