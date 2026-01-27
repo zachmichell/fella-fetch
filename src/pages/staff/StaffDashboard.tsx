@@ -391,6 +391,42 @@ const StaffDashboard = () => {
     }
   };
 
+  const handleDeclineReservation = async (reservation: ControlCenterReservation, reason: string) => {
+    try {
+      const { error } = await supabase
+        .from('reservations')
+        .update({ status: 'cancelled' })
+        .eq('id', reservation.id);
+
+      if (error) throw error;
+
+      // Log the decline with reason
+      await logActivity({
+        petId: reservation.pet_id,
+        reservationId: reservation.id,
+        actionType: 'reservation_declined',
+        actionCategory: 'reservation',
+        description: `Reservation declined for ${reservation.pet_name} (${reservation.service_type})`,
+        details: {
+          service_type: reservation.service_type,
+          decline_reason: reason,
+        }
+      });
+
+      toast({ 
+        title: 'Reservation declined',
+        description: `Reason: ${reason}`
+      });
+      fetchDashboardData();
+    } catch (error) {
+      toast({ 
+        title: 'Error declining reservation', 
+        description: 'Please try again',
+        variant: 'destructive' 
+      });
+    }
+  };
+
   const handleAddService = (reservation: ControlCenterReservation) => {
     setSelectedReservation(reservation);
     setAddServiceOpen(true);
@@ -491,6 +527,7 @@ const StaffDashboard = () => {
               onUndoCheckIn={handleUndoCheckIn}
               onAcceptReservation={handleAcceptReservation}
               onCancelReservation={handleCancelReservation}
+              onDeclineReservation={handleDeclineReservation}
               onAddService={handleAddService}
               onTraitsUpdated={fetchDashboardData}
             />

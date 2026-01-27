@@ -24,6 +24,7 @@ export type ActionType =
   | 'reservation_updated'
   | 'reservation_cancelled'
   | 'reservation_confirmed'
+  | 'reservation_declined'
   | 'profile_viewed'
   | 'profile_updated'
   | 'photo_uploaded'
