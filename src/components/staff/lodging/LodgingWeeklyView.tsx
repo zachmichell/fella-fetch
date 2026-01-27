@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import { format, addDays, isSameDay, isWithinInterval, parseISO } from 'date-fns';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -34,6 +34,8 @@ export const LodgingWeeklyView = ({
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [draggingReservation, setDraggingReservation] = useState<BoardingReservation | null>(null);
+  const [hoveredZone, setHoveredZone] = useState<string | null | undefined>(undefined);
+  const hoveredZoneRef = useRef<string | null | undefined>(undefined);
 
   // Generate week days
   const weekDays = useMemo(() => {
@@ -175,7 +177,21 @@ export const LodgingWeeklyView = ({
   };
 
   const handleDragEnd = () => {
+    // Use ref to get the latest hovered zone value
+    const targetZone = hoveredZoneRef.current;
+    
+    if (draggingReservation && targetZone !== undefined && targetZone !== draggingReservation.suite_id) {
+      handleDropReservation(draggingReservation, targetZone);
+    }
+    
     setDraggingReservation(null);
+    setHoveredZone(undefined);
+    hoveredZoneRef.current = undefined;
+  };
+
+  const handleHoverZone = (suiteId: string | null | undefined) => {
+    setHoveredZone(suiteId);
+    hoveredZoneRef.current = suiteId;
   };
 
   const isLoading = suitesLoading || reservationsLoading;
@@ -252,6 +268,8 @@ export const LodgingWeeklyView = ({
                         draggingReservation={draggingReservation}
                         onDragStart={handleDragStart}
                         onDragEnd={handleDragEnd}
+                        onHoverZone={handleHoverZone}
+                        hoveredZone={hoveredZone}
                       />
                     </td>
                   );
@@ -285,6 +303,8 @@ export const LodgingWeeklyView = ({
                       draggingReservation={draggingReservation}
                       onDragStart={handleDragStart}
                       onDragEnd={handleDragEnd}
+                      onHoverZone={handleHoverZone}
+                      hoveredZone={hoveredZone}
                       isUnassigned
                     />
                   </td>
