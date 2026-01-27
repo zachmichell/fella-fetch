@@ -138,8 +138,6 @@ export const LodgingDraggableCell = ({
     // Find the drop zone by traversing up from the element at point
     const dropZone = elementAtPoint?.closest('[data-suite-id]') as HTMLElement | null;
     
-    console.log('Drop detection:', { clientX, clientY, elementAtPoint, dropZone, suiteId: dropZone?.dataset.suiteId });
-    
     if (dropZone) {
       const targetSuiteId = dropZone.dataset.suiteId;
       // Handle 'null' string for unassigned zone
