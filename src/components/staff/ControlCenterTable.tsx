@@ -24,6 +24,7 @@ import {
   Search, 
   Plus,
   Undo2,
+  CheckCircle,
   Loader2,
   Dog,
   Tags
@@ -63,6 +64,7 @@ interface ControlCenterTableProps {
   onCheckIn: (reservation: ControlCenterReservation) => void;
   onCheckOut: (reservation: ControlCenterReservation) => void;
   onUndoCheckIn: (reservation: ControlCenterReservation) => void;
+  onAcceptReservation: (reservation: ControlCenterReservation) => void;
   onCancelReservation: (reservation: ControlCenterReservation, useCredit: boolean) => void;
   onAddService: (reservation: ControlCenterReservation) => void;
   onTraitsUpdated?: () => void;
@@ -88,6 +90,7 @@ export function ControlCenterTable({
   onCheckIn,
   onCheckOut,
   onUndoCheckIn,
+  onAcceptReservation,
   onCancelReservation,
   onAddService,
   onTraitsUpdated,
@@ -231,7 +234,18 @@ export function ControlCenterTable({
                   {/* Actions Column */}
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      {(reservation.status === 'confirmed' || reservation.status === 'pending') && (
+                      {reservation.status === 'pending' && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100"
+                          onClick={() => onAcceptReservation(reservation)}
+                          title="Accept Reservation"
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {reservation.status === 'confirmed' && (
                         <Button
                           size="icon"
                           variant="ghost"

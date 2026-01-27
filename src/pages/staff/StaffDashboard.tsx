@@ -359,6 +359,38 @@ const StaffDashboard = () => {
     }
   };
 
+  const handleAcceptReservation = async (reservation: ControlCenterReservation) => {
+    try {
+      const { error } = await supabase
+        .from('reservations')
+        .update({ status: 'confirmed' })
+        .eq('id', reservation.id);
+
+      if (error) throw error;
+
+      // Log the acceptance
+      await logActivity({
+        petId: reservation.pet_id,
+        reservationId: reservation.id,
+        actionType: 'reservation_confirmed',
+        actionCategory: 'reservation',
+        description: `Reservation confirmed for ${reservation.pet_name} (${reservation.service_type})`,
+        details: {
+          service_type: reservation.service_type,
+        }
+      });
+
+      toast({ title: `Reservation accepted for ${reservation.pet_name}` });
+      fetchDashboardData();
+    } catch (error) {
+      toast({ 
+        title: 'Error accepting reservation', 
+        description: 'Please try again',
+        variant: 'destructive' 
+      });
+    }
+  };
+
   const handleAddService = (reservation: ControlCenterReservation) => {
     setSelectedReservation(reservation);
     setAddServiceOpen(true);
@@ -457,6 +489,7 @@ const StaffDashboard = () => {
               onCheckIn={handleCheckIn}
               onCheckOut={handleCheckOut}
               onUndoCheckIn={handleUndoCheckIn}
+              onAcceptReservation={handleAcceptReservation}
               onCancelReservation={handleCancelReservation}
               onAddService={handleAddService}
               onTraitsUpdated={fetchDashboardData}
