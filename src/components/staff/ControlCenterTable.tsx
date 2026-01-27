@@ -50,6 +50,7 @@ export interface ControlCenterReservation {
   checked_in_at: string | null;
   checked_out_at: string | null;
   daycare_credits: number;
+  half_daycare_credits: number;
   boarding_credits: number;
 }
 
@@ -305,6 +306,10 @@ export function ControlCenterTable({
                       <div className="text-xs text-muted-foreground mt-0.5">
                         <span className={reservation.daycare_credits <= 0 ? 'text-destructive font-medium' : ''}>
                           DC: {reservation.daycare_credits}
+                        </span>
+                        {' | '}
+                        <span className={reservation.half_daycare_credits <= 0 ? 'text-destructive font-medium' : ''}>
+                          HD: {reservation.half_daycare_credits}
                         </span>
                         {' | '}
                         <span className={reservation.boarding_credits <= 0 ? 'text-destructive font-medium' : ''}>
