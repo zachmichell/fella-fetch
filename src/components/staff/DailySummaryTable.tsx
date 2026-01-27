@@ -167,7 +167,7 @@ export const DailySummaryTable = () => {
           overnight,
           total,
         };
-      }).filter(s => s.arriving > 0 || s.departing > 0 || s.overnight > 0 || s.total > 0);
+      });
 
       setServiceBreakdown(breakdown);
     } catch (error) {
