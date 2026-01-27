@@ -68,6 +68,7 @@ const CATEGORIES = [
 const CREDIT_FIELDS = [
   { value: 'none', label: 'No credits' },
   { value: 'daycare_credits', label: 'Daycare Credits' },
+  { value: 'half_daycare_credits', label: 'Half Day Daycare Credits' },
   { value: 'boarding_credits', label: 'Boarding Credits' },
 ];
 
