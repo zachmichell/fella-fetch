@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,7 +16,7 @@ const passwordSchema = z.string().min(6, 'Password must be at least 6 characters
 
 const ClientLogin = () => {
   const navigate = useNavigate();
-  const { user, signIn, signUp, loading: authLoading } = useAuth();
+  const { user, signIn, signUp, signOut, loading: authLoading, isStaffOrAdmin } = useAuth();
   const { toast } = useToast();
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -28,10 +29,21 @@ const ClientLogin = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    if (user && !authLoading) {
+    if (!authLoading && user && !isStaffOrAdmin) {
       navigate('/portal');
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, isStaffOrAdmin, navigate]);
+
+  const checkUserIsStaff = async (userId: string): Promise<boolean> => {
+    const { data, error } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .maybeSingle();
+    
+    if (error || !data) return false;
+    return data.role === 'staff' || data.role === 'admin';
+  };
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -106,6 +118,21 @@ const ClientLogin = () => {
             variant: 'destructive',
           });
         } else {
+          // Check if user is staff - they should use staff login
+          const { data: { user: currentUser } } = await supabase.auth.getUser();
+          if (currentUser) {
+            const isStaff = await checkUserIsStaff(currentUser.id);
+            if (isStaff) {
+              await signOut();
+              toast({
+                title: 'Staff Account Detected',
+                description: 'Please use the staff login portal to access your account.',
+                variant: 'destructive',
+              });
+              return;
+            }
+          }
+          
           toast({ title: 'Welcome back!' });
           navigate('/portal');
         }
