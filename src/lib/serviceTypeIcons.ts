@@ -1,6 +1,6 @@
 // Service Type Icon System
 // Maps icon_name strings from database to Lucide React components
-// 150+ icons available for service types
+// 170+ icons available for service types (includes custom dog-specific icons)
 
 import {
   // Time/Schedule
@@ -79,8 +79,19 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
-// Icon mapping from database icon_name to Lucide component
-export const serviceTypeIconMap: Record<string, LucideIcon> = {
+// Import custom dog-specific icons
+import {
+  DogLeash, DogCollar, DogBowl, DogTreat, DogBone, DogHouse, DogTag,
+  DogWhistle, PawPrintHeart, DogCrate, FoodBag, WaterBowl, DogBall,
+  DogToy, GroomingBrush, NailClippers, MedicineBottle, VetCross,
+  DogFace, DogSitting, customPetIconMap,
+} from './customPetIcons';
+
+// Type for icon component (supports both Lucide and custom)
+type IconComponent = LucideIcon | React.ForwardRefExoticComponent<any>;
+
+// Icon mapping from database icon_name to component (Lucide + custom)
+export const serviceTypeIconMap: Record<string, IconComponent> = {
   // Time/Schedule
   'sun': Sun,
   'sunrise': Sunrise,
@@ -366,14 +377,17 @@ export const serviceTypeIconMap: Record<string, LucideIcon> = {
   'hexagon': Hexagon,
   'pentagon': Pentagon,
   'octagon': Octagon,
+  
+  // Custom Dog-Specific Icons
+  ...customPetIconMap,
 };
 
 // List of available icons for the picker
 export interface ServiceIconOption {
   value: string;
   label: string;
-  icon: LucideIcon;
-  category: 'time' | 'grooming' | 'training' | 'care' | 'health' | 'lodging' | 'transport' | 'communication' | 'tools' | 'status' | 'nature' | 'other';
+  icon: IconComponent;
+  category: 'time' | 'grooming' | 'training' | 'care' | 'health' | 'lodging' | 'transport' | 'communication' | 'tools' | 'status' | 'nature' | 'dog-specific' | 'other';
 }
 
 export const serviceIconOptions: ServiceIconOption[] = [
@@ -574,10 +588,33 @@ export const serviceIconOptions: ServiceIconOption[] = [
   { value: 'square', label: 'Square', icon: Square, category: 'other' },
   { value: 'triangle', label: 'Triangle', icon: Triangle, category: 'other' },
   { value: 'hexagon', label: 'Hexagon', icon: Hexagon, category: 'other' },
+  
+  // Dog-Specific Custom Icons
+  { value: 'dog-leash', label: 'Leash', icon: DogLeash, category: 'dog-specific' },
+  { value: 'dog-collar', label: 'Collar', icon: DogCollar, category: 'dog-specific' },
+  { value: 'dog-bowl', label: 'Food Bowl', icon: DogBowl, category: 'dog-specific' },
+  { value: 'dog-treat', label: 'Treat', icon: DogTreat, category: 'dog-specific' },
+  { value: 'dog-bone-custom', label: 'Dog Bone', icon: DogBone, category: 'dog-specific' },
+  { value: 'dog-house', label: 'Dog House', icon: DogHouse, category: 'dog-specific' },
+  { value: 'dog-tag', label: 'Dog Tag', icon: DogTag, category: 'dog-specific' },
+  { value: 'dog-whistle', label: 'Whistle', icon: DogWhistle, category: 'dog-specific' },
+  { value: 'paw-heart', label: 'Paw Heart', icon: PawPrintHeart, category: 'dog-specific' },
+  { value: 'dog-crate', label: 'Crate/Kennel', icon: DogCrate, category: 'dog-specific' },
+  { value: 'food-bag', label: 'Food Bag', icon: FoodBag, category: 'dog-specific' },
+  { value: 'water-bowl', label: 'Water Bowl', icon: WaterBowl, category: 'dog-specific' },
+  { value: 'dog-ball', label: 'Ball', icon: DogBall, category: 'dog-specific' },
+  { value: 'dog-toy', label: 'Toy', icon: DogToy, category: 'dog-specific' },
+  { value: 'grooming-brush', label: 'Grooming Brush', icon: GroomingBrush, category: 'dog-specific' },
+  { value: 'nail-clippers', label: 'Nail Clippers', icon: NailClippers, category: 'dog-specific' },
+  { value: 'medicine-bottle', label: 'Medicine', icon: MedicineBottle, category: 'dog-specific' },
+  { value: 'vet-cross', label: 'Vet Cross', icon: VetCross, category: 'dog-specific' },
+  { value: 'dog-face', label: 'Dog Face', icon: DogFace, category: 'dog-specific' },
+  { value: 'dog-sitting', label: 'Dog Sitting', icon: DogSitting, category: 'dog-specific' },
 ];
 
 // Category labels for grouping in picker
 export const serviceIconCategories: Record<ServiceIconOption['category'], string> = {
+  'dog-specific': '🐕 Dog-Specific',
   time: 'Time & Schedule',
   grooming: 'Grooming',
   training: 'Training & Activity',
@@ -592,8 +629,8 @@ export const serviceIconCategories: Record<ServiceIconOption['category'], string
   other: 'Other',
 };
 
-// Get the Lucide component for a given icon name
-export const getServiceTypeIcon = (iconName: string | null | undefined): LucideIcon => {
+// Get the icon component for a given icon name
+export const getServiceTypeIcon = (iconName: string | null | undefined): IconComponent => {
   if (!iconName) return Calendar;
   return serviceTypeIconMap[iconName] || Calendar;
 };

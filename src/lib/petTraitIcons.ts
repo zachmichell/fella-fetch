@@ -1,5 +1,5 @@
 // Pet Trait Icon System
-// 150+ icons with 10 color options each
+// 170+ icons with 10 color options each (includes custom dog-specific icons)
 
 import {
   // Animals (all available in lucide-react)
@@ -70,11 +70,22 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
+// Import custom dog-specific icons
+import {
+  DogLeash, DogCollar, DogBowl, DogTreat, DogBone, DogHouse, DogTag,
+  DogWhistle, PawPrintHeart, DogCrate, FoodBag, WaterBowl, DogBall,
+  DogToy, GroomingBrush, NailClippers, MedicineBottle, VetCross,
+  DogFace, DogSitting,
+} from './customPetIcons';
+
+// Type for icon component (supports both Lucide and custom)
+type IconComponent = LucideIcon | React.ForwardRefExoticComponent<any>;
+
 export interface TraitIcon {
   id: string;
   label: string;
-  icon: LucideIcon;
-  category: 'behavior' | 'health' | 'social' | 'care' | 'environment' | 'special' | 'alerts' | 'objects';
+  icon: IconComponent;
+  category: 'behavior' | 'health' | 'social' | 'care' | 'environment' | 'special' | 'alerts' | 'objects' | 'dog-specific';
 }
 
 export interface TraitColor {
@@ -325,6 +336,28 @@ export const traitIcons: TraitIcon[] = [
   { id: 'wrench', label: 'Needs Work', icon: Wrench, category: 'objects' },
   { id: 'glasses', label: 'Careful', icon: Glasses, category: 'objects' },
   { id: 'binoculars', label: 'Watchful', icon: Binoculars, category: 'objects' },
+
+  // Dog-Specific Custom Icons (20)
+  { id: 'dog-leash', label: 'Leash Required', icon: DogLeash, category: 'dog-specific' },
+  { id: 'dog-collar', label: 'Collar', icon: DogCollar, category: 'dog-specific' },
+  { id: 'dog-bowl', label: 'Food Bowl', icon: DogBowl, category: 'dog-specific' },
+  { id: 'dog-treat', label: 'Treat Motivated', icon: DogTreat, category: 'dog-specific' },
+  { id: 'dog-bone-custom', label: 'Loves Bones', icon: DogBone, category: 'dog-specific' },
+  { id: 'dog-house', label: 'Crate Trained', icon: DogHouse, category: 'dog-specific' },
+  { id: 'dog-tag', label: 'ID Tag', icon: DogTag, category: 'dog-specific' },
+  { id: 'dog-whistle', label: 'Whistle Trained', icon: DogWhistle, category: 'dog-specific' },
+  { id: 'paw-heart', label: 'Loving', icon: PawPrintHeart, category: 'dog-specific' },
+  { id: 'dog-crate', label: 'Kennel Safe', icon: DogCrate, category: 'dog-specific' },
+  { id: 'food-bag', label: 'Special Food', icon: FoodBag, category: 'dog-specific' },
+  { id: 'water-bowl', label: 'Water Needs', icon: WaterBowl, category: 'dog-specific' },
+  { id: 'dog-ball', label: 'Ball Lover', icon: DogBall, category: 'dog-specific' },
+  { id: 'dog-toy', label: 'Toy Lover', icon: DogToy, category: 'dog-specific' },
+  { id: 'grooming-brush', label: 'Brush Required', icon: GroomingBrush, category: 'dog-specific' },
+  { id: 'nail-clippers', label: 'Nail Trim', icon: NailClippers, category: 'dog-specific' },
+  { id: 'medicine-bottle', label: 'On Medication', icon: MedicineBottle, category: 'dog-specific' },
+  { id: 'vet-cross', label: 'Vet Care', icon: VetCross, category: 'dog-specific' },
+  { id: 'dog-face', label: 'Good Boy', icon: DogFace, category: 'dog-specific' },
+  { id: 'dog-sitting', label: 'Well Behaved', icon: DogSitting, category: 'dog-specific' },
 ];
 
 // Helper to get icon by id
@@ -339,6 +372,7 @@ export const getTraitColor = (colorKey: string): TraitColor | undefined => {
 
 // Category labels for grouping
 export const traitCategories: Record<TraitIcon['category'], string> = {
+  'dog-specific': '🐕 Dog-Specific',
   behavior: 'Behavior & Animals',
   health: 'Health & Medical',
   social: 'Social',
