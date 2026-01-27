@@ -1,6 +1,6 @@
 // Service Type Icon System
 // Maps icon_name strings from database to Lucide React components
-// 100+ icons available for service types
+// 150+ icons available for service types
 
 import {
   // Time/Schedule
@@ -16,33 +16,36 @@ import {
   
   // Grooming
   Scissors, Bath, ShowerHead, Droplets, Droplet, Brush, Paintbrush,
-  Wind, Sparkles, Sparkle, WandSparkles, Wand2, Eraser,
+  Wind, Sparkles, Sparkle, WandSparkles, Wand2, Eraser, SprayCan, Pipette,
   
   // Training/Activity
   GraduationCap, Activity, Dumbbell, Trophy, Award, Medal, Footprints,
   Target, Crosshair, Focus, Radar, Route, MapPin, Navigation, Compass,
   TrendingUp, TrendingDown, BarChart, BarChart2, BarChart3, PieChart,
   
-  // Animals/Care
-  Dog, Cat, Bird, Fish, Rabbit, Turtle, Bug, Squirrel,
+  // Animals/Care - All available animal icons
+  Dog, Cat, Bird, Fish, Rabbit, Turtle, Bug, Squirrel, Rat, Snail, Worm,
+  Feather, Egg, Shell,
   PawPrint, Bone, Hand, HandMetal, Baby, Users, Users2, User, UserPlus,
   Heart, HeartHandshake, HeartPulse, Smile, SmilePlus,
   
   // Lodging
   BedDouble, Bed, BedSingle, Sofa, Armchair, Home, Building, Warehouse,
-  Tent, DoorOpen, DoorClosed, Lock, Unlock, Key,
+  Tent, DoorOpen, DoorClosed, Lock, Unlock, Key, Fence,
   
   // Health/Medical
   Stethoscope, Syringe, Pill, Thermometer, Bandage, Cross, CircleDot,
   Scan, BrainCircuit, Dna, HeartOff, HeartCrack, Eye, EyeOff, Ear, EarOff,
+  Ambulance, Hospital, Microscope, TestTube, TestTubes,
   
   // Nature
-  Leaf, Flower, Flower2, Clover, Shrub, TreePine, Trees, Mountain,
-  Waves, Snowflake, CloudRain, CloudSun, Rainbow, Umbrella,
+  Leaf, Flower, Flower2, Clover, Shrub, TreePine, Trees, Mountain, Sprout,
+  Waves, Snowflake, CloudRain, CloudSun, CloudSnow, Rainbow, Umbrella,
   
-  // Food
+  // Food (pet food related)
   Apple, Cookie, Carrot, Cherry, Grape, Pizza, Sandwich, Coffee, Milk,
-  UtensilsCrossed, GlassWater,
+  UtensilsCrossed, GlassWater, Beef, Drumstick, Ham, Salad, Banana, Citrus,
+  Soup, Croissant, Cake, Candy, CandyOff, Nut, Wheat, Popcorn, Lollipop,
   
   // Packages/Items
   Star, Package, Box, Archive, Gift, Gem, Diamond, Crown,
@@ -54,7 +57,7 @@ import {
   
   // Communication
   Phone, PhoneCall, PhoneOff, Mail, Send, MessageSquare, MessageCircle,
-  Bell, BellRing, BellOff, Volume2, VolumeX,
+  Bell, BellRing, BellOff, Volume2, VolumeX, Megaphone, Speaker,
   
   // Tools
   Wrench, Hammer, Settings, Cog, Zap, ZapOff,
@@ -168,7 +171,7 @@ export const serviceTypeIconMap: Record<string, LucideIcon> = {
   'bar-chart-3': BarChart3,
   'pie-chart': PieChart,
   
-  // Animals/Care
+  // Animals/Care - All available animal icons
   'dog': Dog,
   'cat': Cat,
   'bird': Bird,
@@ -177,6 +180,12 @@ export const serviceTypeIconMap: Record<string, LucideIcon> = {
   'turtle': Turtle,
   'bug': Bug,
   'squirrel': Squirrel,
+  'rat': Rat,
+  'snail': Snail,
+  'worm': Worm,
+  'feather': Feather,
+  'egg': Egg,
+  'shell': Shell,
   'paw-print': PawPrint,
   'bone': Bone,
   'hand': Hand,
@@ -424,13 +433,24 @@ export const serviceIconOptions: ServiceIconOption[] = [
   
   // Care/Animals
   { value: 'dog', label: 'Dog', icon: Dog, category: 'care' },
+  // Care/Animals - All available animal icons
+  { value: 'dog', label: 'Dog', icon: Dog, category: 'care' },
   { value: 'cat', label: 'Cat', icon: Cat, category: 'care' },
   { value: 'bird', label: 'Bird', icon: Bird, category: 'care' },
   { value: 'fish', label: 'Fish', icon: Fish, category: 'care' },
   { value: 'rabbit', label: 'Rabbit', icon: Rabbit, category: 'care' },
   { value: 'turtle', label: 'Turtle', icon: Turtle, category: 'care' },
+  { value: 'bug', label: 'Bug', icon: Bug, category: 'care' },
+  { value: 'squirrel', label: 'Squirrel', icon: Squirrel, category: 'care' },
+  { value: 'rat', label: 'Rat/Mouse', icon: Rat, category: 'care' },
+  { value: 'snail', label: 'Snail', icon: Snail, category: 'care' },
+  { value: 'worm', label: 'Worm', icon: Worm, category: 'care' },
+  { value: 'feather', label: 'Feather', icon: Feather, category: 'care' },
+  { value: 'egg', label: 'Egg', icon: Egg, category: 'care' },
+  { value: 'shell', label: 'Shell', icon: Shell, category: 'care' },
   { value: 'paw-print', label: 'Paw Print', icon: PawPrint, category: 'care' },
   { value: 'bone', label: 'Bone', icon: Bone, category: 'care' },
+  { value: 'footprints', label: 'Footprints', icon: Footprints, category: 'care' },
   { value: 'hand', label: 'Hand', icon: Hand, category: 'care' },
   { value: 'baby', label: 'Baby', icon: Baby, category: 'care' },
   { value: 'users', label: 'Users', icon: Users, category: 'care' },

@@ -1,62 +1,72 @@
 // Pet Trait Icon System
-// 120+ icons with 10 color options each
+// 150+ icons with 10 color options each
 
 import {
-  // Animals
-  Dog, Cat, Bird, Fish, Rabbit, Turtle, Bug, Squirrel,
+  // Animals (all available in lucide-react)
+  Dog, Cat, Bird, Fish, Rabbit, Turtle, Bug, Squirrel, Rat, Snail, Worm,
+  Feather, Egg, Shell,
   // Behavior & Emotion
   Heart, HeartOff, HeartCrack, HeartHandshake, Smile, SmilePlus, Frown, Meh,
-  Angry, Laugh, PartyPopper, Ghost,
+  Angry, Laugh, PartyPopper, Ghost, Annoyed, Skull, SkullIcon,
   // Alerts & Status
   AlertTriangle, AlertCircle, AlertOctagon, CircleAlert, TriangleAlert,
   Shield, ShieldAlert, ShieldCheck, ShieldX, ShieldQuestion,
   Ban, CircleSlash, OctagonX, XCircle, CheckCircle, CheckCircle2,
+  CircleOff, CircleDashed, CircleDotDashed,
   // Energy & Activity
   Zap, ZapOff, Activity, Gauge, TrendingUp, TrendingDown, Rocket,
   Bolt, BatteryFull, BatteryLow, BatteryWarning, Power, PowerOff,
+  Flame, FlameKindling, Loader, RefreshCw,
   // Senses
-  Eye, EyeOff, Ear, EarOff, Hand, HandMetal, Fingerprint,
+  Eye, EyeOff, Ear, EarOff, Hand, HandMetal, Fingerprint, Scan, ScanEye,
   // Social
   Users, UserX, UserCheck, UserPlus, UserMinus, User, Users2,
-  Baby, PersonStanding, Handshake,
-  // Food & Care
+  Baby, PersonStanding, Handshake, HeartHandshake as HeartHandshakeIcon,
+  // Food & Care (pet food related)
   Bone, UtensilsCrossed, Apple, Cookie, Carrot, Leaf, Cherry, Grape,
   Pizza, Sandwich, Coffee, Milk, Droplet, Droplets, GlassWater,
+  Beef, Drumstick, Ham, Egg as EggFood, Salad, Banana, Citrus,
+  Soup, Croissant, Cake, Candy, CandyOff, Nut, Wheat, Popcorn, Lollipop,
   // Medical
   Pill, Syringe, Stethoscope, Thermometer, Bandage, Cross, CircleDot,
-  HeartPulse, Scan, BrainCircuit, Dna,
+  HeartPulse, BrainCircuit, Dna, Ambulance, Hospital, Microscope,
+  TestTube, TestTubes, Radiation, Biohazard, Accessibility,
   // Grooming
   Scissors, Wind, Brush, Paintbrush, Sparkles, Wand2, WandSparkles,
-  Bath, ShowerHead, Waves,
+  Bath, ShowerHead, Waves, SprayCan, Pipette,
   // Sound
   Volume2, VolumeX, Volume1, Volume, Bell, BellOff, BellRing,
-  Music, Music2, Music4, Mic, MicOff,
+  Music, Music2, Music4, Mic, MicOff, Speaker, Megaphone,
   // Time
   Sun, Moon, Sunrise, Sunset, Clock, Timer, Hourglass, Calendar,
-  CalendarClock, AlarmClock, Watch, History,
+  CalendarClock, AlarmClock, Watch, History, CalendarDays,
   // Environment
   Home, Bed, BedDouble, Sofa, Armchair, Tent, Building, Warehouse,
   Fence, DoorOpen, DoorClosed, Lock, Unlock, Key,
   // Nature
-  Mountain, TreePine, Trees, Flower, Flower2, Clover, Shrub,
-  Snowflake, CloudRain, CloudSun, Rainbow, Umbrella,
+  Mountain, TreePine, Trees, Flower, Flower2, Clover, Shrub, Sprout,
+  Snowflake, CloudRain, CloudSun, Rainbow, Umbrella, CloudSnow,
   // Movement
   Footprints, PawPrint, Route, MapPin, Navigation, Compass, Move,
   ArrowUp, ArrowDown, ArrowLeft, ArrowRight, RotateCw,
+  CircleArrowUp, CircleArrowDown, MoveHorizontal, MoveVertical,
   // Special & Badges
   Star, Award, Crown, Trophy, Medal, Gem, Diamond, Gift,
-  Sparkle, Flame, Lightbulb, Rocket as RocketIcon,
+  Sparkle, Lightbulb, Rocket as RocketIcon, PartyPopper as Party,
+  Verified, BadgeCheck, BadgeAlert, BadgeX, BadgePlus, BadgeMinus,
   // Symbols
   Target, Circle, Square, Triangle, Hexagon, Pentagon, Octagon,
-  Plus, Minus, X, Check, Info, HelpCircle,
+  Plus, Minus, X, Check, Info, HelpCircle, CircleHelp,
+  Asterisk, Hash, AtSign, Percent, DollarSign,
   // Misc
-  Flag, Bookmark, Tag, Hash, AtSign, Percent, DollarSign,
-  Package, Box, Archive, Briefcase, Folder, FileText,
+  Flag, Bookmark, Tag, Package, Box, Archive, Briefcase, Folder, FileText,
   Camera, Image, Video, Phone, Mail, Send,
   Link, Unlink, Wifi, WifiOff, Bluetooth, Radio,
+  QrCode, Barcode, Fingerprint as FingerprintIcon,
   // Tools & Objects
   Wrench, Hammer, Settings, Cog,
   Magnet, Anchor, Umbrella as UmbrellaIcon, Glasses, Binoculars,
+  Flashlight, Shovel, Axe, Pickaxe, Ruler, Scale, Weight,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -89,9 +99,9 @@ export const traitColors: TraitColor[] = [
   { key: 'gray', label: 'Gray', bgClass: 'bg-gray-400', textClass: 'text-gray-400', hex: '#9ca3af' },
 ];
 
-// 120+ trait icons organized by category
+// 150+ trait icons organized by category
 export const traitIcons: TraitIcon[] = [
-  // Animals (8)
+  // Animals - All available pet/animal icons (14)
   { id: 'dog', label: 'Dog', icon: Dog, category: 'behavior' },
   { id: 'cat', label: 'Cat', icon: Cat, category: 'behavior' },
   { id: 'bird', label: 'Bird', icon: Bird, category: 'behavior' },
@@ -100,8 +110,17 @@ export const traitIcons: TraitIcon[] = [
   { id: 'turtle', label: 'Turtle', icon: Turtle, category: 'behavior' },
   { id: 'bug', label: 'Bug', icon: Bug, category: 'behavior' },
   { id: 'squirrel', label: 'Squirrel', icon: Squirrel, category: 'behavior' },
+  { id: 'rat', label: 'Rat/Mouse', icon: Rat, category: 'behavior' },
+  { id: 'snail', label: 'Snail', icon: Snail, category: 'behavior' },
+  { id: 'worm', label: 'Worm', icon: Worm, category: 'behavior' },
+  { id: 'feather', label: 'Feather', icon: Feather, category: 'behavior' },
+  { id: 'egg', label: 'Egg', icon: Egg, category: 'behavior' },
+  { id: 'shell', label: 'Shell', icon: Shell, category: 'behavior' },
+  { id: 'paw', label: 'Paw Print', icon: PawPrint, category: 'behavior' },
+  { id: 'bone', label: 'Bone', icon: Bone, category: 'behavior' },
+  { id: 'footprints', label: 'Footprints', icon: Footprints, category: 'behavior' },
 
-  // Behavior & Energy (20)
+  // Behavior & Energy (25)
   { id: 'zap', label: 'High Energy', icon: Zap, category: 'behavior' },
   { id: 'zap-off', label: 'Low Energy', icon: ZapOff, category: 'behavior' },
   { id: 'activity', label: 'Active', icon: Activity, category: 'behavior' },
@@ -115,11 +134,14 @@ export const traitIcons: TraitIcon[] = [
   { id: 'battery-warning', label: 'Low Energy', icon: BatteryWarning, category: 'behavior' },
   { id: 'power', label: 'Powered Up', icon: Power, category: 'behavior' },
   { id: 'power-off', label: 'Calm', icon: PowerOff, category: 'behavior' },
+  { id: 'flame', label: 'Fiery', icon: Flame, category: 'behavior' },
+  { id: 'flame-kindling', label: 'Warming Up', icon: FlameKindling, category: 'behavior' },
   { id: 'smile', label: 'Friendly', icon: Smile, category: 'behavior' },
   { id: 'smile-plus', label: 'Very Friendly', icon: SmilePlus, category: 'behavior' },
   { id: 'frown', label: 'Anxious', icon: Frown, category: 'behavior' },
   { id: 'meh', label: 'Neutral', icon: Meh, category: 'behavior' },
   { id: 'angry', label: 'Aggressive', icon: Angry, category: 'behavior' },
+  { id: 'annoyed', label: 'Annoyed', icon: Annoyed, category: 'behavior' },
   { id: 'laugh', label: 'Playful', icon: Laugh, category: 'behavior' },
   { id: 'party', label: 'Excited', icon: PartyPopper, category: 'behavior' },
   { id: 'ghost', label: 'Shy', icon: Ghost, category: 'behavior' },
@@ -192,17 +214,32 @@ export const traitIcons: TraitIcon[] = [
   { id: 'volume2', label: 'Vocal', icon: Volume2, category: 'social' },
   { id: 'volume-x', label: 'Quiet', icon: VolumeX, category: 'social' },
 
-  // Care & Food (20)
-  { id: 'bone', label: 'Food Motivated', icon: Bone, category: 'care' },
+  // Care & Food (30+ pet food related)
+  { id: 'bone-food', label: 'Food Motivated', icon: Bone, category: 'care' },
   { id: 'utensils', label: 'Special Diet', icon: UtensilsCrossed, category: 'care' },
   { id: 'apple', label: 'Treats OK', icon: Apple, category: 'care' },
-  { id: 'cookie', label: 'No Treats', icon: Cookie, category: 'care' },
+  { id: 'cookie', label: 'Cookie Treats', icon: Cookie, category: 'care' },
+  { id: 'candy-off', label: 'No Treats', icon: CandyOff, category: 'care' },
   { id: 'carrot', label: 'Veggie Lover', icon: Carrot, category: 'care' },
   { id: 'leaf', label: 'Natural Diet', icon: Leaf, category: 'care' },
   { id: 'cherry', label: 'Fruit Lover', icon: Cherry, category: 'care' },
   { id: 'grape', label: 'Grape Allergy', icon: Grape, category: 'care' },
+  { id: 'banana', label: 'Banana Treats', icon: Banana, category: 'care' },
+  { id: 'citrus', label: 'Citrus Allergy', icon: Citrus, category: 'care' },
+  { id: 'beef', label: 'Meat Lover', icon: Beef, category: 'care' },
+  { id: 'drumstick', label: 'Chicken', icon: Drumstick, category: 'care' },
+  { id: 'ham', label: 'Pork', icon: Ham, category: 'care' },
+  { id: 'salad', label: 'Greens', icon: Salad, category: 'care' },
+  { id: 'soup', label: 'Wet Food', icon: Soup, category: 'care' },
+  { id: 'nut', label: 'Nut Allergy', icon: Nut, category: 'care' },
+  { id: 'wheat', label: 'Grain Free', icon: Wheat, category: 'care' },
   { id: 'pizza', label: 'Human Food', icon: Pizza, category: 'care' },
   { id: 'sandwich', label: 'Snacker', icon: Sandwich, category: 'care' },
+  { id: 'croissant', label: 'Baked Goods', icon: Croissant, category: 'care' },
+  { id: 'cake', label: 'Birthday Pup', icon: Cake, category: 'care' },
+  { id: 'candy', label: 'Sweet Tooth', icon: Candy, category: 'care' },
+  { id: 'lollipop', label: 'Lollipop', icon: Lollipop, category: 'care' },
+  { id: 'popcorn', label: 'Popcorn Lover', icon: Popcorn, category: 'care' },
   { id: 'coffee', label: 'Morning Dog', icon: Coffee, category: 'care' },
   { id: 'milk', label: 'Dairy', icon: Milk, category: 'care' },
   { id: 'glass-water', label: 'Water Bowl', icon: GlassWater, category: 'care' },
@@ -210,9 +247,9 @@ export const traitIcons: TraitIcon[] = [
   { id: 'timer', label: 'Timed Meals', icon: Timer, category: 'care' },
   { id: 'hourglass', label: 'Patience', icon: Hourglass, category: 'care' },
   { id: 'calendar', label: 'Routine', icon: Calendar, category: 'care' },
-  { id: 'paw', label: 'Paw Care', icon: PawPrint, category: 'care' },
-  { id: 'footprints', label: 'Exercise', icon: Footprints, category: 'care' },
   { id: 'brush', label: 'Brushing', icon: Brush, category: 'care' },
+  { id: 'scissors-care', label: 'Grooming', icon: Scissors, category: 'care' },
+  { id: 'spray-can', label: 'Spray', icon: SprayCan, category: 'care' },
 
   // Environment (20)
   { id: 'home', label: 'Indoor Only', icon: Home, category: 'environment' },
