@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ServiceTypeIcon } from '@/components/ui/service-type-icon';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
@@ -12,16 +13,6 @@ import {
   Loader2,
   Calendar as CalendarIcon,
   CalendarDays,
-  Dog,
-  BedDouble,
-  Scissors,
-  GraduationCap,
-  Clock,
-  Sparkles,
-  ClipboardList,
-  Package,
-  Star,
-  type LucideIcon
 } from 'lucide-react';
 import { 
   format, 
@@ -36,7 +27,6 @@ import {
   isSameDay,
   isSameMonth,
   eachDayOfInterval,
-  getDay
 } from 'date-fns';
 
 type ViewMode = 'weekly' | 'monthly';
@@ -64,25 +54,11 @@ interface ServiceCount {
   id: string;
   name: string;
   displayName: string;
+  iconName: string;
   count: number;
   color: string;
   bgColor: string;
-  icon: LucideIcon;
 }
-
-// Icon mapping for service types
-const iconMap: Record<string, LucideIcon> = {
-  'dog': Dog,
-  'bed-double': BedDouble,
-  'scissors': Scissors,
-  'graduation-cap': GraduationCap,
-  'clock': Clock,
-  'sparkles': Sparkles,
-  'clipboard-list': ClipboardList,
-  'package': Package,
-  'star': Star,
-  'calendar': CalendarIcon,
-};
 
 // Color mapping with bg and text variants
 const colorMap: Record<string, { bg: string; text: string }> = {
@@ -180,16 +156,15 @@ const StaffCalendar = () => {
     return serviceTypes.map((st) => {
       const colorKey = st.color || 'gray';
       const colors = colorMap[colorKey] || colorMap['gray'];
-      const IconComponent = iconMap[st.icon_name || 'calendar'] || CalendarIcon;
       
       return {
         id: st.id,
         name: st.name,
         displayName: st.display_name,
+        iconName: st.icon_name || 'calendar',
         count: counts[st.name] || 0,
         color: colors.text,
         bgColor: colors.bg,
-        icon: IconComponent,
       };
     });
   };
@@ -314,14 +289,13 @@ const StaffCalendar = () => {
                       {/* Service type counts - always show all types */}
                       <div className="space-y-1">
                         {serviceCounts.map((service) => {
-                          const Icon = service.icon;
                           return (
                             <div 
                               key={service.id}
                               className={`flex items-center justify-between px-2 py-1 rounded ${service.bgColor} ${service.count === 0 ? 'opacity-40' : ''}`}
                             >
                               <div className={`flex items-center gap-1 ${service.color}`}>
-                                <Icon className="h-3 w-3 flex-shrink-0" />
+                                <ServiceTypeIcon iconName={service.iconName} className="h-3 w-3 flex-shrink-0" />
                                 <span className="text-[10px] font-medium truncate max-w-[60px]">
                                   {service.displayName}
                                 </span>
@@ -389,14 +363,13 @@ const StaffCalendar = () => {
                           {/* Compact service counts */}
                           <div className="space-y-0.5">
                             {serviceCounts.filter(s => s.count > 0).slice(0, 8).map((service) => {
-                              const Icon = service.icon;
                               return (
                                 <div 
                                   key={service.id}
                                   className={`flex items-center justify-between gap-1 px-1 py-0.5 rounded ${service.bgColor}`}
                                 >
                                   <div className={`flex items-center gap-0.5 min-w-0 ${service.color}`}>
-                                    <Icon className="h-2.5 w-2.5 flex-shrink-0" />
+                                    <ServiceTypeIcon iconName={service.iconName} className="h-2.5 w-2.5 flex-shrink-0" />
                                     <span className="text-[8px] font-medium truncate">
                                       {service.displayName}
                                     </span>
@@ -425,14 +398,13 @@ const StaffCalendar = () => {
                           </p>
                           <div className="space-y-1">
                             {serviceCounts.map((service) => {
-                              const Icon = service.icon;
                               return (
                                 <div 
                                   key={service.id}
                                   className={`flex items-center justify-between gap-2 px-2 py-1 rounded ${service.bgColor} ${service.count === 0 ? 'opacity-40' : ''}`}
                                 >
                                   <div className={`flex items-center gap-1.5 ${service.color}`}>
-                                    <Icon className="h-3 w-3 flex-shrink-0" />
+                                    <ServiceTypeIcon iconName={service.iconName} className="h-3 w-3 flex-shrink-0" />
                                     <span className="text-xs font-medium">
                                       {service.displayName}
                                     </span>
@@ -465,12 +437,11 @@ const StaffCalendar = () => {
             {serviceTypes.map((st) => {
               const colorKey = st.color || 'gray';
               const colors = colorMap[colorKey] || colorMap['gray'];
-              const IconComponent = iconMap[st.icon_name || 'calendar'] || CalendarIcon;
               
               return (
                 <div key={st.id} className="flex items-center gap-2">
                   <div className={`w-6 h-6 rounded flex items-center justify-center ${colors.bg} ${colors.text}`}>
-                    <IconComponent className="h-3.5 w-3.5" />
+                    <ServiceTypeIcon iconName={st.icon_name} className="h-3.5 w-3.5" />
                   </div>
                   <span className="text-sm text-muted-foreground">{st.display_name}</span>
                 </div>
