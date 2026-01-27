@@ -305,7 +305,7 @@ export function ControlCenterTable({
                       <span>{reservation.client_name}</span>
                       <div className="text-xs text-muted-foreground mt-0.5">
                         <span className={reservation.daycare_credits <= 0 ? 'text-destructive font-medium' : ''}>
-                          DC: {reservation.daycare_credits}
+                          FD: {reservation.daycare_credits}
                         </span>
                         {' | '}
                         <span className={reservation.half_daycare_credits <= 0 ? 'text-destructive font-medium' : ''}>
@@ -313,7 +313,7 @@ export function ControlCenterTable({
                         </span>
                         {' | '}
                         <span className={reservation.boarding_credits <= 0 ? 'text-destructive font-medium' : ''}>
-                          BC: {reservation.boarding_credits}
+                          BD: {reservation.boarding_credits}
                         </span>
                       </div>
                     </div>
