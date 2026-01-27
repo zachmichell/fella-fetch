@@ -34,12 +34,11 @@ interface ServiceTypeStats {
   total: number;
 }
 
-const SERVICE_TYPE_DISPLAY: Record<string, string> = {
-  daycare: 'Daycare',
-  boarding: 'Boarding',
-  grooming: 'Grooming',
-  training: 'Training',
-};
+interface ServiceTypeRecord {
+  name: string;
+  display_name: string;
+  category: string;
+}
 
 export const DailySummaryTable = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -51,9 +50,29 @@ export const DailySummaryTable = () => {
     total: 0,
   });
   const [serviceBreakdown, setServiceBreakdown] = useState<ServiceTypeStats[]>([]);
+  const [serviceTypes, setServiceTypes] = useState<ServiceTypeRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Fetch service types from database
+  useEffect(() => {
+    const fetchServiceTypes = async () => {
+      const { data } = await supabase
+        .from('service_types')
+        .select('name, display_name, category')
+        .eq('is_active', true)
+        .in('category', ['reservation', 'service'])
+        .order('sort_order');
+      
+      if (data) {
+        setServiceTypes(data);
+      }
+    };
+    fetchServiceTypes();
+  }, []);
+
   const fetchSummaryData = async () => {
+    if (serviceTypes.length === 0) return;
+    
     setLoading(true);
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
@@ -66,18 +85,20 @@ export const DailySummaryTable = () => {
         .in('status', ['confirmed', 'checked_in', 'checked_out']);
 
       // Fetch reservations that END on this date (departing) - must be accepted
-      // This includes: 
-      // 1. Reservations with end_date = today
-      // 2. Same-day services (daycare, grooming, training) where start_date = today and no end_date
       const { data: departingWithEndDate } = await supabase
         .from('reservations')
         .select('id, pet_id, service_type, status, start_date, end_date')
         .eq('end_date', dateStr)
         .in('status', ['confirmed', 'checked_in', 'checked_out']);
 
+      // Get list of same-day service types (everything except boarding)
+      const sameDayServiceTypes = serviceTypes
+        .filter(st => st.name !== 'boarding')
+        .map(st => st.name);
+
       // For same-day services without end_date, they depart the same day they arrive
       const sameDayDeparting = arrivingData?.filter(r => 
-        !r.end_date && ['daycare', 'grooming', 'training'].includes(r.service_type)
+        !r.end_date && sameDayServiceTypes.includes(r.service_type)
       ) || [];
 
       // Combine departing: those with end_date today + same-day services starting today
@@ -88,8 +109,6 @@ export const DailySummaryTable = () => {
       const departingCount = allDepartingIds.size;
 
       // Fetch overnight reservations (boarding that spans overnight on this date)
-      // These are boarding reservations where:
-      // - start_date <= today AND (end_date > today OR end_date is null)
       const { data: overnightData } = await supabase
         .from('reservations')
         .select('id, pet_id, service_type, status, start_date, end_date')
@@ -99,17 +118,15 @@ export const DailySummaryTable = () => {
 
       // Filter overnight: must end after today (staying overnight) or have no end date
       const overnightFiltered = overnightData?.filter(r => {
-        if (!r.end_date) return true; // No end date means still here
-        return r.end_date > dateStr; // End date is after the selected date (staying tonight)
+        if (!r.end_date) return true;
+        return r.end_date > dateStr;
       }) || [];
 
       // Calculate overall summary
       const arrivingCount = arrivingData?.length || 0;
       const overnightCount = overnightFiltered.length;
       
-      // Total unique pets for the day:
-      // - All arriving pets
-      // - Plus overnight pets that didn't arrive today (they arrived earlier)
+      // Total unique pets for the day
       const arrivingPetIds = new Set(arrivingData?.map(r => r.pet_id) || []);
       const overnightNotArrivingToday = overnightFiltered.filter(r => !arrivingPetIds.has(r.pet_id));
       const totalCount = arrivingCount + overnightNotArrivingToday.length;
@@ -121,31 +138,30 @@ export const DailySummaryTable = () => {
         total: totalCount,
       });
 
-      // Calculate breakdown by service type
-      const serviceTypes = ['daycare', 'boarding', 'grooming', 'training'];
+      // Calculate breakdown by service type using dynamic service types
       const breakdown: ServiceTypeStats[] = serviceTypes.map(st => {
-        const arriving = arrivingData?.filter(r => r.service_type === st).length || 0;
+        const arriving = arrivingData?.filter(r => r.service_type === st.name).length || 0;
         
         // Departing for this service type
         const departingForType = [
-          ...(departingWithEndDate?.filter(r => r.service_type === st) || []),
-          ...sameDayDeparting.filter(r => r.service_type === st)
+          ...(departingWithEndDate?.filter(r => r.service_type === st.name) || []),
+          ...sameDayDeparting.filter(r => r.service_type === st.name)
         ];
         const uniqueDepartingIds = new Set(departingForType.map(r => r.id));
         const departing = uniqueDepartingIds.size;
         
-        const overnight = st === 'boarding' ? overnightCount : 0;
+        const overnight = st.name === 'boarding' ? overnightCount : 0;
         
         // Total for this type: arriving + overnight that didn't arrive today
-        const arrivingPetIdsForType = new Set(arrivingData?.filter(r => r.service_type === st).map(r => r.pet_id) || []);
-        const overnightNotArrivingForType = st === 'boarding' 
+        const arrivingPetIdsForType = new Set(arrivingData?.filter(r => r.service_type === st.name).map(r => r.pet_id) || []);
+        const overnightNotArrivingForType = st.name === 'boarding' 
           ? overnightFiltered.filter(r => !arrivingPetIdsForType.has(r.pet_id)).length 
           : 0;
         const total = arriving + overnightNotArrivingForType;
 
         return {
-          serviceType: st,
-          displayName: SERVICE_TYPE_DISPLAY[st] || st,
+          serviceType: st.name,
+          displayName: st.display_name,
           arriving,
           departing,
           overnight,
@@ -163,7 +179,7 @@ export const DailySummaryTable = () => {
 
   useEffect(() => {
     fetchSummaryData();
-  }, [selectedDate]);
+  }, [selectedDate, serviceTypes]);
 
   const goToPreviousDay = () => setSelectedDate(prev => subDays(prev, 1));
   const goToNextDay = () => setSelectedDate(prev => addDays(prev, 1));
