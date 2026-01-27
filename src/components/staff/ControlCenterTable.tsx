@@ -25,6 +25,7 @@ import {
   Plus,
   Undo2,
   CheckCircle,
+  XCircle,
   Loader2,
   Dog,
   Tags
@@ -33,6 +34,7 @@ import { format } from 'date-fns';
 import { PetTraitBadges, type PetTrait } from './PetTraitBadges';
 import { ManagePetTraitsDialog } from './ManagePetTraitsDialog';
 import { CancelReservationDialog } from './CancelReservationDialog';
+import { DeclineReservationDialog } from './DeclineReservationDialog';
 
 export interface ControlCenterReservation {
   id: string;
@@ -66,6 +68,7 @@ interface ControlCenterTableProps {
   onUndoCheckIn: (reservation: ControlCenterReservation) => void;
   onAcceptReservation: (reservation: ControlCenterReservation) => void;
   onCancelReservation: (reservation: ControlCenterReservation, useCredit: boolean) => void;
+  onDeclineReservation: (reservation: ControlCenterReservation, reason: string) => void;
   onAddService: (reservation: ControlCenterReservation) => void;
   onTraitsUpdated?: () => void;
 }
@@ -92,12 +95,14 @@ export function ControlCenterTable({
   onUndoCheckIn,
   onAcceptReservation,
   onCancelReservation,
+  onDeclineReservation,
   onAddService,
   onTraitsUpdated,
 }: ControlCenterTableProps) {
   const [activeTab, setActiveTab] = useState<TabValue>('expected');
   const [searchQuery, setSearchQuery] = useState('');
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [declineDialogOpen, setDeclineDialogOpen] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState<ControlCenterReservation | null>(null);
   const [traitsDialogOpen, setTraitsDialogOpen] = useState(false);
   const [selectedPetForTraits, setSelectedPetForTraits] = useState<{ id: string; name: string } | null>(null);
@@ -146,11 +151,24 @@ export function ControlCenterTable({
     setCancelDialogOpen(true);
   };
 
+  const handleDeclineClick = (reservation: ControlCenterReservation) => {
+    setSelectedReservation(reservation);
+    setDeclineDialogOpen(true);
+  };
+
   const handleCancelConfirm = (useCredit: boolean) => {
     if (selectedReservation) {
       onCancelReservation(selectedReservation, useCredit);
     }
     setCancelDialogOpen(false);
+    setSelectedReservation(null);
+  };
+
+  const handleDeclineConfirm = (reason: string) => {
+    if (selectedReservation) {
+      onDeclineReservation(selectedReservation, reason);
+    }
+    setDeclineDialogOpen(false);
     setSelectedReservation(null);
   };
 
@@ -278,15 +296,28 @@ export function ControlCenterTable({
                           </Button>
                         </>
                       )}
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => handleCancelClick(reservation)}
-                        title="Cancel Reservation"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
+                      {/* Show Decline for pending, Cancel for others */}
+                      {reservation.status === 'pending' ? (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleDeclineClick(reservation)}
+                          title="Decline Reservation"
+                        >
+                          <XCircle className="h-4 w-4" />
+                        </Button>
+                      ) : (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleCancelClick(reservation)}
+                          title="Cancel Reservation"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button size="icon" variant="ghost" className="h-8 w-8">
@@ -419,6 +450,20 @@ export function ControlCenterTable({
           daycareCredits={selectedReservation.daycare_credits}
           boardingCredits={selectedReservation.boarding_credits}
           onConfirm={handleCancelConfirm}
+        />
+      )}
+
+      {/* Decline Reservation Dialog */}
+      {selectedReservation && (
+        <DeclineReservationDialog
+          open={declineDialogOpen}
+          onOpenChange={(open) => {
+            setDeclineDialogOpen(open);
+            if (!open) setSelectedReservation(null);
+          }}
+          petName={selectedReservation.pet_name}
+          serviceType={selectedReservation.service_type}
+          onConfirm={handleDeclineConfirm}
         />
       )}
 
