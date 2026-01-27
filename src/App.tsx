@@ -19,6 +19,7 @@ import ClientPortal from "./pages/client/ClientPortal";
 import StaffLogin from "./pages/staff/StaffLogin";
 import StaffDashboard from "./pages/staff/StaffDashboard";
 import StaffCalendar from "./pages/staff/StaffCalendar";
+import StaffLodgingCalendar from "./pages/staff/StaffLodgingCalendar";
 import StaffClients from "./pages/staff/StaffClients";
 import StaffPets from "./pages/staff/StaffPets";
 import StaffReportCards from "./pages/staff/StaffReportCards";
@@ -54,6 +55,7 @@ const App = () => (
             <Route path="/staff/login" element={<StaffLogin />} />
             <Route path="/staff" element={<StaffDashboard />} />
             <Route path="/staff/calendar" element={<StaffCalendar />} />
+            <Route path="/staff/lodging" element={<StaffLodgingCalendar />} />
             <Route path="/staff/clients" element={<StaffClients />} />
             <Route path="/staff/pets" element={<StaffPets />} />
             <Route path="/staff/report-cards" element={<StaffReportCards />} />
