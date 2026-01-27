@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Plus, FolderOpen, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-type CollectionCategory = "reservations" | "services" | "retail";
+type CollectionCategory = "reservations" | "services" | "addons" | "retail";
 
 interface CollectionMapping {
   id: string;
@@ -25,12 +25,14 @@ interface CollectionMapping {
 const CATEGORY_LABELS: Record<CollectionCategory, string> = {
   reservations: "Reservations (Daycare/Boarding)",
   services: "Services (Grooming/Training)",
+  addons: "Add-ons (Nail Trim/Bath/etc.)",
   retail: "Retail Products",
 };
 
 const CATEGORY_COLORS: Record<CollectionCategory, string> = {
   reservations: "bg-blue-100 text-blue-800",
   services: "bg-green-100 text-green-800",
+  addons: "bg-cyan-100 text-cyan-800",
   retail: "bg-orange-100 text-orange-800",
 };
 

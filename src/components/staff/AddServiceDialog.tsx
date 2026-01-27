@@ -46,14 +46,14 @@ export function AddServiceDialog({
   const [selectedServices, setSelectedServices] = useState<SelectedService[]>([]);
   const [notes, setNotes] = useState('');
 
-  // Fetch collection mappings for services category
+  // Fetch collection mappings for services and addons categories
   const { data: serviceMappings, isLoading: isLoadingMappings } = useQuery({
-    queryKey: ['shopify-service-collection-mappings'],
+    queryKey: ['shopify-service-addon-collection-mappings'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('shopify_collection_mappings')
         .select('*')
-        .eq('category', 'services');
+        .in('category', ['services', 'addons']);
       
       if (error) throw error;
       return data as CollectionMapping[];
