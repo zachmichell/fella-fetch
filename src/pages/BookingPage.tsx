@@ -1,13 +1,16 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Calendar, Clock, Dog, ArrowRight, ArrowLeft, Check, LogIn } from "lucide-react";
+import { Calendar, Clock, Dog, ArrowRight, ArrowLeft, Check, LogIn, CreditCard, AlertTriangle, ShoppingCart, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { differenceInDays } from "date-fns";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useClientAuth } from "@/contexts/ClientAuthContext";
+import { storefrontApiRequest } from "@/lib/shopify";
+import { toast } from "sonner";
 
 import iconStay from "@/assets/icons/icon-stay.png";
 import iconGroom from "@/assets/icons/icon-groom.png";
@@ -43,9 +46,23 @@ const groomingTrainingTimeSlots = [
   "12:00 PM", "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM"
 ];
 
+// Shopify Cart mutations
+const CART_CREATE_MUTATION = `
+  mutation cartCreate($input: CartInput!) {
+    cartCreate(input: $input) {
+      cart {
+        id
+        checkoutUrl
+      }
+      userErrors { field message }
+    }
+  }
+`;
+
 const BookingPage = () => {
-  const { isAuthenticated, pets, loading } = useClientAuth();
+  const { isAuthenticated, pets, clientData, loading } = useClientAuth();
   const [step, setStep] = useState(1);
+  const [isCreatingCart, setIsCreatingCart] = useState(false);
   const [bookingData, setBookingData] = useState<BookingData>({
     service: null,
     selectedPets: [],
@@ -55,11 +72,49 @@ const BookingPage = () => {
     endTime: "",
   });
 
-  const totalSteps = 4;
+  // Calculate total steps based on service type
+  const needsCreditsStep = bookingData.service === "daycare" || bookingData.service === "boarding";
+  const totalSteps = needsCreditsStep ? 5 : 4;
+
+  // Calculate required credits
+  const creditsRequired = useMemo(() => {
+    if (!bookingData.service || !bookingData.date || !bookingData.endDate || bookingData.selectedPets.length === 0) {
+      return 0;
+    }
+
+    const startDate = new Date(bookingData.date);
+    const endDate = new Date(bookingData.endDate);
+
+    if (bookingData.service === "boarding") {
+      // Boarding: 1 credit per night per pet
+      const nights = Math.max(1, differenceInDays(endDate, startDate));
+      return nights * bookingData.selectedPets.length;
+    } else if (bookingData.service === "daycare") {
+      // Daycare: 1 credit per day per pet (each day they're there)
+      const days = differenceInDays(endDate, startDate) + 1; // Include both start and end day
+      return days * bookingData.selectedPets.length;
+    }
+
+    return 0;
+  }, [bookingData.service, bookingData.date, bookingData.endDate, bookingData.selectedPets.length]);
+
+  // Get current credit balance
+  const currentCredits = useMemo(() => {
+    if (!clientData) return 0;
+    if (bookingData.service === "boarding") {
+      return clientData.boarding_credits;
+    } else if (bookingData.service === "daycare") {
+      return clientData.daycare_credits;
+    }
+    return 0;
+  }, [clientData, bookingData.service]);
+
+  const creditsAfterBooking = currentCredits - creditsRequired;
+  const hasEnoughCredits = creditsAfterBooking >= 0;
+  const creditsNeeded = hasEnoughCredits ? 0 : Math.abs(creditsAfterBooking);
 
   const handleServiceSelect = (service: ServiceType) => {
     setBookingData({ ...bookingData, service });
-    // Immediately proceed to pet selection
     setStep(2);
   };
 
@@ -95,9 +150,41 @@ const BookingPage = () => {
           return !!bookingData.date && !!bookingData.time && !!bookingData.endDate && !!bookingData.endTime;
         }
         return !!bookingData.date && !!bookingData.time;
+      case 4:
+        if (needsCreditsStep) {
+          return hasEnoughCredits;
+        }
+        return true;
       default: return true;
     }
   };
+
+  // Create Shopify cart for credit purchase
+  const handlePurchaseCredits = async () => {
+    setIsCreatingCart(true);
+    try {
+      // TODO: This should use the actual credit package product from Shopify
+      // For now, we'll show a message to direct them to the store
+      toast.info("Credit packages", {
+        description: "Please visit our store to purchase credit packages, then return to complete your booking."
+      });
+    } catch (error) {
+      console.error("Error creating cart:", error);
+      toast.error("Failed to create checkout");
+    } finally {
+      setIsCreatingCart(false);
+    }
+  };
+
+  // Get the current step label for progress bar
+  const getStepLabels = () => {
+    if (needsCreditsStep) {
+      return ["Service", "Select Pets", "Date & Time", "Credits", "Confirm"];
+    }
+    return ["Service", "Select Pets", "Date & Time", "Confirm"];
+  };
+
+  const stepLabels = getStepLabels();
 
   return (
     <div className="min-h-screen bg-background">
@@ -122,7 +209,7 @@ const BookingPage = () => {
           {/* Progress Bar */}
           <div className="mb-12">
             <div className="flex items-center justify-between mb-4">
-              {[1, 2, 3, 4].map((s) => (
+              {Array.from({ length: totalSteps }, (_, i) => i + 1).map((s) => (
                 <div key={s} className="flex items-center">
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-colors ${
@@ -133,8 +220,8 @@ const BookingPage = () => {
                   >
                     {s < step ? <Check className="w-5 h-5" /> : s}
                   </div>
-                  {s < 4 && (
-                    <div className={`hidden sm:block w-16 lg:w-24 h-1 mx-2 rounded ${
+                  {s < totalSteps && (
+                    <div className={`hidden sm:block w-12 lg:w-20 h-1 mx-2 rounded ${
                       s < step ? "bg-primary" : "bg-muted"
                     }`} />
                   )}
@@ -142,10 +229,9 @@ const BookingPage = () => {
               ))}
             </div>
             <div className="flex justify-between text-sm text-muted-foreground">
-              <span>Service</span>
-              <span>Select Pets</span>
-              <span>Date & Time</span>
-              <span>Confirm</span>
+              {stepLabels.map((label, i) => (
+                <span key={i}>{label}</span>
+              ))}
             </div>
           </div>
 
@@ -409,10 +495,106 @@ const BookingPage = () => {
               </motion.div>
             )}
 
-            {/* Step 4: Confirmation */}
-            {step === 4 && (
+            {/* Step 4: Credits Check (for daycare/boarding only) */}
+            {step === 4 && needsCreditsStep && (
               <motion.div
-                key="step4"
+                key="step4-credits"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
+              >
+                <h2 className="font-display text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-primary" />
+                  {bookingData.service === "boarding" ? "Boarding" : "Daycare"} Credits
+                </h2>
+
+                {/* Credit Summary Card */}
+                <div className="bg-card rounded-2xl border border-border p-6 space-y-4">
+                  <div className="flex justify-between items-center pb-4 border-b border-border">
+                    <span className="text-muted-foreground">Current Balance</span>
+                    <span className="font-semibold text-foreground text-lg">
+                      {currentCredits} {bookingData.service === "boarding" ? "night" : "day"}{currentCredits !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center pb-4 border-b border-border">
+                    <div>
+                      <span className="text-muted-foreground">Required for this booking</span>
+                      <p className="text-sm text-muted-foreground">
+                        {bookingData.selectedPets.length} pet{bookingData.selectedPets.length > 1 ? 's' : ''} × {' '}
+                        {bookingData.service === "boarding" 
+                          ? `${Math.max(1, differenceInDays(new Date(bookingData.endDate), new Date(bookingData.date)))} night${Math.max(1, differenceInDays(new Date(bookingData.endDate), new Date(bookingData.date))) !== 1 ? 's' : ''}`
+                          : `${differenceInDays(new Date(bookingData.endDate), new Date(bookingData.date)) + 1} day${differenceInDays(new Date(bookingData.endDate), new Date(bookingData.date)) + 1 !== 1 ? 's' : ''}`
+                        }
+                      </p>
+                    </div>
+                    <span className="font-semibold text-foreground text-lg">
+                      -{creditsRequired} {bookingData.service === "boarding" ? "night" : "day"}{creditsRequired !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center pt-2">
+                    <span className="font-semibold text-foreground">Balance After Booking</span>
+                    <span className={`font-bold text-xl ${hasEnoughCredits ? 'text-green-600' : 'text-destructive'}`}>
+                      {creditsAfterBooking} {bookingData.service === "boarding" ? "night" : "day"}{creditsAfterBooking !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Not Enough Credits Warning */}
+                {!hasEnoughCredits && (
+                  <div className="bg-destructive/10 border border-destructive/30 rounded-2xl p-6 space-y-4">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="w-6 h-6 text-destructive flex-shrink-0 mt-0.5" />
+                      <div>
+                        <h3 className="font-semibold text-foreground">Not Enough Credits</h3>
+                        <p className="text-muted-foreground text-sm">
+                          You need <strong>{creditsNeeded} more {bookingData.service === "boarding" ? "boarding" : "daycare"} credit{creditsNeeded !== 1 ? 's' : ''}</strong> to complete this booking.
+                          Purchase a credit package to continue.
+                        </p>
+                      </div>
+                    </div>
+
+                    <Button 
+                      variant="hero" 
+                      className="w-full" 
+                      onClick={handlePurchaseCredits}
+                      disabled={isCreatingCart}
+                    >
+                      {isCreatingCart ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <>
+                          <ShoppingCart className="w-5 h-5" />
+                          Purchase Credit Package
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+
+                {/* Enough Credits Success */}
+                {hasEnoughCredits && (
+                  <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-6">
+                    <div className="flex items-center gap-3">
+                      <Check className="w-6 h-6 text-green-600" />
+                      <div>
+                        <h3 className="font-semibold text-foreground">You have enough credits!</h3>
+                        <p className="text-muted-foreground text-sm">
+                          Continue to review and submit your reservation request.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* Final Step: Confirmation */}
+            {((step === 4 && !needsCreditsStep) || (step === 5 && needsCreditsStep)) && (
+              <motion.div
+                key="step-confirm"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
@@ -491,12 +673,23 @@ const BookingPage = () => {
                   ))}
                 </div>
 
+                {needsCreditsStep && (
+                  <div className="bg-accent/20 rounded-2xl p-6 text-center space-y-2">
+                    <p className="text-foreground">
+                      <strong>{creditsRequired}</strong> {bookingData.service === "boarding" ? "boarding" : "daycare"} credit{creditsRequired !== 1 ? 's' : ''} will be used
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      New balance: {creditsAfterBooking} credit{creditsAfterBooking !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                )}
+
                 <div className="bg-accent/20 rounded-2xl p-6 text-center">
                   <p className="text-foreground mb-2">
-                    You'll be redirected to complete payment
+                    Your reservation request will be sent to our team for approval
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Your slot will be held for 15 minutes during checkout
+                    You'll receive a confirmation once approved
                   </p>
                 </div>
 
@@ -533,7 +726,7 @@ const BookingPage = () => {
               </Button>
             ) : (
               <Button variant="hero" size="lg">
-                Proceed to Checkout
+                Request Reservation
                 <ArrowRight className="w-5 h-5" />
               </Button>
             )}
