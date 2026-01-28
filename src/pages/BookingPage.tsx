@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Calendar, Clock, Dog, ArrowRight, ArrowLeft, Check } from "lucide-react";
+import { Calendar, Clock, Dog, ArrowRight, ArrowLeft, Check, LogIn } from "lucide-react";
+import { Link } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useClientAuth } from "@/contexts/ClientAuthContext";
 
 import iconStay from "@/assets/icons/icon-stay.png";
 import iconGroom from "@/assets/icons/icon-groom.png";
@@ -12,21 +15,27 @@ import iconTrain from "@/assets/icons/icon-train.png";
 
 type ServiceType = "daycare" | "boarding" | "grooming" | "training";
 
+interface SelectedPet {
+  id: string;
+  name: string;
+  breed: string | null;
+  photo_url: string | null;
+}
+
 interface BookingData {
   service: ServiceType | null;
+  selectedPets: SelectedPet[];
   date: string;
   time: string;
   endDate: string;
   endTime: string;
-  pet: string;
-  addons: string[];
 }
 
 const serviceOptions = [
-  { id: "daycare" as const, name: "Daycare", icon: iconStay, description: "Supervised play & socialization for your pup", price: "From $40/day" },
-  { id: "boarding" as const, name: "Boarding", icon: iconStay, description: "Comfortable overnight stays with 24/7 care", price: "From $65/night" },
-  { id: "grooming" as const, name: "Grooming", icon: iconGroom, description: "Professional baths, haircuts & spa treatments", price: "From $40" },
-  { id: "training" as const, name: "Training", icon: iconTrain, description: "Group classes & private sessions", price: "From $275" },
+  { id: "daycare" as const, name: "Daycare", icon: iconStay, description: "Supervised play & socialization for your pup" },
+  { id: "boarding" as const, name: "Boarding", icon: iconStay, description: "Comfortable overnight stays with 24/7 care" },
+  { id: "grooming" as const, name: "Grooming", icon: iconGroom, description: "Professional baths, haircuts & spa treatments" },
+  { id: "training" as const, name: "Training", icon: iconTrain, description: "Group classes & private sessions" },
 ];
 
 const groomingTrainingTimeSlots = [
@@ -35,23 +44,38 @@ const groomingTrainingTimeSlots = [
 ];
 
 const BookingPage = () => {
+  const { isAuthenticated, pets, loading } = useClientAuth();
   const [step, setStep] = useState(1);
   const [bookingData, setBookingData] = useState<BookingData>({
     service: null,
+    selectedPets: [],
     date: "",
     time: "",
     endDate: "",
     endTime: "",
-    pet: "",
-    addons: [],
   });
 
   const totalSteps = 4;
 
   const handleServiceSelect = (service: ServiceType) => {
     setBookingData({ ...bookingData, service });
-    // Immediately proceed to next step when service is selected
+    // Immediately proceed to pet selection
     setStep(2);
+  };
+
+  const handlePetToggle = (pet: SelectedPet) => {
+    const isSelected = bookingData.selectedPets.some(p => p.id === pet.id);
+    if (isSelected) {
+      setBookingData({
+        ...bookingData,
+        selectedPets: bookingData.selectedPets.filter(p => p.id !== pet.id)
+      });
+    } else {
+      setBookingData({
+        ...bookingData,
+        selectedPets: [...bookingData.selectedPets, pet]
+      });
+    }
   };
 
   const nextStep = () => {
@@ -65,12 +89,12 @@ const BookingPage = () => {
   const canProceed = () => {
     switch (step) {
       case 1: return !!bookingData.service;
-      case 2: 
+      case 2: return bookingData.selectedPets.length > 0;
+      case 3: 
         if (bookingData.service === "daycare" || bookingData.service === "boarding") {
           return !!bookingData.date && !!bookingData.time && !!bookingData.endDate && !!bookingData.endTime;
         }
         return !!bookingData.date && !!bookingData.time;
-      case 3: return !!bookingData.pet;
       default: return true;
     }
   };
@@ -119,8 +143,8 @@ const BookingPage = () => {
             </div>
             <div className="flex justify-between text-sm text-muted-foreground">
               <span>Service</span>
+              <span>Select Pets</span>
               <span>Date & Time</span>
-              <span>Pet Info</span>
               <span>Confirm</span>
             </div>
           </div>
@@ -159,10 +183,123 @@ const BookingPage = () => {
               </motion.div>
             )}
 
-            {/* Step 2: Date & Time */}
+            {/* Step 2: Select Pets */}
             {step === 2 && (
               <motion.div
                 key="step2"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
+              >
+                <h2 className="font-display text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
+                  <Dog className="w-5 h-5 text-primary" />
+                  Select Your Pets
+                </h2>
+
+                {!isAuthenticated ? (
+                  <div className="bg-card rounded-2xl border border-border p-8 text-center space-y-4">
+                    <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto">
+                      <LogIn className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="font-semibold text-foreground text-lg">Sign in to see your pets</h3>
+                    <p className="text-muted-foreground">
+                      Log in to your account to select from your registered pets.
+                    </p>
+                    <Button asChild variant="hero">
+                      <Link to="/client/login">Sign In</Link>
+                    </Button>
+                  </div>
+                ) : loading ? (
+                  <div className="bg-card rounded-2xl border border-border p-8 text-center">
+                    <p className="text-muted-foreground">Loading your pets...</p>
+                  </div>
+                ) : pets.length === 0 ? (
+                  <div className="bg-card rounded-2xl border border-border p-8 text-center space-y-4">
+                    <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto">
+                      <Dog className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="font-semibold text-foreground text-lg">No pets found</h3>
+                    <p className="text-muted-foreground">
+                      You don't have any pets registered yet. Add pets to your profile to book services.
+                    </p>
+                    <Button asChild variant="outline">
+                      <Link to="/client/pets">Add a Pet</Link>
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-muted-foreground">
+                      Select one or more pets for this booking. Each pet will have their own reservation.
+                    </p>
+                    <div className="grid gap-3">
+                      {pets.map((pet) => {
+                        const isSelected = bookingData.selectedPets.some(p => p.id === pet.id);
+                        return (
+                          <button
+                            key={pet.id}
+                            onClick={() => handlePetToggle({
+                              id: pet.id,
+                              name: pet.name,
+                              breed: pet.breed,
+                              photo_url: pet.photo_url
+                            })}
+                            className={`p-4 rounded-xl border-2 flex items-center gap-4 transition-all text-left ${
+                              isSelected
+                                ? "border-primary bg-accent/30"
+                                : "border-border hover:border-primary/50 bg-card"
+                            }`}
+                          >
+                            <div className="flex items-center gap-3 flex-1">
+                              <Checkbox
+                                checked={isSelected}
+                                className="pointer-events-none"
+                              />
+                              {pet.photo_url ? (
+                                <img 
+                                  src={pet.photo_url} 
+                                  alt={pet.name} 
+                                  className="w-12 h-12 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                                  <Dog className="w-6 h-6 text-muted-foreground" />
+                                </div>
+                              )}
+                              <div>
+                                <h3 className="font-semibold text-foreground">{pet.name}</h3>
+                                {pet.breed && (
+                                  <p className="text-sm text-muted-foreground">{pet.breed}</p>
+                                )}
+                              </div>
+                            </div>
+                            {isSelected && (
+                              <Check className="w-5 h-5 text-primary" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {bookingData.selectedPets.length > 0 && (
+                      <div className="bg-accent/20 rounded-xl p-4 text-sm text-foreground">
+                        <strong>{bookingData.selectedPets.length}</strong> pet{bookingData.selectedPets.length > 1 ? 's' : ''} selected
+                        {bookingData.selectedPets.length > 1 && (
+                          <span className="text-muted-foreground ml-1">
+                            — {bookingData.selectedPets.length} separate reservations will be created
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </motion.div>
+            )}
+
+            {/* Step 3: Date & Time */}
+            {step === 3 && (
+              <motion.div
+                key="step3"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
@@ -272,44 +409,6 @@ const BookingPage = () => {
               </motion.div>
             )}
 
-            {/* Step 3: Pet Info */}
-            {step === 3 && (
-              <motion.div
-                key="step3"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-6"
-              >
-                <h2 className="font-display text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
-                  <Dog className="w-5 h-5 text-primary" />
-                  Tell us about your pet
-                </h2>
-                
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Pet's Name</label>
-                  <input
-                    type="text"
-                    value={bookingData.pet}
-                    onChange={(e) => setBookingData({ ...bookingData, pet: e.target.value })}
-                    placeholder="e.g., Max, Bella, Charlie"
-                    className="w-full p-4 rounded-xl border border-border bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-
-                <div className="text-sm text-muted-foreground bg-muted/50 p-4 rounded-xl space-y-2">
-                  <p>
-                    💡 <strong>New here?</strong> Don't worry! You'll be able to add complete pet profiles, 
-                    vaccination records, and more after signing up.
-                  </p>
-                  <p className="text-xs">
-                    <strong>Requirements:</strong> All dogs must be spayed/neutered (6+ months), up-to-date on Rabies, 
-                    Distemper, Bordetella & Canine Influenza vaccinations.
-                  </p>
-                </div>
-              </motion.div>
-            )}
-
             {/* Step 4: Confirmation */}
             {step === 4 && (
               <motion.div
@@ -320,49 +419,76 @@ const BookingPage = () => {
                 className="space-y-6"
               >
                 <h2 className="font-display text-xl font-semibold text-foreground mb-6">
-                  Review Your Booking
+                  Review Your Booking{bookingData.selectedPets.length > 1 ? 's' : ''}
                 </h2>
 
-                <div className="bg-card rounded-2xl border border-border p-6 space-y-4">
-                  <div className="flex justify-between items-center pb-4 border-b border-border">
-                    <span className="text-muted-foreground">Service</span>
-                    <span className="font-semibold text-foreground capitalize">
-                      {serviceOptions.find(s => s.id === bookingData.service)?.name}
-                    </span>
+                {bookingData.selectedPets.length > 1 && (
+                  <div className="bg-accent/20 rounded-xl p-4 text-sm text-foreground mb-4">
+                    You are booking <strong>{bookingData.selectedPets.length} reservations</strong> — one for each pet selected.
                   </div>
-                  {(bookingData.service === "daycare" || bookingData.service === "boarding") ? (
-                    <>
+                )}
+
+                <div className="space-y-4">
+                  {bookingData.selectedPets.map((pet) => (
+                    <div key={pet.id} className="bg-card rounded-2xl border border-border p-6 space-y-4">
+                      <div className="flex items-center gap-3 pb-4 border-b border-border">
+                        {pet.photo_url ? (
+                          <img 
+                            src={pet.photo_url} 
+                            alt={pet.name} 
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                            <Dog className="w-5 h-5 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div>
+                          <span className="font-semibold text-foreground">{pet.name}</span>
+                          {pet.breed && (
+                            <span className="text-muted-foreground text-sm ml-2">• {pet.breed}</span>
+                          )}
+                        </div>
+                      </div>
+
                       <div className="flex justify-between items-center pb-4 border-b border-border">
-                        <span className="text-muted-foreground">Drop-off</span>
-                        <span className="font-semibold text-foreground">
-                          {bookingData.date ? new Date(bookingData.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : ''} at {bookingData.time}
+                        <span className="text-muted-foreground">Service</span>
+                        <span className="font-semibold text-foreground capitalize">
+                          {serviceOptions.find(s => s.id === bookingData.service)?.name}
                         </span>
                       </div>
-                      <div className="flex justify-between items-center pb-4 border-b border-border">
-                        <span className="text-muted-foreground">Pick-up</span>
-                        <span className="font-semibold text-foreground">
-                          {bookingData.endDate ? new Date(bookingData.endDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : ''} at {bookingData.endTime}
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex justify-between items-center pb-4 border-b border-border">
-                        <span className="text-muted-foreground">Date</span>
-                        <span className="font-semibold text-foreground">
-                          {bookingData.date ? new Date(bookingData.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : ''}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center pb-4 border-b border-border">
-                        <span className="text-muted-foreground">Time</span>
-                        <span className="font-semibold text-foreground">{bookingData.time}</span>
-                      </div>
-                    </>
-                  )}
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Pet</span>
-                    <span className="font-semibold text-foreground">{bookingData.pet}</span>
-                  </div>
+
+                      {(bookingData.service === "daycare" || bookingData.service === "boarding") ? (
+                        <>
+                          <div className="flex justify-between items-center pb-4 border-b border-border">
+                            <span className="text-muted-foreground">Drop-off</span>
+                            <span className="font-semibold text-foreground">
+                              {bookingData.date ? new Date(bookingData.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : ''} at {bookingData.time}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-muted-foreground">Pick-up</span>
+                            <span className="font-semibold text-foreground">
+                              {bookingData.endDate ? new Date(bookingData.endDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : ''} at {bookingData.endTime}
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex justify-between items-center pb-4 border-b border-border">
+                            <span className="text-muted-foreground">Date</span>
+                            <span className="font-semibold text-foreground">
+                              {bookingData.date ? new Date(bookingData.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : ''}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-muted-foreground">Time</span>
+                            <span className="font-semibold text-foreground">{bookingData.time}</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
                 </div>
 
                 <div className="bg-accent/20 rounded-2xl p-6 text-center">
