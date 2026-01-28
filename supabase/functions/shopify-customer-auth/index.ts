@@ -192,16 +192,17 @@ serve(async (req) => {
 
       const result = data.data.customerAccessTokenCreate;
       if (result.customerUserErrors && result.customerUserErrors.length > 0) {
+        // Return 200 with error in body so client can properly read the message
         return new Response(
-          JSON.stringify({ error: result.customerUserErrors[0].message }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ error: 'Invalid email or password' }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
       if (!result.customerAccessToken) {
         return new Response(
           JSON.stringify({ error: 'Invalid email or password' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
