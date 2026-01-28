@@ -3,11 +3,10 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useClientAuth } from '@/contexts/ClientAuthContext';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { ClientSidebar } from './ClientSidebar';
 import Header from '@/components/layout/Header';
-import { Calendar, LogOut, Loader2, User, Menu } from 'lucide-react';
+import { Calendar, LogOut, Loader2, Menu } from 'lucide-react';
 
 interface ClientPortalLayoutProps {
   children: ReactNode;
@@ -43,38 +42,7 @@ export function ClientPortalLayout({ children, title, description }: ClientPorta
     return null;
   }
 
-  // No client record
-  if (!contextClientData && !authLoading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <main className="pt-28 pb-12">
-          <div className="container-app">
-            <Card className="max-w-lg mx-auto">
-              <CardHeader className="text-center">
-                <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                  <User className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <CardTitle>No Client Profile Found</CardTitle>
-                <CardDescription>
-                  Your account isn't linked to a client profile yet. Please contact us to set up your account.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Link to="/contact">
-                  <Button className="w-full">Contact Us</Button>
-                </Link>
-                <Button variant="outline" className="w-full" onClick={handleSignOut}>
-                  Sign Out
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
+  // Use Shopify customer name if no client record exists
   const displayName = contextClientData?.first_name || shopifyCustomer?.firstName || 'Customer';
 
   return (
