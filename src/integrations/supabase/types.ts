@@ -97,6 +97,7 @@ export type Database = {
         Row: {
           address: string | null
           boarding_credits: number
+          city: string | null
           created_at: string
           daycare_credits: number
           email: string | null
@@ -109,6 +110,8 @@ export type Database = {
           last_name: string
           notes: string | null
           phone: string | null
+          postal_code: string | null
+          province: string | null
           thread_id: string | null
           updated_at: string
           user_id: string | null
@@ -116,6 +119,7 @@ export type Database = {
         Insert: {
           address?: string | null
           boarding_credits?: number
+          city?: string | null
           created_at?: string
           daycare_credits?: number
           email?: string | null
@@ -128,6 +132,8 @@ export type Database = {
           last_name: string
           notes?: string | null
           phone?: string | null
+          postal_code?: string | null
+          province?: string | null
           thread_id?: string | null
           updated_at?: string
           user_id?: string | null
@@ -135,6 +141,7 @@ export type Database = {
         Update: {
           address?: string | null
           boarding_credits?: number
+          city?: string | null
           created_at?: string
           daycare_credits?: number
           email?: string | null
@@ -147,6 +154,8 @@ export type Database = {
           last_name?: string
           notes?: string | null
           phone?: string | null
+          postal_code?: string | null
+          province?: string | null
           thread_id?: string | null
           updated_at?: string
           user_id?: string | null
