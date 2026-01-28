@@ -24,6 +24,71 @@ serve(async (req) => {
 
     const { action, email, password, accessToken } = await req.json();
 
+    // Create a Storefront Access Token using Admin API
+    if (action === 'createStorefrontToken') {
+      const adminToken = Deno.env.get('SHOPIFY_ACCESS_TOKEN');
+      if (!adminToken) {
+        throw new Error('Shopify admin token not configured');
+      }
+
+      const createTokenMutation = `
+        mutation storefrontAccessTokenCreate($input: StorefrontAccessTokenInput!) {
+          storefrontAccessTokenCreate(input: $input) {
+            storefrontAccessToken {
+              accessToken
+              title
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+      `;
+
+      const response = await fetch(`https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Shopify-Access-Token': adminToken,
+        },
+        body: JSON.stringify({
+          query: createTokenMutation,
+          variables: {
+            input: {
+              title: 'Lovable Client Portal Token',
+            },
+          },
+        }),
+      });
+
+      const data = await response.json();
+      console.log('Create storefront token response:', JSON.stringify(data, null, 2));
+
+      if (data.errors) {
+        return new Response(
+          JSON.stringify({ error: data.errors[0].message }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const result = data.data?.storefrontAccessTokenCreate;
+      if (result?.userErrors?.length > 0) {
+        return new Response(
+          JSON.stringify({ error: result.userErrors[0].message }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ 
+          storefrontToken: result?.storefrontAccessToken?.accessToken,
+          title: result?.storefrontAccessToken?.title,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     if (action === 'login') {
       // Create customer access token (login)
       const loginMutation = `
