@@ -5,3 +5,9 @@ verify_jwt = false
 
 [functions.test-webhook]
 verify_jwt = false
+
+[functions.shopify-customer-auth]
+verify_jwt = false
+
+[functions.shopify-customer-orders]
+verify_jwt = false
