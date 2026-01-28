@@ -192,6 +192,13 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
     restoreSession();
   }, []);
 
+  // Fetch client data when shopify customer is authenticated
+  useEffect(() => {
+    if (shopifyCustomer && accessToken) {
+      fetchClientData();
+    }
+  }, [shopifyCustomer, accessToken]);
+
   const signIn = async (email: string, password: string): Promise<{ error: string | null }> => {
     try {
       const response = await supabase.functions.invoke('shopify-customer-auth', {
