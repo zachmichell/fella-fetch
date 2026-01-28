@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Dog, Loader2, ArrowLeft, ShoppingBag, Mail } from 'lucide-react';
+import { Dog, Loader2, ArrowLeft, Mail } from 'lucide-react';
 import { z } from 'zod';
 
 const emailSchema = z.string().email('Please enter a valid email address');
@@ -285,12 +285,6 @@ const ClientLogin = () => {
                     </Button>
                   </form>
 
-                  <div className="mt-6 p-4 rounded-lg bg-muted/50 text-center">
-                    <ShoppingBag className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">
-                      Sign in with the same email and password you use for your Shopify account.
-                    </p>
-                  </div>
                 </>
               )}
 
