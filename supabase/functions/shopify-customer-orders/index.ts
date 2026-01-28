@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,7 +17,7 @@ serve(async (req) => {
   }
 
   try {
-    // Verify JWT and get user claims
+    // Verify JWT using proper cryptographic verification
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       console.log('Missing or invalid Authorization header');
@@ -26,45 +27,30 @@ serve(async (req) => {
       );
     }
 
-    // Extract and decode the JWT token to get user info
+    // Use Supabase client with proper JWT verification
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    // Verify JWT signature cryptographically using getClaims()
     const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
     
-    // Decode JWT payload (second part)
-    const parts = token.split('.');
-    if (parts.length !== 3) {
-      console.log('Invalid JWT format');
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized - Invalid token format' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    
-    // Decode the payload (base64url)
-    let payload;
-    try {
-      payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
-      console.log('JWT payload decoded, sub:', payload.sub);
-    } catch (decodeError) {
-      console.log('Failed to decode JWT payload:', decodeError);
+    if (claimsError || !claimsData?.claims) {
+      console.log('JWT verification failed:', claimsError?.message);
       return new Response(
         JSON.stringify({ error: 'Unauthorized - Invalid token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    
-    // Verify the token is not expired
-    const now = Math.floor(Date.now() / 1000);
-    if (payload.exp && payload.exp < now) {
-      console.log('Token expired');
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized - Token expired' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    
-    // Get user email from JWT payload
-    const userEmail = payload.email as string;
-    console.log('User email from token:', userEmail);
+
+    // Get verified user email from JWT claims
+    const userEmail = claimsData.claims.email as string;
+    const userId = claimsData.claims.sub as string;
+    console.log('Verified user:', userId, 'email:', userEmail);
     
     if (!userEmail) {
       return new Response(
@@ -80,7 +66,7 @@ serve(async (req) => {
     }
 
     const { action } = await req.json();
-    console.log('Action requested:', action);
+    console.log('Action requested:', action, 'for user:', userId);
 
     if (action === 'getCustomerAndOrders') {
       // First, find customer by email using Admin API
@@ -161,7 +147,7 @@ serve(async (req) => {
         }
       `;
 
-      console.log('Querying Shopify for customer with email:', userEmail);
+      console.log('Querying Shopify for customer with verified email:', userEmail);
       
       const response = await fetch(SHOPIFY_ADMIN_URL, {
         method: 'POST',
@@ -188,7 +174,7 @@ serve(async (req) => {
 
       const customerEdge = data.data?.customers?.edges?.[0];
       if (!customerEdge) {
-        console.log('No Shopify customer found for email:', userEmail);
+        console.log('No Shopify customer found for verified email:', userEmail);
         // No Shopify customer found - that's OK, they can still use the portal
         return new Response(
           JSON.stringify({ 
