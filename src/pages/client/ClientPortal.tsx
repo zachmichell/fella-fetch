@@ -92,14 +92,14 @@ interface ClientData {
 const ClientPortal = () => {
   const navigate = useNavigate();
   const { 
-    user, 
     signOut, 
     loading: authLoading, 
     isAuthenticated,
     shopifyCustomer,
-    orders,
-    ordersLoading,
-    fetchShopifyData
+    clientData: contextClientData,
+    pets: contextPets,
+    reservations: contextReservations,
+    fetchClientData: fetchContextClientData,
   } = useClientAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -135,92 +135,49 @@ const ClientPortal = () => {
   }, [isAuthenticated, authLoading, navigate]);
 
   useEffect(() => {
-    if (isAuthenticated && user?.email) {
-      fetchClientData();
-      fetchShopifyData();
+    if (isAuthenticated) {
+      fetchContextClientData();
     }
-  }, [isAuthenticated, user?.email]);
-
-  const fetchClientData = async () => {
-    if (!user?.email) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      // Fetch client record linked to this email
-      const { data: clientRecord, error: clientError } = await supabase
-        .from('clients')
-        .select(`
-          id,
-          first_name,
-          last_name,
-          email,
-          phone,
-          address,
-          thread_id,
-          pets (
-            id,
-            name,
-            breed,
-            date_of_birth,
-            gender,
-            weight,
-            color,
-            vaccination_rabies,
-            vaccination_bordetella,
-            vaccination_distemper,
-            photo_url
-          )
-        `)
-        .eq('email', user.email)
-        .maybeSingle();
-
-      if (clientError) throw clientError;
-
-      if (!clientRecord) {
-        setNoClientRecord(true);
-        setLoading(false);
-        return;
-      }
-
-      setClientData(clientRecord);
-
-      // Fetch reservations for all pets
-      if (clientRecord.pets && clientRecord.pets.length > 0) {
-        const petIds = clientRecord.pets.map((p: Pet) => p.id);
-        const { data: reservationsData, error: resError } = await supabase
-          .from('reservations')
-          .select(`
-            id,
-            start_date,
-            end_date,
-            start_time,
-            end_time,
-            service_type,
-            status,
-            pet:pets (
-              id,
-              name
-            )
-          `)
-          .in('pet_id', petIds)
-          .order('start_date', { ascending: false });
-
-        if (resError) throw resError;
-        setReservations(reservationsData || []);
-      }
-    } catch (error) {
-      console.error('Error fetching client data:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load your information',
-        variant: 'destructive',
+  }, [isAuthenticated]);
+  
+  // Sync context data to local state
+  useEffect(() => {
+    if (contextClientData) {
+      setClientData({
+        ...contextClientData,
+        thread_id: null,
+        pets: contextPets.map(p => ({
+          id: p.id,
+          name: p.name,
+          breed: p.breed,
+          date_of_birth: p.date_of_birth,
+          gender: p.gender,
+          weight: p.weight,
+          color: p.color,
+          vaccination_rabies: p.vaccination_rabies,
+          vaccination_bordetella: p.vaccination_bordetella,
+          vaccination_distemper: p.vaccination_distemper,
+          photo_url: p.photo_url,
+        })),
       });
-    } finally {
+      setReservations(contextReservations.map(r => ({
+        id: r.id,
+        start_date: r.start_date,
+        end_date: r.end_date,
+        start_time: r.start_time,
+        end_time: r.end_time,
+        service_type: r.service_type,
+        status: r.status,
+        pet: r.pets,
+      })));
+      setNoClientRecord(false);
+      setLoading(false);
+    } else if (!authLoading && isAuthenticated) {
+      // If authenticated but no client data after fetch, show no record message
+      setNoClientRecord(true);
       setLoading(false);
     }
-  };
+  }, [contextClientData, contextPets, contextReservations, authLoading, isAuthenticated]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -258,7 +215,7 @@ const ClientPortal = () => {
 
       setNewPet({ name: '', breed: '', date_of_birth: '', gender: '', weight: '', color: '' });
       setAddPetOpen(false);
-      fetchClientData();
+      fetchContextClientData();
     } catch (error) {
       console.error('Error adding pet:', error);
       toast({
@@ -317,7 +274,7 @@ const ClientPortal = () => {
 
       setEditPetOpen(false);
       setSelectedPet(null);
-      fetchClientData();
+      fetchContextClientData();
     } catch (error) {
       console.error('Error updating pet:', error);
       toast({
@@ -399,8 +356,8 @@ const ClientPortal = () => {
     );
   }
 
-  // Get display name from client data, shopify customer, or user metadata
-  const displayName = clientData?.first_name || shopifyCustomer?.firstName || user?.user_metadata?.first_name || 'Customer';
+  // Get display name from client data or shopify customer
+  const displayName = clientData?.first_name || shopifyCustomer?.firstName || 'Customer';
 
   return (
     <div className="min-h-screen bg-background">
@@ -452,13 +409,13 @@ const ClientPortal = () => {
                     <div className="flex items-center gap-2 text-sm">
                       <User className="h-4 w-4 text-muted-foreground" />
                       <span>
-                        {shopifyCustomer?.firstName || clientData?.first_name || user?.user_metadata?.first_name || ''}{' '}
-                        {shopifyCustomer?.lastName || clientData?.last_name || user?.user_metadata?.last_name || ''}
+                        {shopifyCustomer?.firstName || clientData?.first_name || ''}{' '}
+                        {shopifyCustomer?.lastName || clientData?.last_name || ''}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <Mail className="h-4 w-4 text-muted-foreground" />
-                      <span>{user?.email || 'No email'}</span>
+                      <span>{shopifyCustomer?.email || clientData?.email || 'No email'}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <Phone className="h-4 w-4 text-muted-foreground" />
@@ -864,7 +821,7 @@ const ClientPortal = () => {
                 clientId={clientData.id}
                 clientName={`${clientData.first_name} ${clientData.last_name}`}
                 threadId={clientData.thread_id}
-                onThreadIdUpdate={() => fetchClientData()}
+                onThreadIdUpdate={() => fetchContextClientData()}
               />
             )}
           </motion.div>
