@@ -7,16 +7,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Dog, Loader2, ArrowLeft, ShoppingBag } from 'lucide-react';
+import { Dog, Loader2, ArrowLeft, ShoppingBag, Mail } from 'lucide-react';
 import { z } from 'zod';
 
 const emailSchema = z.string().email('Please enter a valid email address');
 
 const ClientLogin = () => {
   const navigate = useNavigate();
-  const { signIn, isAuthenticated, loading: authLoading } = useClientAuth();
+  const { signIn, recoverPassword, isAuthenticated, loading: authLoading } = useClientAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [recoveryEmail, setRecoveryEmail] = useState('');
+  const [recoverySent, setRecoverySent] = useState(false);
   const [loginForm, setLoginForm] = useState({
     email: '',
     password: '',
@@ -56,14 +59,53 @@ const ClientLogin = () => {
       const { error } = await signIn(loginForm.email, loginForm.password);
 
       if (error) {
+        // Provide more helpful error messages
+        let errorMessage = error;
+        if (error.toLowerCase().includes('unidentified customer') || error.toLowerCase().includes('invalid email or password')) {
+          errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+        }
+        
         toast({
           title: 'Sign in failed',
-          description: error,
+          description: errorMessage,
           variant: 'destructive',
         });
       } else {
         toast({ title: 'Welcome back!' });
         navigate('/portal');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const emailResult = emailSchema.safeParse(recoveryEmail);
+    if (!emailResult.success) {
+      setErrors({ recoveryEmail: emailResult.error.errors[0].message });
+      return;
+    }
+    
+    setErrors({});
+    setLoading(true);
+
+    try {
+      const { error, success } = await recoverPassword(recoveryEmail);
+
+      if (error) {
+        toast({
+          title: 'Error',
+          description: error,
+          variant: 'destructive',
+        });
+      } else if (success) {
+        setRecoverySent(true);
+        toast({
+          title: 'Check your email',
+          description: 'If an account exists with this email, you will receive password reset instructions.',
+        });
       }
     } finally {
       setLoading(false);
@@ -111,56 +153,136 @@ const ClientLogin = () => {
 
           <Card className="border-border/50 shadow-xl">
             <CardHeader className="text-center">
-              <CardTitle className="text-xl">Sign In</CardTitle>
+              <CardTitle className="text-xl">
+                {showForgotPassword ? 'Reset Password' : 'Sign In'}
+              </CardTitle>
               <CardDescription>
-                Use your Shopify account credentials
+                {showForgotPassword 
+                  ? 'Enter your email to receive reset instructions'
+                  : 'Use your Shopify account credentials'
+                }
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={loginForm.email}
-                    onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
-                    placeholder="you@example.com"
-                  />
-                  {errors.email && (
-                    <p className="text-xs text-destructive">{errors.email}</p>
-                  )}
-                </div>
+              {showForgotPassword ? (
+                recoverySent ? (
+                  <div className="text-center space-y-4">
+                    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 mb-2">
+                      <Mail className="h-6 w-6 text-primary" />
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      If an account exists for <strong>{recoveryEmail}</strong>, you will receive an email with instructions to reset your password.
+                    </p>
+                    <Button
+                      variant="outline"
+                      className="w-full mt-4"
+                      onClick={() => {
+                        setShowForgotPassword(false);
+                        setRecoverySent(false);
+                        setRecoveryEmail('');
+                      }}
+                    >
+                      Back to Sign In
+                    </Button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleForgotPassword} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="recoveryEmail">Email</Label>
+                      <Input
+                        id="recoveryEmail"
+                        type="email"
+                        value={recoveryEmail}
+                        onChange={(e) => setRecoveryEmail(e.target.value)}
+                        placeholder="you@example.com"
+                      />
+                      {errors.recoveryEmail && (
+                        <p className="text-xs text-destructive">{errors.recoveryEmail}</p>
+                      )}
+                    </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={loginForm.password}
-                    onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-                    placeholder="••••••••"
-                  />
-                  {errors.password && (
-                    <p className="text-xs text-destructive">{errors.password}</p>
-                  )}
-                </div>
+                    <Button type="submit" className="w-full" disabled={loading}>
+                      {loading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        'Send Reset Instructions'
+                      )}
+                    </Button>
 
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    'Sign In'
-                  )}
-                </Button>
-              </form>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="w-full"
+                      onClick={() => {
+                        setShowForgotPassword(false);
+                        setErrors({});
+                      }}
+                    >
+                      Back to Sign In
+                    </Button>
+                  </form>
+                )
+              ) : (
+                <>
+                  <form onSubmit={handleLogin} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={loginForm.email}
+                        onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
+                        placeholder="you@example.com"
+                      />
+                      {errors.email && (
+                        <p className="text-xs text-destructive">{errors.email}</p>
+                      )}
+                    </div>
 
-              <div className="mt-6 p-4 rounded-lg bg-muted/50 text-center">
-                <ShoppingBag className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
-                  Sign in with the same email and password you use for your Shopify account.
-                </p>
-              </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="password">Password</Label>
+                        <button
+                          type="button"
+                          className="text-xs text-primary hover:underline"
+                          onClick={() => {
+                            setShowForgotPassword(true);
+                            setRecoveryEmail(loginForm.email);
+                            setErrors({});
+                          }}
+                        >
+                          Forgot password?
+                        </button>
+                      </div>
+                      <Input
+                        id="password"
+                        type="password"
+                        value={loginForm.password}
+                        onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                        placeholder="••••••••"
+                      />
+                      {errors.password && (
+                        <p className="text-xs text-destructive">{errors.password}</p>
+                      )}
+                    </div>
+
+                    <Button type="submit" className="w-full" disabled={loading}>
+                      {loading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        'Sign In'
+                      )}
+                    </Button>
+                  </form>
+
+                  <div className="mt-6 p-4 rounded-lg bg-muted/50 text-center">
+                    <ShoppingBag className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">
+                      Sign in with the same email and password you use for your Shopify account.
+                    </p>
+                  </div>
+                </>
+              )}
 
               <div className="mt-4 pt-4 border-t border-border/50 text-center">
                 <Link
