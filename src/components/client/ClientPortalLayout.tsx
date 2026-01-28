@@ -61,7 +61,7 @@ export function ClientPortalLayout({ children, title, description }: ClientPorta
               {/* Header with sidebar trigger */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <SidebarTrigger className="lg:hidden">
+                  <SidebarTrigger className="lg:hidden flex items-center justify-center h-10 w-10 rounded-lg bg-primary text-primary-foreground shadow-md hover:bg-primary/90 transition-colors">
                     <Menu className="h-5 w-5" />
                   </SidebarTrigger>
                   <div>
