@@ -1,6 +1,6 @@
 import { useLocation } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
-import { User, Dog, ShoppingBag, History, CalendarDays } from 'lucide-react';
+import { User, Dog, ShoppingBag, History, CalendarDays, FileText } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -16,6 +16,7 @@ const menuItems = [
   { title: 'Dashboard', url: '/portal', icon: CalendarDays },
   { title: 'Profile', url: '/portal/profile', icon: User },
   { title: 'Pets', url: '/portal/pets', icon: Dog },
+  { title: 'Agreements', url: '/portal/agreements', icon: FileText },
   { title: 'Purchase History', url: '/portal/purchases', icon: ShoppingBag },
   { title: 'Past Appointments', url: '/portal/history', icon: History },
 ];

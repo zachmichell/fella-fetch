@@ -75,6 +75,9 @@ interface ClientData {
   daycare_credits: number;
   half_daycare_credits: number;
   notes: string | null;
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
+  emergency_contact_relationship: string | null;
 }
 
 interface Pet {

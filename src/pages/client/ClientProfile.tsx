@@ -1,20 +1,109 @@
+import { useState } from 'react';
 import { useClientAuth } from '@/contexts/ClientAuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { User, Mail, Phone, MapPin } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { User, Mail, Phone, MapPin, UserPlus, Pencil, Save, X } from 'lucide-react';
 import { ClientPortalLayout } from '@/components/client/ClientPortalLayout';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const ClientProfile = () => {
-  const { clientData, shopifyCustomer } = useClientAuth();
+  const { clientData, shopifyCustomer, fetchClientData } = useClientAuth();
+  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    phone: clientData?.phone || '',
+    address: clientData?.address || '',
+    emergency_contact_name: clientData?.emergency_contact_name || '',
+    emergency_contact_phone: clientData?.emergency_contact_phone || '',
+    emergency_contact_relationship: clientData?.emergency_contact_relationship || '',
+  });
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSave = async () => {
+    if (!clientData?.id) return;
+    
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .update({
+          phone: formData.phone || null,
+          address: formData.address || null,
+          emergency_contact_name: formData.emergency_contact_name || null,
+          emergency_contact_phone: formData.emergency_contact_phone || null,
+          emergency_contact_relationship: formData.emergency_contact_relationship || null,
+        })
+        .eq('id', clientData.id);
+
+      if (error) throw error;
+
+      toast.success('Profile updated successfully');
+      setIsEditing(false);
+      fetchClientData();
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast.error('Failed to update profile');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setFormData({
+      phone: clientData?.phone || '',
+      address: clientData?.address || '',
+      emergency_contact_name: clientData?.emergency_contact_name || '',
+      emergency_contact_phone: clientData?.emergency_contact_phone || '',
+      emergency_contact_relationship: clientData?.emergency_contact_relationship || '',
+    });
+    setIsEditing(false);
+  };
+
+  const handleEdit = () => {
+    setFormData({
+      phone: clientData?.phone || '',
+      address: clientData?.address || '',
+      emergency_contact_name: clientData?.emergency_contact_name || '',
+      emergency_contact_phone: clientData?.emergency_contact_phone || '',
+      emergency_contact_relationship: clientData?.emergency_contact_relationship || '',
+    });
+    setIsEditing(true);
+  };
 
   return (
-    <ClientPortalLayout title="Your Profile" description="View your account information">
-      <div className="max-w-xl">
+    <ClientPortalLayout title="Your Profile" description="View and edit your account information">
+      <div className="max-w-2xl space-y-6">
+        {/* Personal Information */}
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-3 flex flex-row items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2">
               <User className="h-5 w-5" />
-              Profile Information
+              Personal Information
             </CardTitle>
+            {!isEditing ? (
+              <Button variant="outline" size="sm" onClick={handleEdit}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Edit
+              </Button>
+            ) : (
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={handleCancel} disabled={saving}>
+                  <X className="h-4 w-4 mr-2" />
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={handleSave} disabled={saving}>
+                  <Save className="h-4 w-4 mr-2" />
+                  {saving ? 'Saving...' : 'Save'}
+                </Button>
+              </div>
+            )}
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
@@ -38,31 +127,152 @@ const ClientProfile = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
-              <Phone className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <p className="text-sm text-muted-foreground">Phone</p>
-                <p className="font-medium">
-                  {shopifyCustomer?.phone || clientData?.phone || 'Not provided'}
-                </p>
-              </div>
-            </div>
-
-            {shopifyCustomer?.defaultAddress && (
-              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
-                <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Address</p>
-                  <p className="font-medium">
-                    {[
-                      shopifyCustomer.defaultAddress.address1,
-                      shopifyCustomer.defaultAddress.city,
-                      shopifyCustomer.defaultAddress.province,
-                      shopifyCustomer.defaultAddress.zip,
-                    ].filter(Boolean).join(', ')}
-                  </p>
+            {isEditing ? (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="phone" className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    Phone
+                  </Label>
+                  <Input
+                    id="phone"
+                    value={formData.phone}
+                    onChange={(e) => handleInputChange('phone', e.target.value)}
+                    placeholder="Enter phone number"
+                  />
                 </div>
-              </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="address" className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    Address
+                  </Label>
+                  <Input
+                    id="address"
+                    value={formData.address}
+                    onChange={(e) => handleInputChange('address', e.target.value)}
+                    placeholder="Enter address"
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                  <Phone className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Phone</p>
+                    <p className="font-medium">
+                      {shopifyCustomer?.phone || clientData?.phone || 'Not provided'}
+                    </p>
+                  </div>
+                </div>
+
+                {(shopifyCustomer?.defaultAddress || clientData?.address) && (
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
+                    <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Address</p>
+                      <p className="font-medium">
+                        {shopifyCustomer?.defaultAddress
+                          ? [
+                              shopifyCustomer.defaultAddress.address1,
+                              shopifyCustomer.defaultAddress.city,
+                              shopifyCustomer.defaultAddress.province,
+                              shopifyCustomer.defaultAddress.zip,
+                            ].filter(Boolean).join(', ')
+                          : clientData?.address || 'Not provided'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Emergency Contact */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <UserPlus className="h-5 w-5" />
+              Emergency Contact
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {isEditing ? (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="emergency_name">Full Name</Label>
+                  <Input
+                    id="emergency_name"
+                    value={formData.emergency_contact_name}
+                    onChange={(e) => handleInputChange('emergency_contact_name', e.target.value)}
+                    placeholder="Emergency contact name"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="emergency_phone">Phone Number</Label>
+                  <Input
+                    id="emergency_phone"
+                    value={formData.emergency_contact_phone}
+                    onChange={(e) => handleInputChange('emergency_contact_phone', e.target.value)}
+                    placeholder="Emergency contact phone"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="emergency_relationship">Relationship</Label>
+                  <Input
+                    id="emergency_relationship"
+                    value={formData.emergency_contact_relationship}
+                    onChange={(e) => handleInputChange('emergency_contact_relationship', e.target.value)}
+                    placeholder="e.g., Spouse, Parent, Friend"
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                {clientData?.emergency_contact_name || clientData?.emergency_contact_phone || clientData?.emergency_contact_relationship ? (
+                  <>
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                      <User className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Name</p>
+                        <p className="font-medium">
+                          {clientData?.emergency_contact_name || 'Not provided'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                      <Phone className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Phone</p>
+                        <p className="font-medium">
+                          {clientData?.emergency_contact_phone || 'Not provided'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {clientData?.emergency_contact_relationship && (
+                      <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                        <UserPlus className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm text-muted-foreground">Relationship</p>
+                          <p className="font-medium">
+                            {clientData.emergency_contact_relationship}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-muted-foreground text-sm">
+                    No emergency contact added. Click "Edit" to add one.
+                  </p>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
