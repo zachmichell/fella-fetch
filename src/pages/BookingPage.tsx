@@ -46,6 +46,8 @@ const BookingPage = () => {
 
   const handleServiceSelect = (service: ServiceType) => {
     setBookingData({ ...bookingData, service });
+    // Immediately proceed to next step when service is selected
+    setStep(2);
   };
 
   const nextStep = () => {
@@ -142,8 +144,7 @@ const BookingPage = () => {
                     >
                       <img src={service.icon} alt={service.name} className="w-12 h-12 mb-3" />
                       <h3 className="font-semibold text-foreground text-lg">{service.name}</h3>
-                      <p className="text-sm text-muted-foreground mb-2">{service.description}</p>
-                      <p className="font-semibold text-primary">{service.price}</p>
+                      <p className="text-sm text-muted-foreground">{service.description}</p>
                     </button>
                   ))}
                 </div>
