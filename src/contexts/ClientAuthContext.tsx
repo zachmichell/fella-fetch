@@ -1,5 +1,4 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ShopifyCustomer {
@@ -65,174 +64,245 @@ interface ShopifyOrder {
   };
 }
 
+interface ClientData {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  boarding_credits: number;
+  daycare_credits: number;
+  half_daycare_credits: number;
+  notes: string | null;
+}
+
+interface Pet {
+  id: string;
+  name: string;
+  breed: string | null;
+  date_of_birth: string | null;
+  weight: number | null;
+  gender: string | null;
+  color: string | null;
+  photo_url: string | null;
+  vaccination_rabies: string | null;
+  vaccination_distemper: string | null;
+  vaccination_bordetella: string | null;
+  special_needs: string | null;
+  feeding_instructions: string | null;
+  behavior_notes: string | null;
+  pet_traits: Array<{
+    id: string;
+    title: string;
+    icon_name: string;
+    color_key: string;
+    is_alert: boolean;
+  }>;
+}
+
+interface Reservation {
+  id: string;
+  service_type: string;
+  start_date: string;
+  end_date: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  status: string;
+  notes: string | null;
+  pets: {
+    id: string;
+    name: string;
+    breed: string | null;
+    photo_url: string | null;
+  };
+}
+
 interface ClientAuthContextType {
-  user: User | null;
-  session: Session | null;
-  loading: boolean;
   shopifyCustomer: ShopifyCustomer | null;
+  clientData: ClientData | null;
+  pets: Pet[];
+  reservations: Reservation[];
   orders: ShopifyOrder[];
+  loading: boolean;
   ordersLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
-  fetchShopifyData: () => Promise<void>;
+  fetchOrders: () => Promise<void>;
+  fetchClientData: () => Promise<void>;
   isAuthenticated: boolean;
-  isClient: boolean;
 }
 
 const ClientAuthContext = createContext<ClientAuthContextType | undefined>(undefined);
 
+const STORAGE_KEY = 'shopify_customer_session';
+
+interface StoredSession {
+  accessToken: string;
+  expiresAt: string;
+  customer: ShopifyCustomer;
+}
+
 export function ClientAuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
   const [shopifyCustomer, setShopifyCustomer] = useState<ShopifyCustomer | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [clientData, setClientData] = useState<ClientData | null>(null);
+  const [pets, setPets] = useState<Pet[]>([]);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
   const [orders, setOrders] = useState<ShopifyOrder[]>([]);
+  const [loading, setLoading] = useState(true);
   const [ordersLoading, setOrdersLoading] = useState(false);
-  const [isClient, setIsClient] = useState(false);
 
-  // Check if user has staff/admin role (they should use staff portal instead)
-  const checkIsClient = async (userId: string): Promise<boolean> => {
-    const { data } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', userId)
-      .maybeSingle();
-    
-    // If they have a staff/admin role, they're not a client
-    return !data?.role;
-  };
-
+  // Restore session from localStorage on mount
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          setTimeout(() => {
-            checkIsClient(session.user.id).then(setIsClient);
-          }, 0);
-        } else {
-          setIsClient(false);
-          setShopifyCustomer(null);
-          setOrders([]);
-        }
-      }
-    );
+    const restoreSession = async () => {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const session: StoredSession = JSON.parse(stored);
+          
+          // Check if token is expired
+          if (new Date(session.expiresAt) > new Date()) {
+            // Verify token is still valid with Shopify
+            const { data, error } = await supabase.functions.invoke('shopify-customer-auth', {
+              body: { action: 'getCustomer', accessToken: session.accessToken },
+            });
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        checkIsClient(session.user.id).then((isClientUser) => {
-          setIsClient(isClientUser);
-          setLoading(false);
-        });
-      } else {
+            if (!error && data?.customer) {
+              setAccessToken(session.accessToken);
+              setShopifyCustomer(data.customer);
+            } else {
+              // Token invalid, clear storage
+              localStorage.removeItem(STORAGE_KEY);
+            }
+          } else {
+            // Token expired, clear storage
+            localStorage.removeItem(STORAGE_KEY);
+          }
+        }
+      } catch (e) {
+        console.error('Error restoring session:', e);
+        localStorage.removeItem(STORAGE_KEY);
+      } finally {
         setLoading(false);
       }
-    });
+    };
 
-    return () => subscription.unsubscribe();
+    restoreSession();
   }, []);
 
   const signIn = async (email: string, password: string): Promise<{ error: string | null }> => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    
-    if (error) {
-      return { error: error.message };
-    }
-
-    // Check if user is staff/admin - they should use staff login
-    if (data.user) {
-      const isClientUser = await checkIsClient(data.user.id);
-      if (!isClientUser) {
-        await supabase.auth.signOut();
-        return { error: 'Staff members should use the staff login portal.' };
-      }
-    }
-
-    return { error: null };
-  };
-
-  const signUp = async (
-    email: string, 
-    password: string, 
-    firstName: string, 
-    lastName: string
-  ): Promise<{ error: string | null }> => {
-    const redirectUrl = `${window.location.origin}/portal`;
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          first_name: firstName,
-          last_name: lastName,
-        },
-      },
-    });
-    
-    if (error) {
-      return { error: error.message };
-    }
-
-    return { error: null };
-  };
-
-  const signOut = async () => {
-    await supabase.auth.signOut();
-    setShopifyCustomer(null);
-    setOrders([]);
-    setIsClient(false);
-  };
-
-  const fetchShopifyData = async () => {
-    if (!session?.access_token) return;
-
-    setOrdersLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('shopify-customer-orders', {
-        body: { action: 'getCustomerAndOrders' },
+      const { data, error } = await supabase.functions.invoke('shopify-customer-auth', {
+        body: { action: 'login', email, password },
       });
 
       if (error) {
-        console.error('Error fetching Shopify data:', error);
+        return { error: error.message || 'Login failed' };
+      }
+
+      if (data?.error) {
+        return { error: data.error };
+      }
+
+      if (!data?.accessToken || !data?.customer) {
+        return { error: 'Invalid email or password' };
+      }
+
+      // Store session
+      const session: StoredSession = {
+        accessToken: data.accessToken,
+        expiresAt: data.expiresAt,
+        customer: data.customer,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+
+      setAccessToken(data.accessToken);
+      setShopifyCustomer(data.customer);
+
+      return { error: null };
+    } catch (e) {
+      console.error('Login error:', e);
+      return { error: 'An unexpected error occurred' };
+    }
+  };
+
+  const signOut = async () => {
+    if (accessToken) {
+      try {
+        await supabase.functions.invoke('shopify-customer-auth', {
+          body: { action: 'logout', accessToken },
+        });
+      } catch (e) {
+        console.error('Logout error:', e);
+      }
+    }
+
+    localStorage.removeItem(STORAGE_KEY);
+    setAccessToken(null);
+    setShopifyCustomer(null);
+    setClientData(null);
+    setPets([]);
+    setReservations([]);
+    setOrders([]);
+  };
+
+  const fetchClientData = async () => {
+    if (!accessToken) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('shopify-customer-auth', {
+        body: { action: 'getClientData', accessToken },
+      });
+
+      if (error) {
+        console.error('Error fetching client data:', error);
         return;
       }
 
-      if (data?.customer) {
-        setShopifyCustomer(data.customer);
-      }
-      
-      if (data?.orders) {
-        setOrders(data.orders);
-      }
+      setClientData(data?.client || null);
+      setPets(data?.pets || []);
+      setReservations(data?.reservations || []);
     } catch (e) {
-      console.error('Error fetching Shopify data:', e);
+      console.error('Error fetching client data:', e);
+    }
+  };
+
+  const fetchOrders = async () => {
+    if (!accessToken) return;
+
+    setOrdersLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('shopify-customer-auth', {
+        body: { action: 'getOrders', accessToken },
+      });
+
+      if (error) {
+        console.error('Error fetching orders:', error);
+        return;
+      }
+
+      setOrders(data?.orders || []);
+    } catch (e) {
+      console.error('Error fetching orders:', e);
     } finally {
       setOrdersLoading(false);
     }
   };
 
   const value = {
-    user,
-    session,
-    loading,
     shopifyCustomer,
+    clientData,
+    pets,
+    reservations,
     orders,
+    loading,
     ordersLoading,
     signIn,
-    signUp,
     signOut,
-    fetchShopifyData,
-    isAuthenticated: !!user && isClient,
-    isClient,
+    fetchOrders,
+    fetchClientData,
+    isAuthenticated: !!shopifyCustomer,
   };
 
   return (

@@ -95,11 +95,11 @@ const isUnpaid = (status: string) => {
 };
 
 export default function OrderHistory() {
-  const { orders, ordersLoading, fetchShopifyData, isAuthenticated } = useClientAuth();
+  const { orders, ordersLoading, fetchOrders, isAuthenticated } = useClientAuth();
 
   useEffect(() => {
     if (isAuthenticated) {
-      fetchShopifyData();
+      fetchOrders();
     }
   }, [isAuthenticated]);
 
