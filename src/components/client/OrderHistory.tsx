@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
-import { useShopifyCustomer } from '@/contexts/ShopifyCustomerContext';
+import { useClientAuth } from '@/contexts/ClientAuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, Package, ShoppingBag, Receipt, ChevronRight } from 'lucide-react';
+import { Loader2, Package, ShoppingBag, Receipt } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import {
   Accordion,
@@ -58,11 +58,11 @@ const formatStatus = (status: string | null) => {
 };
 
 export default function OrderHistory() {
-  const { orders, ordersLoading, fetchOrders, isAuthenticated } = useShopifyCustomer();
+  const { orders, ordersLoading, fetchShopifyData, isAuthenticated } = useClientAuth();
 
   useEffect(() => {
     if (isAuthenticated) {
-      fetchOrders();
+      fetchShopifyData();
     }
   }, [isAuthenticated]);
 
