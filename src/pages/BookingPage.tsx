@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Calendar, Clock, Dog, ArrowRight, ArrowLeft, Check, LogIn, CreditCard, AlertTriangle, ShoppingCart, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useClientAuth } from "@/contexts/ClientAuthContext";
-import { storefrontApiRequest } from "@/lib/shopify";
+import { storefrontApiRequest, SHOPIFY_STORE_PERMANENT_DOMAIN } from "@/lib/shopify";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 import iconStay from "@/assets/icons/icon-stay.png";
@@ -63,6 +64,7 @@ const BookingPage = () => {
   const { isAuthenticated, pets, clientData, loading } = useClientAuth();
   const [step, setStep] = useState(1);
   const [isCreatingCart, setIsCreatingCart] = useState(false);
+  const [creditProduct, setCreditProduct] = useState<{ shopify_product_id: string; shopify_product_title: string } | null>(null);
   const [bookingData, setBookingData] = useState<BookingData>({
     service: null,
     selectedPets: [],
@@ -71,6 +73,32 @@ const BookingPage = () => {
     endDate: "",
     endTime: "",
   });
+
+  // Fetch the linked credit product for daycare/boarding
+  useEffect(() => {
+    const fetchCreditProduct = async () => {
+      if (bookingData.service !== "daycare" && bookingData.service !== "boarding") {
+        setCreditProduct(null);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("shopify_service_mappings")
+        .select("shopify_product_id, shopify_product_title")
+        .eq("service_type", bookingData.service)
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error fetching credit product:", error);
+        return;
+      }
+
+      setCreditProduct(data);
+    };
+
+    fetchCreditProduct();
+  }, [bookingData.service]);
 
   // Calculate total steps based on service type
   const needsCreditsStep = bookingData.service === "daycare" || bookingData.service === "boarding";
@@ -161,13 +189,68 @@ const BookingPage = () => {
 
   // Create Shopify cart for credit purchase
   const handlePurchaseCredits = async () => {
+    if (!creditProduct) {
+      toast.error("No credit package found", {
+        description: "Please contact us to purchase credits."
+      });
+      return;
+    }
+
     setIsCreatingCart(true);
     try {
-      // TODO: This should use the actual credit package product from Shopify
-      // For now, we'll show a message to direct them to the store
-      toast.info("Credit packages", {
-        description: "Please visit our store to purchase credit packages, then return to complete your booking."
+      // Fetch the product variants from Shopify
+      const PRODUCT_QUERY = `
+        query GetProduct($id: ID!) {
+          product(id: $id) {
+            id
+            title
+            variants(first: 10) {
+              edges {
+                node {
+                  id
+                  title
+                  availableForSale
+                }
+              }
+            }
+          }
+        }
+      `;
+
+      const productGid = `gid://shopify/Product/${creditProduct.shopify_product_id}`;
+      const productData = await storefrontApiRequest(PRODUCT_QUERY, { id: productGid });
+      
+      if (!productData?.data?.product?.variants?.edges?.length) {
+        toast.error("Product not available", {
+          description: "The credit package is currently unavailable."
+        });
+        return;
+      }
+
+      const firstVariant = productData.data.product.variants.edges[0].node;
+      
+      // Create cart with the credit product
+      const cartData = await storefrontApiRequest(CART_CREATE_MUTATION, {
+        input: {
+          lines: [{ quantity: creditsNeeded, merchandiseId: firstVariant.id }]
+        }
       });
+
+      if (cartData?.data?.cartCreate?.userErrors?.length > 0) {
+        console.error("Cart creation errors:", cartData.data.cartCreate.userErrors);
+        toast.error("Failed to create checkout");
+        return;
+      }
+
+      const checkoutUrl = cartData?.data?.cartCreate?.cart?.checkoutUrl;
+      if (checkoutUrl) {
+        // Add channel=online_store parameter for checkout to work without password
+        const url = new URL(checkoutUrl);
+        url.searchParams.set('channel', 'online_store');
+        window.open(url.toString(), '_blank');
+      } else {
+        toast.error("Failed to create checkout URL");
+      }
     } catch (error) {
       console.error("Error creating cart:", error);
       toast.error("Failed to create checkout");
