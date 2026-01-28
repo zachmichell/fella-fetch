@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,29 +26,45 @@ serve(async (req) => {
       );
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    // Extract and decode the JWT token to get user info
+    const token = authHeader.replace('Bearer ', '');
     
-    console.log('Creating Supabase client with URL:', supabaseUrl);
+    // Decode JWT payload (second part)
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      console.log('Invalid JWT format');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized - Invalid token format' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } }
-    });
-
-    // Verify user with getUser
-    const { data: userData, error: userError } = await supabase.auth.getUser();
-    
-    if (userError || !userData?.user) {
-      console.log('Auth error:', userError?.message || 'No user data');
+    // Decode the payload (base64url)
+    let payload;
+    try {
+      payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+      console.log('JWT payload decoded, sub:', payload.sub);
+    } catch (decodeError) {
+      console.log('Failed to decode JWT payload:', decodeError);
       return new Response(
         JSON.stringify({ error: 'Unauthorized - Invalid token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    // Get user email from user data
-    const userEmail = userData.user.email;
-    console.log('User email:', userEmail);
+    
+    // Verify the token is not expired
+    const now = Math.floor(Date.now() / 1000);
+    if (payload.exp && payload.exp < now) {
+      console.log('Token expired');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized - Token expired' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Get user email from JWT payload
+    const userEmail = payload.email as string;
+    console.log('User email from token:', userEmail);
     
     if (!userEmail) {
       return new Response(
