@@ -4,6 +4,10 @@ import { format, addMinutes, parse } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import {
+  SHOPIFY_STOREFRONT_URL,
+  SHOPIFY_STOREFRONT_TOKEN,
+} from '@/lib/shopify';
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -36,11 +40,6 @@ import {
 import { Check, ChevronsUpDown, Scissors, Clock, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-
-const SHOPIFY_API_VERSION = '2025-07';
-const SHOPIFY_STORE_PERMANENT_DOMAIN = 'fella-fetch.myshopify.com';
-const SHOPIFY_STOREFRONT_URL = `https://${SHOPIFY_STORE_PERMANENT_DOMAIN}/api/${SHOPIFY_API_VERSION}/graphql.json`;
-const SHOPIFY_STOREFRONT_TOKEN = 'a04512bd10f188f5e1fe71bf8bb4517f';
 
 interface CreateGroomingDialogProps {
   open: boolean;
