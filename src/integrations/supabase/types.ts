@@ -46,6 +46,53 @@ export type Database = {
           },
         ]
       }
+      client_agreements: {
+        Row: {
+          client_id: string
+          created_at: string
+          description: string | null
+          file_name: string
+          file_url: string
+          id: string
+          signed_at: string | null
+          title: string
+          uploaded_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          description?: string | null
+          file_name: string
+          file_url: string
+          id?: string
+          signed_at?: string | null
+          title: string
+          uploaded_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          description?: string | null
+          file_name?: string
+          file_url?: string
+          id?: string
+          signed_at?: string | null
+          title?: string
+          uploaded_at?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_agreements_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           address: string | null
@@ -55,6 +102,7 @@ export type Database = {
           email: string | null
           emergency_contact_name: string | null
           emergency_contact_phone: string | null
+          emergency_contact_relationship: string | null
           first_name: string
           half_daycare_credits: number
           id: string
@@ -73,6 +121,7 @@ export type Database = {
           email?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
+          emergency_contact_relationship?: string | null
           first_name: string
           half_daycare_credits?: number
           id?: string
@@ -91,6 +140,7 @@ export type Database = {
           email?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
+          emergency_contact_relationship?: string | null
           first_name?: string
           half_daycare_credits?: number
           id?: string

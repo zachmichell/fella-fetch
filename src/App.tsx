@@ -20,6 +20,7 @@ import ClientProfile from "./pages/client/ClientProfile";
 import ClientPets from "./pages/client/ClientPets";
 import ClientPurchases from "./pages/client/ClientPurchases";
 import ClientHistory from "./pages/client/ClientHistory";
+import ClientAgreements from "./pages/client/ClientAgreements";
 // Staff pages
 import StaffLogin from "./pages/staff/StaffLogin";
 import StaffDashboard from "./pages/staff/StaffDashboard";
@@ -57,13 +58,14 @@ const App = () => (
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/about" element={<AboutPage />} />
-              {/* Client Portal Routes */}
+{/* Client Portal Routes */}
               <Route path="/login" element={<ClientLogin />} />
               <Route path="/portal" element={<ClientDashboard />} />
               <Route path="/portal/profile" element={<ClientProfile />} />
               <Route path="/portal/pets" element={<ClientPets />} />
               <Route path="/portal/purchases" element={<ClientPurchases />} />
               <Route path="/portal/history" element={<ClientHistory />} />
+              <Route path="/portal/agreements" element={<ClientAgreements />} />
               {/* Staff Portal Routes */}
               <Route path="/staff/login" element={<StaffLogin />} />
               <Route path="/staff" element={<StaffDashboard />} />
