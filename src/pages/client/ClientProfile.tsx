@@ -15,6 +15,8 @@ const ClientProfile = () => {
   const [saving, setSaving] = useState(false);
   
   const [formData, setFormData] = useState({
+    first_name: clientData?.first_name || '',
+    last_name: clientData?.last_name || '',
     phone: clientData?.phone || '',
     address: clientData?.address || '',
     emergency_contact_name: clientData?.emergency_contact_name || '',
@@ -34,6 +36,8 @@ const ClientProfile = () => {
       const { error } = await supabase
         .from('clients')
         .update({
+          first_name: formData.first_name,
+          last_name: formData.last_name,
           phone: formData.phone || null,
           address: formData.address || null,
           emergency_contact_name: formData.emergency_contact_name || null,
@@ -57,6 +61,8 @@ const ClientProfile = () => {
 
   const handleCancel = () => {
     setFormData({
+      first_name: clientData?.first_name || '',
+      last_name: clientData?.last_name || '',
       phone: clientData?.phone || '',
       address: clientData?.address || '',
       emergency_contact_name: clientData?.emergency_contact_name || '',
@@ -68,6 +74,8 @@ const ClientProfile = () => {
 
   const handleEdit = () => {
     setFormData({
+      first_name: clientData?.first_name || '',
+      last_name: clientData?.last_name || '',
       phone: clientData?.phone || '',
       address: clientData?.address || '',
       emergency_contact_name: clientData?.emergency_contact_name || '',
@@ -106,16 +114,39 @@ const ClientProfile = () => {
             )}
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
-              <User className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <p className="text-sm text-muted-foreground">Full Name</p>
-                <p className="font-medium">
-                  {shopifyCustomer?.firstName || clientData?.first_name || ''}{' '}
-                  {shopifyCustomer?.lastName || clientData?.last_name || ''}
-                </p>
+            {isEditing ? (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="first_name">First Name</Label>
+                  <Input
+                    id="first_name"
+                    value={formData.first_name}
+                    onChange={(e) => handleInputChange('first_name', e.target.value)}
+                    placeholder="First name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="last_name">Last Name</Label>
+                  <Input
+                    id="last_name"
+                    value={formData.last_name}
+                    onChange={(e) => handleInputChange('last_name', e.target.value)}
+                    placeholder="Last name"
+                  />
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+                <User className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Full Name</p>
+                  <p className="font-medium">
+                    {clientData?.first_name || ''}{' '}
+                    {clientData?.last_name || ''}
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
               <Mail className="h-5 w-5 text-muted-foreground" />
