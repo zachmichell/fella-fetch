@@ -56,12 +56,15 @@ const ClientLogin = () => {
     setLoading(true);
 
     try {
-      const { error } = await signIn(loginForm.email, loginForm.password);
+      const result = await signIn(loginForm.email, loginForm.password);
+      const error = result?.error;
 
       if (error) {
         // Provide more helpful error messages
-        let errorMessage = error;
-        if (error.toLowerCase().includes('unidentified customer') || error.toLowerCase().includes('invalid email or password')) {
+        let errorMessage = String(error);
+        if (errorMessage.toLowerCase().includes('unidentified customer') || 
+            errorMessage.toLowerCase().includes('invalid') ||
+            errorMessage.toLowerCase().includes('401')) {
           errorMessage = 'Invalid email or password. Please check your credentials and try again.';
         }
         
@@ -74,6 +77,13 @@ const ClientLogin = () => {
         toast({ title: 'Welcome back!' });
         navigate('/portal');
       }
+    } catch (err: any) {
+      console.error('Login error caught:', err);
+      toast({
+        title: 'Sign in failed',
+        description: 'Invalid email or password. Please check your credentials and try again.',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
