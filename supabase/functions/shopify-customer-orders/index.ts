@@ -17,17 +17,21 @@ serve(async (req) => {
   }
 
   try {
-    // Verify JWT and get user
+    // Verify JWT and get user claims
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
+      console.log('Missing or invalid Authorization header');
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
+        JSON.stringify({ error: 'Unauthorized - Missing auth header' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    
+    console.log('Creating Supabase client with URL:', supabaseUrl);
+    
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
     });
@@ -36,27 +40,32 @@ serve(async (req) => {
     const { data: userData, error: userError } = await supabase.auth.getUser();
     
     if (userError || !userData?.user) {
+      console.log('Auth error:', userError?.message || 'No user data');
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
+        JSON.stringify({ error: 'Unauthorized - Invalid token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Get user email
+    // Get user email from user data
     const userEmail = userData.user.email;
+    console.log('User email:', userEmail);
+    
     if (!userEmail) {
       return new Response(
-        JSON.stringify({ error: 'User email not found' }),
+        JSON.stringify({ error: 'User email not found in token' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const shopifyAdminToken = Deno.env.get('SHOPIFY_ACCESS_TOKEN');
     if (!shopifyAdminToken) {
+      console.error('SHOPIFY_ACCESS_TOKEN not configured');
       throw new Error('Shopify admin token not configured');
     }
 
     const { action } = await req.json();
+    console.log('Action requested:', action);
 
     if (action === 'getCustomerAndOrders') {
       // First, find customer by email using Admin API
@@ -130,6 +139,8 @@ serve(async (req) => {
         }
       `;
 
+      console.log('Querying Shopify for customer with email:', userEmail);
+      
       const response = await fetch(SHOPIFY_ADMIN_URL, {
         method: 'POST',
         headers: {
@@ -143,7 +154,7 @@ serve(async (req) => {
       });
 
       const data = await response.json();
-      console.log('Shopify Admin API response:', JSON.stringify(data, null, 2));
+      console.log('Shopify response status:', response.status);
 
       if (data.errors) {
         console.error('Shopify errors:', data.errors);
@@ -155,6 +166,7 @@ serve(async (req) => {
 
       const customerEdge = data.data?.customers?.edges?.[0];
       if (!customerEdge) {
+        console.log('No Shopify customer found for email:', userEmail);
         // No Shopify customer found - that's OK, they can still use the portal
         return new Response(
           JSON.stringify({ 
@@ -167,6 +179,8 @@ serve(async (req) => {
       }
 
       const customer = customerEdge.node;
+      console.log('Found Shopify customer:', customer.email, 'with', customer.orders.edges.length, 'orders');
+      
       const orders = customer.orders.edges.map((edge: any) => {
         const node = edge.node;
         return {
