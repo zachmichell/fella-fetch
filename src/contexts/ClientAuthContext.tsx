@@ -74,6 +74,8 @@ interface ClientData {
   city: string | null;
   province: string | null;
   postal_code: string | null;
+  sms_opt_in: boolean;
+  email_opt_in: boolean;
   boarding_credits: number;
   daycare_credits: number;
   half_daycare_credits: number;

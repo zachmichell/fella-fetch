@@ -101,6 +101,7 @@ export type Database = {
           created_at: string
           daycare_credits: number
           email: string | null
+          email_opt_in: boolean | null
           emergency_contact_name: string | null
           emergency_contact_phone: string | null
           emergency_contact_relationship: string | null
@@ -112,6 +113,7 @@ export type Database = {
           phone: string | null
           postal_code: string | null
           province: string | null
+          sms_opt_in: boolean | null
           thread_id: string | null
           updated_at: string
           user_id: string | null
@@ -123,6 +125,7 @@ export type Database = {
           created_at?: string
           daycare_credits?: number
           email?: string | null
+          email_opt_in?: boolean | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
           emergency_contact_relationship?: string | null
@@ -134,6 +137,7 @@ export type Database = {
           phone?: string | null
           postal_code?: string | null
           province?: string | null
+          sms_opt_in?: boolean | null
           thread_id?: string | null
           updated_at?: string
           user_id?: string | null
@@ -145,6 +149,7 @@ export type Database = {
           created_at?: string
           daycare_credits?: number
           email?: string | null
+          email_opt_in?: boolean | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
           emergency_contact_relationship?: string | null
@@ -156,6 +161,7 @@ export type Database = {
           phone?: string | null
           postal_code?: string | null
           province?: string | null
+          sms_opt_in?: boolean | null
           thread_id?: string | null
           updated_at?: string
           user_id?: string | null
