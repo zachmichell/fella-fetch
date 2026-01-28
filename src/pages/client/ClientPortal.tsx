@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useShopifyCustomer } from '@/contexts/ShopifyCustomerContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { useClientAuth } from '@/contexts/ClientAuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -92,7 +91,16 @@ interface ClientData {
 
 const ClientPortal = () => {
   const navigate = useNavigate();
-  const { customer, logout: shopifyLogout, loading: shopifyLoading, isAuthenticated } = useShopifyCustomer();
+  const { 
+    user, 
+    signOut, 
+    loading: authLoading, 
+    isAuthenticated,
+    shopifyCustomer,
+    orders,
+    ordersLoading,
+    fetchShopifyData
+  } = useClientAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [clientData, setClientData] = useState<ClientData | null>(null);
@@ -121,19 +129,20 @@ const ClientPortal = () => {
   });
 
   useEffect(() => {
-    if (!shopifyLoading && !isAuthenticated) {
+    if (!authLoading && !isAuthenticated) {
       navigate('/login');
     }
-  }, [isAuthenticated, shopifyLoading, navigate]);
+  }, [isAuthenticated, authLoading, navigate]);
 
   useEffect(() => {
-    if (isAuthenticated && customer?.email) {
+    if (isAuthenticated && user?.email) {
       fetchClientData();
+      fetchShopifyData();
     }
-  }, [isAuthenticated, customer?.email]);
+  }, [isAuthenticated, user?.email]);
 
   const fetchClientData = async () => {
-    if (!customer?.email) {
+    if (!user?.email) {
       setLoading(false);
       return;
     }
@@ -164,7 +173,7 @@ const ClientPortal = () => {
             photo_url
           )
         `)
-        .eq('email', customer.email)
+        .eq('email', user.email)
         .maybeSingle();
 
       if (clientError) throw clientError;
@@ -214,7 +223,7 @@ const ClientPortal = () => {
   };
 
   const handleSignOut = async () => {
-    await shopifyLogout();
+    await signOut();
     navigate('/');
   };
 
@@ -351,7 +360,7 @@ const ClientPortal = () => {
     isPast(parseISO(r.start_date)) && !isToday(parseISO(r.start_date))
   ).slice(0, 10);
 
-  if (shopifyLoading || loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -372,7 +381,7 @@ const ClientPortal = () => {
                 </div>
                 <CardTitle>No Client Profile Found</CardTitle>
                 <CardDescription>
-                  Your Shopify account isn't linked to a client profile yet. Please contact us to set up your account.
+                  Your account isn't linked to a client profile yet. Please contact us to set up your account.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -390,8 +399,8 @@ const ClientPortal = () => {
     );
   }
 
-  // Use Shopify customer data if no client data, otherwise merge them
-  const displayName = clientData?.first_name || customer?.firstName || 'Customer';
+  // Get display name from client data, shopify customer, or user metadata
+  const displayName = clientData?.first_name || shopifyCustomer?.firstName || user?.user_metadata?.first_name || 'Customer';
 
   return (
     <div className="min-h-screen bg-background">
@@ -443,26 +452,27 @@ const ClientPortal = () => {
                     <div className="flex items-center gap-2 text-sm">
                       <User className="h-4 w-4 text-muted-foreground" />
                       <span>
-                        {customer?.firstName} {customer?.lastName}
+                        {shopifyCustomer?.firstName || clientData?.first_name || user?.user_metadata?.first_name || ''}{' '}
+                        {shopifyCustomer?.lastName || clientData?.last_name || user?.user_metadata?.last_name || ''}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <Mail className="h-4 w-4 text-muted-foreground" />
-                      <span>{customer?.email || 'No email'}</span>
+                      <span>{user?.email || 'No email'}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <Phone className="h-4 w-4 text-muted-foreground" />
-                      <span>{customer?.phone || clientData?.phone || 'No phone'}</span>
+                      <span>{shopifyCustomer?.phone || clientData?.phone || 'No phone'}</span>
                     </div>
-                    {customer?.defaultAddress && (
+                    {shopifyCustomer?.defaultAddress && (
                       <div className="flex items-start gap-2 text-sm">
                         <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
                         <span>
                           {[
-                            customer.defaultAddress.address1,
-                            customer.defaultAddress.city,
-                            customer.defaultAddress.province,
-                            customer.defaultAddress.zip,
+                            shopifyCustomer.defaultAddress.address1,
+                            shopifyCustomer.defaultAddress.city,
+                            shopifyCustomer.defaultAddress.province,
+                            shopifyCustomer.defaultAddress.zip,
                           ].filter(Boolean).join(', ')}
                         </span>
                       </div>
