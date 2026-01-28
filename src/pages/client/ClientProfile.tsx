@@ -19,6 +19,9 @@ const ClientProfile = () => {
     last_name: clientData?.last_name || '',
     phone: clientData?.phone || '',
     address: clientData?.address || '',
+    city: clientData?.city || '',
+    province: clientData?.province || '',
+    postal_code: clientData?.postal_code || '',
     emergency_contact_name: clientData?.emergency_contact_name || '',
     emergency_contact_phone: clientData?.emergency_contact_phone || '',
     emergency_contact_relationship: clientData?.emergency_contact_relationship || '',
@@ -40,6 +43,9 @@ const ClientProfile = () => {
           last_name: formData.last_name,
           phone: formData.phone || null,
           address: formData.address || null,
+          city: formData.city || null,
+          province: formData.province || null,
+          postal_code: formData.postal_code || null,
           emergency_contact_name: formData.emergency_contact_name || null,
           emergency_contact_phone: formData.emergency_contact_phone || null,
           emergency_contact_relationship: formData.emergency_contact_relationship || null,
@@ -65,6 +71,9 @@ const ClientProfile = () => {
       last_name: clientData?.last_name || '',
       phone: clientData?.phone || '',
       address: clientData?.address || '',
+      city: clientData?.city || '',
+      province: clientData?.province || '',
+      postal_code: clientData?.postal_code || '',
       emergency_contact_name: clientData?.emergency_contact_name || '',
       emergency_contact_phone: clientData?.emergency_contact_phone || '',
       emergency_contact_relationship: clientData?.emergency_contact_relationship || '',
@@ -78,6 +87,9 @@ const ClientProfile = () => {
       last_name: clientData?.last_name || '',
       phone: clientData?.phone || '',
       address: clientData?.address || '',
+      city: clientData?.city || '',
+      province: clientData?.province || '',
+      postal_code: clientData?.postal_code || '',
       emergency_contact_name: clientData?.emergency_contact_name || '',
       emergency_contact_phone: clientData?.emergency_contact_phone || '',
       emergency_contact_relationship: clientData?.emergency_contact_relationship || '',
@@ -176,14 +188,44 @@ const ClientProfile = () => {
                 <div className="space-y-2">
                   <Label htmlFor="address" className="flex items-center gap-2">
                     <MapPin className="h-4 w-4 text-muted-foreground" />
-                    Address
+                    Street Address
                   </Label>
                   <Input
                     id="address"
                     value={formData.address}
                     onChange={(e) => handleInputChange('address', e.target.value)}
-                    placeholder="Enter address"
+                    placeholder="Street address"
                   />
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="city">City</Label>
+                    <Input
+                      id="city"
+                      value={formData.city}
+                      onChange={(e) => handleInputChange('city', e.target.value)}
+                      placeholder="City"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="province">Province</Label>
+                    <Input
+                      id="province"
+                      value={formData.province}
+                      onChange={(e) => handleInputChange('province', e.target.value)}
+                      placeholder="Province"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="postal_code">Postal Code</Label>
+                    <Input
+                      id="postal_code"
+                      value={formData.postal_code}
+                      onChange={(e) => handleInputChange('postal_code', e.target.value)}
+                      placeholder="Postal code"
+                    />
+                  </div>
                 </div>
               </>
             ) : (
@@ -198,21 +240,19 @@ const ClientProfile = () => {
                   </div>
                 </div>
 
-                {(shopifyCustomer?.defaultAddress || clientData?.address) && (
+                {(clientData?.address || clientData?.city || clientData?.province || clientData?.postal_code) && (
                   <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/30">
                     <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
-                    <div>
+                    <div className="space-y-1">
                       <p className="text-sm text-muted-foreground">Address</p>
-                      <p className="font-medium">
-                        {shopifyCustomer?.defaultAddress
-                          ? [
-                              shopifyCustomer.defaultAddress.address1,
-                              shopifyCustomer.defaultAddress.city,
-                              shopifyCustomer.defaultAddress.province,
-                              shopifyCustomer.defaultAddress.zip,
-                            ].filter(Boolean).join(', ')
-                          : clientData?.address || 'Not provided'}
-                      </p>
+                      {clientData?.address && (
+                        <p className="font-medium">{clientData.address}</p>
+                      )}
+                      {(clientData?.city || clientData?.province || clientData?.postal_code) && (
+                        <p className="font-medium">
+                          {[clientData?.city, clientData?.province, clientData?.postal_code].filter(Boolean).join(', ')}
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}
