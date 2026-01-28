@@ -220,23 +220,7 @@ export default function OrderHistory() {
                       >
                         {formatStatus(order.financialStatus)}
                       </Badge>
-                      <Badge 
-                        variant="outline" 
-                        className={`text-xs ${getFulfillmentStatusColor(order.fulfillmentStatus)}`}
-                      >
-                        {formatStatus(order.fulfillmentStatus)}
-                      </Badge>
                     </div>
-                  </div>
-
-                  {/* Order status - desktop */}
-                  <div className="hidden sm:flex gap-2">
-                    <Badge 
-                      variant="outline" 
-                      className={`text-xs ${getFulfillmentStatusColor(order.fulfillmentStatus)}`}
-                    >
-                      {formatStatus(order.fulfillmentStatus)}
-                    </Badge>
                   </div>
 
                   <Separator />
