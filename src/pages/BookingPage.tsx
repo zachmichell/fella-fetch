@@ -4,11 +4,11 @@ import { Calendar, Clock, Dog, ArrowRight, ArrowLeft, Check } from "lucide-react
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 import iconStay from "@/assets/icons/icon-stay.png";
 import iconGroom from "@/assets/icons/icon-groom.png";
 import iconTrain from "@/assets/icons/icon-train.png";
-import iconShop from "@/assets/icons/icon-shop.png";
 
 type ServiceType = "daycare" | "boarding" | "grooming" | "training";
 
@@ -27,9 +27,9 @@ const serviceOptions = [
   { id: "training" as const, name: "Training", icon: iconTrain, description: "Group classes & private sessions", price: "From $275" },
 ];
 
-const timeSlots = [
-  "7:00 AM", "8:00 AM", "9:00 AM", "10:00 AM", "11:00 AM",
-  "12:00 PM", "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM", "5:00 PM", "6:00 PM"
+const groomingTrainingTimeSlots = [
+  "9:00 AM", "10:00 AM", "11:00 AM",
+  "12:00 PM", "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM"
 ];
 
 const BookingPage = () => {
@@ -177,23 +177,36 @@ const BookingPage = () => {
                 <div>
                   <h2 className="font-display text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
                     <Clock className="w-5 h-5 text-primary" />
-                    Select a Time
+                    {bookingData.service === "daycare" || bookingData.service === "boarding" 
+                      ? "Enter Drop-off Time" 
+                      : "Select a Time"}
                   </h2>
-                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
-                    {timeSlots.map((time) => (
-                      <button
-                        key={time}
-                        onClick={() => setBookingData({ ...bookingData, time })}
-                        className={`py-3 px-4 rounded-xl border-2 font-medium transition-all ${
-                          bookingData.time === time
-                            ? "border-primary bg-coral-light text-primary"
-                            : "border-border hover:border-primary/50 text-foreground"
-                        }`}
-                      >
-                        {time}
-                      </button>
-                    ))}
-                  </div>
+                  
+                  {(bookingData.service === "daycare" || bookingData.service === "boarding") ? (
+                    <Input
+                      type="text"
+                      value={bookingData.time}
+                      onChange={(e) => setBookingData({ ...bookingData, time: e.target.value })}
+                      placeholder="e.g., 8:30 AM or 2:00 PM"
+                      className="w-full p-4 h-14 rounded-xl border border-border bg-card text-foreground text-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  ) : (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                      {groomingTrainingTimeSlots.map((time) => (
+                        <button
+                          key={time}
+                          onClick={() => setBookingData({ ...bookingData, time })}
+                          className={`py-3 px-4 rounded-xl border-2 font-medium transition-all ${
+                            bookingData.time === time
+                              ? "border-primary bg-accent/30 text-primary"
+                              : "border-border hover:border-primary/50 text-foreground"
+                          }`}
+                        >
+                          {time}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </motion.div>
             )}
@@ -300,7 +313,9 @@ const BookingPage = () => {
               <div />
             )}
             
-            {step < totalSteps ? (
+            {step === 1 ? (
+              <div />
+            ) : step < totalSteps ? (
               <Button
                 variant="hero"
                 size="lg"
