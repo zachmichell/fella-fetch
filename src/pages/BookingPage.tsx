@@ -16,6 +16,8 @@ interface BookingData {
   service: ServiceType | null;
   date: string;
   time: string;
+  endDate: string;
+  endTime: string;
   pet: string;
   addons: string[];
 }
@@ -38,6 +40,8 @@ const BookingPage = () => {
     service: null,
     date: "",
     time: "",
+    endDate: "",
+    endTime: "",
     pet: "",
     addons: [],
   });
@@ -61,7 +65,11 @@ const BookingPage = () => {
   const canProceed = () => {
     switch (step) {
       case 1: return !!bookingData.service;
-      case 2: return !!bookingData.date && !!bookingData.time;
+      case 2: 
+        if (bookingData.service === "daycare" || bookingData.service === "boarding") {
+          return !!bookingData.date && !!bookingData.time && !!bookingData.endDate && !!bookingData.endTime;
+        }
+        return !!bookingData.date && !!bookingData.time;
       case 3: return !!bookingData.pet;
       default: return true;
     }
@@ -160,54 +168,107 @@ const BookingPage = () => {
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-8"
               >
-                <div>
-                  <h2 className="font-display text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
-                    <Calendar className="w-5 h-5 text-primary" />
-                    Select a Date
-                  </h2>
-                  <input
-                    type="date"
-                    value={bookingData.date}
-                    onChange={(e) => setBookingData({ ...bookingData, date: e.target.value })}
-                    min={new Date().toISOString().split('T')[0]}
-                    className="w-full p-4 rounded-xl border border-border bg-card text-foreground text-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-
-                <div>
-                  <h2 className="font-display text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-primary" />
-                    {bookingData.service === "daycare" || bookingData.service === "boarding" 
-                      ? "Enter Drop-off Time" 
-                      : "Select a Time"}
-                  </h2>
-                  
-                  {(bookingData.service === "daycare" || bookingData.service === "boarding") ? (
-                    <Input
-                      type="text"
-                      value={bookingData.time}
-                      onChange={(e) => setBookingData({ ...bookingData, time: e.target.value })}
-                      placeholder="e.g., 8:30 AM or 2:00 PM"
-                      className="w-full p-4 h-14 rounded-xl border border-border bg-card text-foreground text-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                  ) : (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                      {groomingTrainingTimeSlots.map((time) => (
-                        <button
-                          key={time}
-                          onClick={() => setBookingData({ ...bookingData, time })}
-                          className={`py-3 px-4 rounded-xl border-2 font-medium transition-all ${
-                            bookingData.time === time
-                              ? "border-primary bg-accent/30 text-primary"
-                              : "border-border hover:border-primary/50 text-foreground"
-                          }`}
-                        >
-                          {time}
-                        </button>
-                      ))}
+                {(bookingData.service === "daycare" || bookingData.service === "boarding") ? (
+                  <>
+                    {/* Start Date & Time */}
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <div>
+                        <h2 className="font-display text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+                          <Calendar className="w-5 h-5 text-primary" />
+                          Drop-off Date
+                        </h2>
+                        <input
+                          type="date"
+                          value={bookingData.date}
+                          onChange={(e) => setBookingData({ ...bookingData, date: e.target.value })}
+                          min={new Date().toISOString().split('T')[0]}
+                          className="w-full p-4 rounded-xl border border-border bg-card text-foreground text-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      </div>
+                      <div>
+                        <h2 className="font-display text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+                          <Clock className="w-5 h-5 text-primary" />
+                          Drop-off Time
+                        </h2>
+                        <Input
+                          type="text"
+                          value={bookingData.time}
+                          onChange={(e) => setBookingData({ ...bookingData, time: e.target.value })}
+                          placeholder="e.g., 8:30 AM"
+                          className="w-full p-4 h-14 rounded-xl border border-border bg-card text-foreground text-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      </div>
                     </div>
-                  )}
-                </div>
+
+                    {/* End Date & Time */}
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <div>
+                        <h2 className="font-display text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+                          <Calendar className="w-5 h-5 text-primary" />
+                          Pick-up Date
+                        </h2>
+                        <input
+                          type="date"
+                          value={bookingData.endDate}
+                          onChange={(e) => setBookingData({ ...bookingData, endDate: e.target.value })}
+                          min={bookingData.date || new Date().toISOString().split('T')[0]}
+                          className="w-full p-4 rounded-xl border border-border bg-card text-foreground text-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      </div>
+                      <div>
+                        <h2 className="font-display text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+                          <Clock className="w-5 h-5 text-primary" />
+                          Pick-up Time
+                        </h2>
+                        <Input
+                          type="text"
+                          value={bookingData.endTime}
+                          onChange={(e) => setBookingData({ ...bookingData, endTime: e.target.value })}
+                          placeholder="e.g., 5:00 PM"
+                          className="w-full p-4 h-14 rounded-xl border border-border bg-card text-foreground text-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <h2 className="font-display text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
+                        <Calendar className="w-5 h-5 text-primary" />
+                        Select a Date
+                      </h2>
+                      <input
+                        type="date"
+                        value={bookingData.date}
+                        onChange={(e) => setBookingData({ ...bookingData, date: e.target.value })}
+                        min={new Date().toISOString().split('T')[0]}
+                        className="w-full p-4 rounded-xl border border-border bg-card text-foreground text-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+
+                    <div>
+                      <h2 className="font-display text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
+                        <Clock className="w-5 h-5 text-primary" />
+                        Select a Time
+                      </h2>
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                        {groomingTrainingTimeSlots.map((time) => (
+                          <button
+                            key={time}
+                            onClick={() => setBookingData({ ...bookingData, time })}
+                            className={`py-3 px-4 rounded-xl border-2 font-medium transition-all ${
+                              bookingData.time === time
+                                ? "border-primary bg-accent/30 text-primary"
+                                : "border-border hover:border-primary/50 text-foreground"
+                            }`}
+                          >
+                            {time}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
               </motion.div>
             )}
 
@@ -269,16 +330,35 @@ const BookingPage = () => {
                       {serviceOptions.find(s => s.id === bookingData.service)?.name}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center pb-4 border-b border-border">
-                    <span className="text-muted-foreground">Date</span>
-                    <span className="font-semibold text-foreground">
-                      {bookingData.date ? new Date(bookingData.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : ''}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center pb-4 border-b border-border">
-                    <span className="text-muted-foreground">Time</span>
-                    <span className="font-semibold text-foreground">{bookingData.time}</span>
-                  </div>
+                  {(bookingData.service === "daycare" || bookingData.service === "boarding") ? (
+                    <>
+                      <div className="flex justify-between items-center pb-4 border-b border-border">
+                        <span className="text-muted-foreground">Drop-off</span>
+                        <span className="font-semibold text-foreground">
+                          {bookingData.date ? new Date(bookingData.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : ''} at {bookingData.time}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center pb-4 border-b border-border">
+                        <span className="text-muted-foreground">Pick-up</span>
+                        <span className="font-semibold text-foreground">
+                          {bookingData.endDate ? new Date(bookingData.endDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : ''} at {bookingData.endTime}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex justify-between items-center pb-4 border-b border-border">
+                        <span className="text-muted-foreground">Date</span>
+                        <span className="font-semibold text-foreground">
+                          {bookingData.date ? new Date(bookingData.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : ''}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center pb-4 border-b border-border">
+                        <span className="text-muted-foreground">Time</span>
+                        <span className="font-semibold text-foreground">{bookingData.time}</span>
+                      </div>
+                    </>
+                  )}
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Pet</span>
                     <span className="font-semibold text-foreground">{bookingData.pet}</span>
