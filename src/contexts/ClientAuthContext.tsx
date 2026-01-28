@@ -194,13 +194,18 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string): Promise<{ error: string | null }> => {
     try {
-      const { data, error } = await supabase.functions.invoke('shopify-customer-auth', {
+      const response = await supabase.functions.invoke('shopify-customer-auth', {
         body: { action: 'login', email, password },
       });
 
-      if (error) {
-        return { error: error.message || 'Login failed' };
+      // Handle edge function errors (non-2xx responses)
+      if (response.error) {
+        // Try to extract error message from the response data first
+        const errorMessage = response.data?.error || response.error.message || 'Login failed';
+        return { error: errorMessage };
       }
+
+      const data = response.data;
 
       if (data?.error) {
         return { error: data.error };
@@ -222,9 +227,9 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
       setShopifyCustomer(data.customer);
 
       return { error: null };
-    } catch (e) {
+    } catch (e: any) {
       console.error('Login error:', e);
-      return { error: 'An unexpected error occurred' };
+      return { error: e?.message || 'An unexpected error occurred' };
     }
   };
 
