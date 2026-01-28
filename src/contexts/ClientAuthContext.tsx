@@ -130,6 +130,7 @@ interface ClientAuthContextType {
   signOut: () => Promise<void>;
   fetchOrders: () => Promise<void>;
   fetchClientData: () => Promise<void>;
+  recoverPassword: (email: string) => Promise<{ error: string | null; success: boolean }>;
   isAuthenticated: boolean;
 }
 
@@ -290,6 +291,27 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const recoverPassword = async (email: string): Promise<{ error: string | null; success: boolean }> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('shopify-customer-auth', {
+        body: { action: 'recoverPassword', email },
+      });
+
+      if (error) {
+        return { error: error.message || 'Failed to send recovery email', success: false };
+      }
+
+      if (data?.error) {
+        return { error: data.error, success: false };
+      }
+
+      return { error: null, success: true };
+    } catch (e) {
+      console.error('Password recovery error:', e);
+      return { error: 'An unexpected error occurred', success: false };
+    }
+  };
+
   const value = {
     shopifyCustomer,
     clientData,
@@ -302,6 +324,7 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
     signOut,
     fetchOrders,
     fetchClientData,
+    recoverPassword,
     isAuthenticated: !!shopifyCustomer,
   };
 

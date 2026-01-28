@@ -89,6 +89,65 @@ serve(async (req) => {
       );
     }
 
+    if (action === 'recoverPassword') {
+      // Send password recovery email via Shopify
+      const recoverMutation = `
+        mutation customerRecover($email: String!) {
+          customerRecover(email: $email) {
+            customerUserErrors {
+              code
+              field
+              message
+            }
+          }
+        }
+      `;
+
+      const response = await fetch(SHOPIFY_STOREFRONT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Shopify-Storefront-Access-Token': storefrontToken,
+        },
+        body: JSON.stringify({
+          query: recoverMutation,
+          variables: { email },
+        }),
+      });
+
+      const data = await response.json();
+      console.log('Shopify password recovery response:', JSON.stringify(data, null, 2));
+
+      if (data.errors) {
+        return new Response(
+          JSON.stringify({ error: data.errors[0].message }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const result = data.data?.customerRecover;
+      if (result?.customerUserErrors && result.customerUserErrors.length > 0) {
+        const errorCode = result.customerUserErrors[0].code;
+        // Don't reveal if email exists or not for security
+        if (errorCode === 'UNIDENTIFIED_CUSTOMER') {
+          // Still return success to prevent email enumeration
+          return new Response(
+            JSON.stringify({ success: true }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        return new Response(
+          JSON.stringify({ error: result.customerUserErrors[0].message }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     if (action === 'login') {
       // Create customer access token (login)
       const loginMutation = `
