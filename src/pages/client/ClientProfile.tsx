@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { User, Mail, Phone, MapPin, UserPlus, Pencil, Save, X } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { User, Mail, Phone, MapPin, UserPlus, Pencil, Save, X, MessageSquare, Bell } from 'lucide-react';
 import { ClientPortalLayout } from '@/components/client/ClientPortalLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -22,12 +23,14 @@ const ClientProfile = () => {
     city: clientData?.city || '',
     province: clientData?.province || '',
     postal_code: clientData?.postal_code || '',
+    sms_opt_in: clientData?.sms_opt_in || false,
+    email_opt_in: clientData?.email_opt_in || false,
     emergency_contact_name: clientData?.emergency_contact_name || '',
     emergency_contact_phone: clientData?.emergency_contact_phone || '',
     emergency_contact_relationship: clientData?.emergency_contact_relationship || '',
   });
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -46,6 +49,8 @@ const ClientProfile = () => {
           city: formData.city || null,
           province: formData.province || null,
           postal_code: formData.postal_code || null,
+          sms_opt_in: formData.sms_opt_in,
+          email_opt_in: formData.email_opt_in,
           emergency_contact_name: formData.emergency_contact_name || null,
           emergency_contact_phone: formData.emergency_contact_phone || null,
           emergency_contact_relationship: formData.emergency_contact_relationship || null,
@@ -74,6 +79,8 @@ const ClientProfile = () => {
       city: clientData?.city || '',
       province: clientData?.province || '',
       postal_code: clientData?.postal_code || '',
+      sms_opt_in: clientData?.sms_opt_in || false,
+      email_opt_in: clientData?.email_opt_in || false,
       emergency_contact_name: clientData?.emergency_contact_name || '',
       emergency_contact_phone: clientData?.emergency_contact_phone || '',
       emergency_contact_relationship: clientData?.emergency_contact_relationship || '',
@@ -90,6 +97,8 @@ const ClientProfile = () => {
       city: clientData?.city || '',
       province: clientData?.province || '',
       postal_code: clientData?.postal_code || '',
+      sms_opt_in: clientData?.sms_opt_in || false,
+      email_opt_in: clientData?.email_opt_in || false,
       emergency_contact_name: clientData?.emergency_contact_name || '',
       emergency_contact_phone: clientData?.emergency_contact_phone || '',
       emergency_contact_relationship: clientData?.emergency_contact_relationship || '',
@@ -345,6 +354,50 @@ const ClientProfile = () => {
                 )}
               </>
             )}
+          </CardContent>
+        </Card>
+        {/* Communication Preferences */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Bell className="h-5 w-5" />
+              Communication Preferences
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+              <div className="flex items-center gap-3">
+                <MessageSquare className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">SMS Messages</p>
+                  <p className="text-sm text-muted-foreground">
+                    Receive appointment reminders and updates via text
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={formData.sms_opt_in}
+                onCheckedChange={(checked) => handleInputChange('sms_opt_in', checked)}
+                disabled={!isEditing}
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+              <div className="flex items-center gap-3">
+                <Mail className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">Email Messages</p>
+                  <p className="text-sm text-muted-foreground">
+                    Receive newsletters, promotions, and updates via email
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={formData.email_opt_in}
+                onCheckedChange={(checked) => handleInputChange('email_opt_in', checked)}
+                disabled={!isEditing}
+              />
+            </div>
           </CardContent>
         </Card>
       </div>
