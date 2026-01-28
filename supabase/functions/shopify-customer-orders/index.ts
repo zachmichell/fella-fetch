@@ -110,6 +110,13 @@ serve(async (req) => {
                       processedAt
                       displayFinancialStatus
                       displayFulfillmentStatus
+                      paymentGatewayNames
+                      transactions(first: 10) {
+                        gateway
+                        kind
+                        status
+                        receiptJson
+                      }
                       totalPriceSet {
                         shopMoney {
                           amount
@@ -198,12 +205,52 @@ serve(async (req) => {
       
       const orders = customer.orders.edges.map((edge: any) => {
         const node = edge.node;
+        
+        // Extract payment method info
+        let paymentMethod: { type: string; last4?: string; brand?: string } | null = null;
+        
+        // Check transactions for card details via receiptJson
+        const successfulTransaction = node.transactions?.find(
+          (t: any) => t.status === 'SUCCESS' && (t.kind === 'SALE' || t.kind === 'CAPTURE')
+        ) || node.transactions?.find((t: any) => t.status === 'SUCCESS') || node.transactions?.[0];
+        
+        if (successfulTransaction?.receiptJson) {
+          try {
+            const receipt = typeof successfulTransaction.receiptJson === 'string' 
+              ? JSON.parse(successfulTransaction.receiptJson) 
+              : successfulTransaction.receiptJson;
+            
+            if (receipt.last_four || receipt.card_last_four || receipt.last4) {
+              paymentMethod = {
+                type: 'card',
+                last4: receipt.last_four || receipt.card_last_four || receipt.last4,
+                brand: receipt.card_brand || receipt.brand || receipt.card_type || undefined,
+              };
+            }
+          } catch (e) {
+            // JSON parsing failed, continue to gateway fallback
+          }
+        }
+        
+        // Fallback to gateway names if no card details found
+        if (!paymentMethod && node.paymentGatewayNames?.length > 0) {
+          const gateway = node.paymentGatewayNames[0].toLowerCase();
+          if (gateway.includes('cash') || gateway.includes('manual')) {
+            paymentMethod = { type: 'cash' };
+          } else if (gateway.includes('gift') || gateway.includes('store_credit')) {
+            paymentMethod = { type: 'gift_card' };
+          } else {
+            paymentMethod = { type: 'other', brand: node.paymentGatewayNames[0] };
+          }
+        }
+        
         return {
           id: node.id,
           orderNumber: parseInt(node.name.replace('#', '')),
           processedAt: node.processedAt,
           financialStatus: node.displayFinancialStatus,
           fulfillmentStatus: node.displayFulfillmentStatus,
+          paymentMethod,
           totalPrice: {
             amount: node.totalPriceSet.shopMoney.amount,
             currencyCode: node.totalPriceSet.shopMoney.currencyCode,
