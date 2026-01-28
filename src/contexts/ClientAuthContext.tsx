@@ -18,12 +18,19 @@ interface ShopifyCustomer {
   } | null;
 }
 
+interface PaymentMethod {
+  type: 'card' | 'cash' | 'gift_card' | 'other';
+  last4?: string;
+  brand?: string;
+}
+
 interface ShopifyOrder {
   id: string;
   orderNumber: number;
   processedAt: string;
   financialStatus: string;
   fulfillmentStatus: string | null;
+  paymentMethod: PaymentMethod | null;
   totalPrice: {
     amount: string;
     currencyCode: string;
