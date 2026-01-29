@@ -6,9 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
+import { useBusinessHours, BusinessHours } from '@/hooks/useBusinessHours';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { Settings, AlertTriangle, Save, Loader2, Clock } from 'lucide-react';
+import { Settings, AlertTriangle, Save, Loader2, Clock, Building2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const TIMEZONES = [
@@ -22,15 +23,31 @@ const TIMEZONES = [
   { value: 'America/Puerto_Rico', label: 'Atlantic Time (AST)' },
 ];
 
+// Time options for business hours
+const TIME_OPTIONS = [
+  '6:00 AM', '6:30 AM', '7:00 AM', '7:30 AM', '8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM',
+  '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM',
+  '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM', '4:00 PM', '4:30 PM', '5:00 PM', '5:30 PM',
+  '6:00 PM', '6:30 PM', '7:00 PM', '7:30 PM', '8:00 PM', '8:30 PM', '9:00 PM'
+];
+
 const StaffSettings = () => {
   const { isAdmin } = useAuth();
   const { toast } = useToast();
   const { getSetting, updateSetting, isLoading } = useSystemSettings();
+  const { businessHours, isLoading: isLoadingHours, updateBusinessHours } = useBusinessHours();
   
   const [inactivityDays, setInactivityDays] = useState<string>('90');
   const [timezone, setTimezone] = useState<string>('America/New_York');
   const [isSavingInactivity, setIsSavingInactivity] = useState(false);
   const [isSavingTimezone, setIsSavingTimezone] = useState(false);
+  const [isSavingHours, setIsSavingHours] = useState(false);
+  
+  // Business hours state
+  const [weekdayOpen, setWeekdayOpen] = useState('7:00 AM');
+  const [weekdayClose, setWeekdayClose] = useState('6:00 PM');
+  const [weekendOpen, setWeekendOpen] = useState('8:00 AM');
+  const [weekendClose, setWeekendClose] = useState('5:00 PM');
 
   useEffect(() => {
     if (!isLoading) {
@@ -41,6 +58,15 @@ const StaffSettings = () => {
       setTimezone(currentTimezone);
     }
   }, [isLoading, getSetting]);
+
+  useEffect(() => {
+    if (!isLoadingHours && businessHours) {
+      setWeekdayOpen(businessHours.weekday.open);
+      setWeekdayClose(businessHours.weekday.close);
+      setWeekendOpen(businessHours.weekend.open);
+      setWeekendClose(businessHours.weekend.close);
+    }
+  }, [isLoadingHours, businessHours]);
 
   const handleSaveInactivityDays = async () => {
     const days = parseInt(inactivityDays, 10);
@@ -92,6 +118,28 @@ const StaffSettings = () => {
     }
   };
 
+  const handleSaveBusinessHours = async () => {
+    setIsSavingHours(true);
+    try {
+      await updateBusinessHours.mutateAsync({
+        weekday: { open: weekdayOpen, close: weekdayClose },
+        weekend: { open: weekendOpen, close: weekendClose },
+      });
+      toast({
+        title: 'Settings saved',
+        description: 'Business hours have been updated',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error saving settings',
+        description: 'Please try again',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingHours(false);
+    }
+  };
+
   if (!isAdmin) {
     return (
       <StaffLayout>
@@ -121,6 +169,101 @@ const StaffSettings = () => {
             Configure system-wide settings and thresholds
           </p>
         </div>
+
+        {/* Business Hours Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-green-500" />
+              Business Hours
+            </CardTitle>
+            <CardDescription>
+              Set the operating hours for your business. These hours are used for booking validation
+              to ensure clients can only book within your operating hours.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Weekday Hours */}
+            <div className="space-y-3">
+              <Label className="text-base font-medium">Weekday Hours (Mon-Fri)</Label>
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <Label htmlFor="weekday-open" className="text-sm text-muted-foreground">Open</Label>
+                  <Select value={weekdayOpen} onValueChange={setWeekdayOpen} disabled={isLoadingHours}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TIME_OPTIONS.map((time) => (
+                        <SelectItem key={time} value={time}>{time}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <span className="text-muted-foreground pt-5">to</span>
+                <div className="flex-1">
+                  <Label htmlFor="weekday-close" className="text-sm text-muted-foreground">Close</Label>
+                  <Select value={weekdayClose} onValueChange={setWeekdayClose} disabled={isLoadingHours}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TIME_OPTIONS.map((time) => (
+                        <SelectItem key={time} value={time}>{time}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            {/* Weekend Hours */}
+            <div className="space-y-3">
+              <Label className="text-base font-medium">Weekend Hours (Sat-Sun)</Label>
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <Label htmlFor="weekend-open" className="text-sm text-muted-foreground">Open</Label>
+                  <Select value={weekendOpen} onValueChange={setWeekendOpen} disabled={isLoadingHours}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TIME_OPTIONS.map((time) => (
+                        <SelectItem key={time} value={time}>{time}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <span className="text-muted-foreground pt-5">to</span>
+                <div className="flex-1">
+                  <Label htmlFor="weekend-close" className="text-sm text-muted-foreground">Close</Label>
+                  <Select value={weekendClose} onValueChange={setWeekendClose} disabled={isLoadingHours}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TIME_OPTIONS.map((time) => (
+                        <SelectItem key={time} value={time}>{time}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            <Button 
+              onClick={handleSaveBusinessHours}
+              disabled={isSavingHours || isLoadingHours}
+            >
+              {isSavingHours ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              <span className="ml-2">Save Business Hours</span>
+            </Button>
+          </CardContent>
+        </Card>
 
         {/* Business Timezone Settings */}
         <Card>
