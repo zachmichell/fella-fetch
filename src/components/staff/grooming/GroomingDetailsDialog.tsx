@@ -20,8 +20,10 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Scissors, User, Clock, Calendar, FileText, UserCircle } from 'lucide-react';
+import { Scissors, User, Clock, Calendar, FileText, UserCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
+import { PetGroomingPreferencesEditor } from './PetGroomingPreferencesEditor';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface GroomingDetailsDialogProps {
   open: boolean;
@@ -37,6 +39,7 @@ export const GroomingDetailsDialog = ({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedGroomerId, setSelectedGroomerId] = useState<string | null>(null);
+  const [prefsOpen, setPrefsOpen] = useState(false);
 
   // Fetch groomers
   const { data: groomers } = useQuery({
@@ -222,6 +225,31 @@ export const GroomingDetailsDialog = ({
               </SelectContent>
             </Select>
           </div>
+
+          <Separator />
+
+          {/* Pet Grooming Preferences (Collapsible) */}
+          <Collapsible open={prefsOpen} onOpenChange={setPrefsOpen}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="w-full justify-between px-2">
+                <span className="flex items-center gap-2 text-sm font-medium">
+                  <Scissors className="h-4 w-4" />
+                  Set Grooming Preferences for {appointment.pet_name}
+                </span>
+                {prefsOpen ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-2">
+              <PetGroomingPreferencesEditor
+                petId={appointment.pet_id}
+                petName={appointment.pet_name}
+              />
+            </CollapsibleContent>
+          </Collapsible>
         </div>
 
         <div className="flex justify-end gap-2">
