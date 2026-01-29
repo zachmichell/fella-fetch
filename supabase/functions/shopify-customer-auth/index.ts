@@ -625,6 +625,113 @@ serve(async (req) => {
       );
     }
 
+    if (action === 'createReservations') {
+      // First verify the access token is valid and get client data
+      const customerQuery = `
+        query getCustomer($accessToken: String!) {
+          customer(customerAccessToken: $accessToken) {
+            email
+          }
+        }
+      `;
+
+      const customerResponse = await fetch(SHOPIFY_STOREFRONT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Shopify-Storefront-Access-Token': storefrontToken,
+        },
+        body: JSON.stringify({
+          query: customerQuery,
+          variables: { accessToken },
+        }),
+      });
+
+      const customerData = await customerResponse.json();
+      
+      if (customerData.errors || !customerData.data?.customer?.email) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired session' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const customerEmail = customerData.data.customer.email;
+
+      // Create Supabase client with service role to bypass RLS
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+      // Fetch client by email to verify ownership
+      const { data: client, error: clientError } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('email', customerEmail)
+        .maybeSingle();
+
+      if (clientError || !client) {
+        return new Response(
+          JSON.stringify({ error: 'Client not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Get the reservations from the request body
+      const { reservations } = await req.clone().json();
+
+      if (!reservations || !Array.isArray(reservations) || reservations.length === 0) {
+        return new Response(
+          JSON.stringify({ error: 'No reservations provided' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify all pet_ids belong to this client
+      const petIds = reservations.map((r: any) => r.pet_id);
+      const { data: pets, error: petsError } = await supabase
+        .from('pets')
+        .select('id')
+        .eq('client_id', client.id)
+        .in('id', petIds);
+
+      if (petsError) {
+        return new Response(
+          JSON.stringify({ error: 'Failed to verify pet ownership' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const validPetIds = new Set((pets || []).map(p => p.id));
+      const allPetsValid = petIds.every((id: string) => validPetIds.has(id));
+
+      if (!allPetsValid) {
+        return new Response(
+          JSON.stringify({ error: 'One or more pets do not belong to this client' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Insert reservations using service role (bypasses RLS)
+      const { data: insertedReservations, error: insertError } = await supabase
+        .from('reservations')
+        .insert(reservations)
+        .select();
+
+      if (insertError) {
+        console.error('Error inserting reservations:', insertError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to create reservations' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, reservations: insertedReservations }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     if (action === 'logout') {
       // Delete customer access token
       const logoutMutation = `
