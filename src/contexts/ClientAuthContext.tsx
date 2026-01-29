@@ -103,6 +103,10 @@ interface Pet {
   special_needs: string | null;
   feeding_instructions: string | null;
   behavior_notes: string | null;
+  grooming_product_id: string | null;
+  grooming_product_title: string | null;
+  grooming_frequency: string | null;
+  last_grooming_date: string | null;
   pet_traits: Array<{
     id: string;
     title: string;

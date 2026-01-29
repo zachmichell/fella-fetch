@@ -27,6 +27,10 @@ interface SelectedPet {
   name: string;
   breed: string | null;
   photo_url: string | null;
+  grooming_product_id: string | null;
+  grooming_product_title: string | null;
+  grooming_frequency: string | null;
+  last_grooming_date: string | null;
 }
 
 interface Groomer {
@@ -632,7 +636,11 @@ const BookingPage = () => {
                               id: pet.id,
                               name: pet.name,
                               breed: pet.breed,
-                              photo_url: pet.photo_url
+                              photo_url: pet.photo_url,
+                              grooming_product_id: pet.grooming_product_id,
+                              grooming_product_title: pet.grooming_product_title,
+                              grooming_frequency: pet.grooming_frequency,
+                              last_grooming_date: pet.last_grooming_date,
                             })}
                             className={`p-4 rounded-xl border-2 flex items-center gap-4 transition-all text-left ${
                               isSelected
@@ -658,10 +666,16 @@ const BookingPage = () => {
                                   <Dog className="w-6 h-6 text-muted-foreground" />
                                 </div>
                               )}
-                              <div>
+                              <div className="flex-1">
                                 <h3 className="font-semibold text-foreground">{pet.name}</h3>
                                 {pet.breed && (
                                   <p className="text-sm text-muted-foreground">{pet.breed}</p>
+                                )}
+                                {isGrooming && pet.grooming_product_title && (
+                                  <p className="text-xs text-primary mt-1 flex items-center gap-1">
+                                    <Scissors className="w-3 h-3" />
+                                    Recommended: {pet.grooming_product_title}
+                                  </p>
                                 )}
                               </div>
                             </div>
@@ -804,6 +818,17 @@ const BookingPage = () => {
                       )}
                     </div>
                   </div>
+
+                  {/* Recommended Groom Type */}
+                  {bookingData.selectedPets[0]?.grooming_product_title && (
+                    <div className="flex justify-between items-center pb-4 border-b border-border">
+                      <span className="text-muted-foreground">Recommended Service</span>
+                      <span className="font-semibold text-primary flex items-center gap-1">
+                        <Scissors className="w-4 h-4" />
+                        {bookingData.selectedPets[0].grooming_product_title}
+                      </span>
+                    </div>
+                  )}
 
                   {/* Service */}
                   <div className="flex justify-between items-center pb-4 border-b border-border">
