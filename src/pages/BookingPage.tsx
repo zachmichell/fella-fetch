@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { GroomerSelector } from "@/components/booking/GroomerSelector";
 import { GroomingCalendar } from "@/components/booking/GroomingCalendar";
 import { GroomingTimeSlots } from "@/components/booking/GroomingTimeSlots";
+import { useBusinessHours, generateTimeSlots, isWeekendDate } from "@/hooks/useBusinessHours";
 
 import iconStay from "@/assets/icons/icon-stay.png";
 import iconGroom from "@/assets/icons/icon-groom.png";
@@ -94,17 +95,6 @@ const groomingTrainingTimeSlots = [
   "12:00 PM", "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM"
 ];
 
-// Drop-off and pick-up time options for daycare/boarding
-const dropOffTimeSlots = [
-  "6:00 AM", "6:30 AM", "7:00 AM", "7:30 AM", "8:00 AM", "8:30 AM", "9:00 AM", "9:30 AM", 
-  "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM", "12:00 PM"
-];
-
-const pickUpTimeSlots = [
-  "12:00 PM", "12:30 PM", "1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM", "3:00 PM", "3:30 PM",
-  "4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM", "6:00 PM", "6:30 PM", "7:00 PM"
-];
-
 // Shopify Cart mutations
 const CART_CREATE_MUTATION = `
   mutation cartCreate($input: CartInput!) {
@@ -120,6 +110,7 @@ const CART_CREATE_MUTATION = `
 
 const BookingPage = () => {
   const { isAuthenticated, pets, clientData, loading } = useClientAuth();
+  const { businessHours, isLoading: isLoadingBusinessHours } = useBusinessHours();
   const [step, setStep] = useState(1);
   const [isCreatingCart, setIsCreatingCart] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -424,19 +415,20 @@ const BookingPage = () => {
 
   // Calculate required credits
   const creditsRequired = useMemo(() => {
-    if (!bookingData.service || !bookingData.date || !bookingData.endDate || bookingData.selectedPets.length === 0) {
+    if (!bookingData.service || bookingData.selectedPets.length === 0) {
       return 0;
     }
 
-    const startDate = new Date(bookingData.date);
-    const endDate = new Date(bookingData.endDate);
-
     if (bookingData.service === "boarding") {
+      if (!bookingData.date || !bookingData.endDate) return 0;
+      const startDate = new Date(bookingData.date);
+      const endDate = new Date(bookingData.endDate);
       const nights = Math.max(1, differenceInDays(endDate, startDate));
       return nights * bookingData.selectedPets.length;
     } else if (bookingData.service === "daycare") {
-      const days = differenceInDays(endDate, startDate) + 1;
-      return days * bookingData.selectedPets.length;
+      // Daycare is always single day now
+      if (!bookingData.date) return 0;
+      return 1 * bookingData.selectedPets.length;
     }
 
     return 0;
@@ -460,6 +452,62 @@ const BookingPage = () => {
   const creditsAfterBooking = currentCredits - creditsRequired;
   const hasEnoughCredits = creditsAfterBooking >= 0;
   const creditsNeeded = hasEnoughCredits ? 0 : Math.abs(creditsAfterBooking);
+
+  // Generate time slots based on business hours and selected date
+  const getDropOffTimeSlots = useMemo(() => {
+    if (!bookingData.date) {
+      // Return default weekday slots when no date selected
+      return generateTimeSlots(businessHours.weekday.open, '12:00 PM');
+    }
+    const isWeekend = isWeekendDate(bookingData.date);
+    const hours = isWeekend ? businessHours.weekend : businessHours.weekday;
+    return generateTimeSlots(hours.open, '12:00 PM');
+  }, [bookingData.date, businessHours]);
+
+  const getPickUpTimeSlots = useMemo(() => {
+    if (!bookingData.date && !bookingData.endDate) {
+      // Return default weekday slots when no date selected
+      return generateTimeSlots('12:00 PM', businessHours.weekday.close);
+    }
+    const dateToCheck = bookingData.endDate || bookingData.date;
+    const isWeekend = isWeekendDate(dateToCheck);
+    const hours = isWeekend ? businessHours.weekend : businessHours.weekday;
+    return generateTimeSlots('12:00 PM', hours.close);
+  }, [bookingData.date, bookingData.endDate, businessHours]);
+
+  // Generate time slots for half day daycare
+  const getHalfDayDropOffTimeSlots = useMemo(() => {
+    const isWeekend = bookingData.date ? isWeekendDate(bookingData.date) : false;
+    const hours = isWeekend ? businessHours.weekend : businessHours.weekday;
+    // Morning half day: drop-off from open to 11:30 AM
+    // Afternoon half day: drop-off from 1:00 PM to 4:00 PM
+    return {
+      morning: generateTimeSlots(hours.open, '11:30 AM'),
+      afternoon: generateTimeSlots('1:00 PM', '4:00 PM'),
+    };
+  }, [bookingData.date, businessHours]);
+
+  const getHalfDayPickUpTimeSlots = useMemo(() => {
+    const isWeekend = bookingData.date ? isWeekendDate(bookingData.date) : false;
+    const hours = isWeekend ? businessHours.weekend : businessHours.weekday;
+    // Morning half day: pick-up by 12:00 PM
+    // Afternoon half day: pick-up from 4:00 PM to close
+    return {
+      morning: ['12:00 PM'],
+      afternoon: generateTimeSlots('4:00 PM', hours.close),
+    };
+  }, [bookingData.date, businessHours]);
+
+  // Determine if selected drop-off time is morning or afternoon for half day
+  const isAfternoonHalfDay = useMemo(() => {
+    if (!bookingData.time || bookingData.daycareType !== 'half') return false;
+    const timeMatch = bookingData.time.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (!timeMatch) return false;
+    const hour = parseInt(timeMatch[1], 10);
+    const period = timeMatch[3].toUpperCase();
+    // If PM and hour >= 1, it's afternoon
+    return period === 'PM' && hour !== 12;
+  }, [bookingData.time, bookingData.daycareType]);
 
   const handleServiceSelect = (service: ServiceType) => {
     setBookingData({ 
@@ -566,8 +614,8 @@ const BookingPage = () => {
           return !!bookingData.selectedGroomingService && !!bookingData.selectedGroomingVariant;
         }
         if (isDaycare) {
-          // Date/Time step for daycare (step 4 after day type)
-          return !!bookingData.date && !!bookingData.time && !!bookingData.endDate && !!bookingData.endTime;
+          // Date/Time step for daycare (step 4 after day type) - single date
+          return !!bookingData.date && !!bookingData.time && !!bookingData.endTime;
         }
         if (bookingData.service === "boarding") {
           // Credits step for boarding
@@ -823,39 +871,21 @@ const BookingPage = () => {
             animate={{ opacity: 1, y: 0 }}
             className="text-center mb-12"
           >
-            <h1 className="font-display text-3xl sm:text-4xl font-bold text-foreground mb-4">
+            <h1 className="font-display text-3xl sm:text-4xl font-bold text-foreground">
               Book Your Visit
             </h1>
-            <p className="text-muted-foreground">
-              Quick and easy booking in just a few steps
-            </p>
           </motion.div>
 
-          {/* Progress Bar */}
+          {/* Progress Bar - Simple line only */}
           <div className="mb-12">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-center gap-1">
               {Array.from({ length: totalSteps }, (_, i) => i + 1).map((s) => (
-                <div key={s} className="flex items-center">
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-colors ${
-                      s <= step
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {s < step ? <Check className="w-5 h-5" /> : s}
-                  </div>
-                  {s < totalSteps && (
-                    <div className={`hidden sm:block w-8 lg:w-16 h-1 mx-1 rounded ${
-                      s < step ? "bg-primary" : "bg-muted"
-                    }`} />
-                  )}
-                </div>
-              ))}
-            </div>
-            <div className="flex justify-between text-xs sm:text-sm text-muted-foreground">
-              {stepLabels.map((label, i) => (
-                <span key={i} className="text-center flex-1">{label}</span>
+                <div 
+                  key={s} 
+                  className={`h-2 flex-1 max-w-12 rounded-full transition-colors ${
+                    s <= step ? "bg-primary" : "bg-muted"
+                  }`}
+                />
               ))}
             </div>
           </div>
@@ -1080,7 +1110,10 @@ const BookingPage = () => {
                 </p>
                 <div className="grid sm:grid-cols-2 gap-4">
                   <button
-                    onClick={() => setBookingData({ ...bookingData, daycareType: "full" })}
+                    onClick={() => {
+                      setBookingData({ ...bookingData, daycareType: "full" });
+                      setStep(4); // Auto-advance to next step
+                    }}
                     className={`p-6 rounded-2xl border-2 text-left transition-all ${
                       bookingData.daycareType === "full"
                         ? "border-primary bg-accent/30"
@@ -1094,7 +1127,10 @@ const BookingPage = () => {
                     <p className="text-sm text-muted-foreground">A complete day of play, socialization, and care</p>
                   </button>
                   <button
-                    onClick={() => setBookingData({ ...bookingData, daycareType: "half" })}
+                    onClick={() => {
+                      setBookingData({ ...bookingData, daycareType: "half" });
+                      setStep(4); // Auto-advance to next step
+                    }}
                     className={`p-6 rounded-2xl border-2 text-left transition-all ${
                       bookingData.daycareType === "half"
                         ? "border-primary bg-accent/30"
@@ -1108,11 +1144,6 @@ const BookingPage = () => {
                     <p className="text-sm text-muted-foreground">A shorter session, perfect for quick visits</p>
                   </button>
                 </div>
-                {bookingData.daycareType && (
-                  <div className="bg-accent/20 rounded-xl p-4 text-sm text-foreground">
-                    Selected: <strong>{bookingData.daycareType === "full" ? "Full Day" : "Half Day"}</strong> Daycare
-                  </div>
-                )}
               </motion.div>
             )}
 
@@ -1505,7 +1536,7 @@ const BookingPage = () => {
                             <SelectValue placeholder="Select time" />
                           </SelectTrigger>
                           <SelectContent>
-                            {dropOffTimeSlots.map((time) => (
+                            {getDropOffTimeSlots.map((time) => (
                               <SelectItem key={time} value={time}>
                                 {time}
                               </SelectItem>
@@ -1543,7 +1574,7 @@ const BookingPage = () => {
                             <SelectValue placeholder="Select time" />
                           </SelectTrigger>
                           <SelectContent>
-                            {pickUpTimeSlots.map((time) => (
+                            {getPickUpTimeSlots.map((time) => (
                               <SelectItem key={time} value={time}>
                                 {time}
                               </SelectItem>
@@ -1604,85 +1635,94 @@ const BookingPage = () => {
                 exit={{ opacity: 0, x: -20 }}
                 className="space-y-8"
               >
-                {/* Start Date & Time */}
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <h2 className="font-display text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
-                      <Calendar className="w-5 h-5 text-primary" />
-                      Drop-off Date
-                    </h2>
-                    <input
-                      type="date"
-                      value={bookingData.date}
-                      onChange={(e) => setBookingData({ ...bookingData, date: e.target.value })}
-                      min={new Date().toISOString().split('T')[0]}
-                      className="w-full p-4 rounded-xl border border-border bg-card text-foreground text-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                  </div>
-                  <div>
-                    <h2 className="font-display text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
-                      <Clock className="w-5 h-5 text-primary" />
-                      Drop-off Time
-                    </h2>
-                    <Select
-                      value={bookingData.time}
-                      onValueChange={(value) => setBookingData({ ...bookingData, time: value })}
-                    >
-                      <SelectTrigger className="w-full h-14 rounded-xl border border-border bg-card text-foreground text-lg">
-                        <SelectValue placeholder="Select time" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {dropOffTimeSlots.map((time) => (
-                          <SelectItem key={time} value={time}>
-                            {time}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                {/* Single Date for Daycare */}
+                <div>
+                  <h2 className="font-display text-xl font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-primary" />
+                    Select Date
+                  </h2>
+                  <input
+                    type="date"
+                    value={bookingData.date}
+                    onChange={(e) => {
+                      // For daycare, set both date and endDate to the same value
+                      setBookingData({ 
+                        ...bookingData, 
+                        date: e.target.value, 
+                        endDate: e.target.value,
+                        time: '', // Reset times when date changes
+                        endTime: ''
+                      });
+                    }}
+                    min={new Date().toISOString().split('T')[0]}
+                    className="w-full p-4 rounded-xl border border-border bg-card text-foreground text-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
                 </div>
 
-                {/* End Date & Time */}
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <h2 className="font-display text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
-                      <Calendar className="w-5 h-5 text-primary" />
-                      Pick-up Date
-                    </h2>
-                    <input
-                      type="date"
-                      value={bookingData.endDate}
-                      onChange={(e) => setBookingData({ ...bookingData, endDate: e.target.value })}
-                      min={bookingData.date || new Date().toISOString().split('T')[0]}
-                      className="w-full p-4 rounded-xl border border-border bg-card text-foreground text-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
+                {/* Time Selection */}
+                {bookingData.date && (
+                  <div className="grid sm:grid-cols-2 gap-6">
+                    <div>
+                      <h2 className="font-display text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+                        <Clock className="w-5 h-5 text-primary" />
+                        Drop-off Time
+                      </h2>
+                      <Select
+                        value={bookingData.time}
+                        onValueChange={(value) => setBookingData({ ...bookingData, time: value, endTime: '' })}
+                      >
+                        <SelectTrigger className="w-full h-14 rounded-xl border border-border bg-card text-foreground text-lg">
+                          <SelectValue placeholder="Select drop-off time" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {bookingData.daycareType === 'full' 
+                            ? getDropOffTimeSlots.map((time) => (
+                                <SelectItem key={time} value={time}>{time}</SelectItem>
+                              ))
+                            : [...getHalfDayDropOffTimeSlots.morning, ...getHalfDayDropOffTimeSlots.afternoon].map((time) => (
+                                <SelectItem key={time} value={time}>{time}</SelectItem>
+                              ))
+                          }
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <h2 className="font-display text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+                        <Clock className="w-5 h-5 text-primary" />
+                        Pick-up Time
+                      </h2>
+                      <Select
+                        value={bookingData.endTime}
+                        onValueChange={(value) => setBookingData({ ...bookingData, endTime: value })}
+                        disabled={!bookingData.time}
+                      >
+                        <SelectTrigger className="w-full h-14 rounded-xl border border-border bg-card text-foreground text-lg">
+                          <SelectValue placeholder={bookingData.time ? "Select pick-up time" : "Select drop-off first"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {bookingData.daycareType === 'full'
+                            ? getPickUpTimeSlots.map((time) => (
+                                <SelectItem key={time} value={time}>{time}</SelectItem>
+                              ))
+                            : (isAfternoonHalfDay 
+                                ? getHalfDayPickUpTimeSlots.afternoon 
+                                : getHalfDayPickUpTimeSlots.morning
+                              ).map((time) => (
+                                <SelectItem key={time} value={time}>{time}</SelectItem>
+                              ))
+                          }
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="font-display text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
-                      <Clock className="w-5 h-5 text-primary" />
-                      Pick-up Time
-                    </h2>
-                    <Select
-                      value={bookingData.endTime}
-                      onValueChange={(value) => setBookingData({ ...bookingData, endTime: value })}
-                    >
-                      <SelectTrigger className="w-full h-14 rounded-xl border border-border bg-card text-foreground text-lg">
-                        <SelectValue placeholder="Select time" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {pickUpTimeSlots.map((time) => (
-                          <SelectItem key={time} value={time}>
-                            {time}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                )}
 
                 {/* Day type reminder */}
                 <div className="bg-accent/20 rounded-xl p-4 text-sm text-foreground">
                   Booking: <strong>{bookingData.daycareType === "full" ? "Full Day" : "Half Day"}</strong> Daycare
+                  {bookingData.daycareType === "half" && bookingData.time && (
+                    <span className="ml-2">({isAfternoonHalfDay ? 'Afternoon' : 'Morning'} session)</span>
+                  )}
                 </div>
               </motion.div>
             )}
