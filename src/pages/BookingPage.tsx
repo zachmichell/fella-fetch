@@ -48,6 +48,13 @@ interface GroomerSchedule {
   is_available: boolean;
 }
 
+interface GroomingService {
+  id: string;
+  shopify_product_id: string;
+  shopify_product_title: string;
+  price?: string;
+}
+
 interface BookingData {
   service: ServiceType | null;
   selectedPets: SelectedPet[];
@@ -56,6 +63,7 @@ interface BookingData {
   endDate: string;
   endTime: string;
   selectedGroomerId: string | null;
+  selectedGroomingService: GroomingService | null;
   groomingDate: Date | null;
   groomingTime: string | null;
   groomingEndTime: string | null;
@@ -100,6 +108,8 @@ const BookingPage = () => {
   const [loadingGroomers, setLoadingGroomers] = useState(false);
   const [existingGroomingReservations, setExistingGroomingReservations] = useState<any[]>([]);
   const [groomerServiceDurations, setGroomerServiceDurations] = useState<Map<string, number>>(new Map());
+  const [groomingServices, setGroomingServices] = useState<GroomingService[]>([]);
+  const [loadingGroomingServices, setLoadingGroomingServices] = useState(false);
 
   const [bookingData, setBookingData] = useState<BookingData>({
     service: null,
@@ -109,6 +119,7 @@ const BookingPage = () => {
     endDate: "",
     endTime: "",
     selectedGroomerId: null,
+    selectedGroomingService: null,
     groomingDate: null,
     groomingTime: null,
     groomingEndTime: null,
@@ -183,10 +194,10 @@ const BookingPage = () => {
     fetchGroomersAndSchedules();
   }, [bookingData.service]);
 
-  // Fetch groomer service durations when groomer and pet are selected
+  // Fetch groomer service durations when groomer and grooming service are selected
   useEffect(() => {
     const fetchServiceDuration = async () => {
-      // Only fetch if we have grooming service, a groomer, and pets with grooming product
+      // Only fetch if we have grooming service selected
       if (bookingData.service !== "grooming") return;
       if (!bookingData.selectedGroomerId) {
         // Reset to default when no groomer selected
@@ -194,10 +205,10 @@ const BookingPage = () => {
         return;
       }
       
-      // Get the first selected pet's grooming product
-      const selectedPet = bookingData.selectedPets[0];
-      if (!selectedPet?.grooming_product_id) {
-        // No recommended product, use default duration
+      // Use the selected grooming service, not the pet's recommended product
+      const selectedService = bookingData.selectedGroomingService;
+      if (!selectedService?.shopify_product_id) {
+        // No service selected, use default duration
         setBookingData(prev => ({ ...prev, groomingDurationMinutes: 60 }));
         return;
       }
@@ -208,7 +219,7 @@ const BookingPage = () => {
           .from("groomer_service_durations")
           .select("duration_minutes")
           .eq("groomer_id", bookingData.selectedGroomerId)
-          .eq("shopify_product_id", selectedPet.grooming_product_id)
+          .eq("shopify_product_id", selectedService.shopify_product_id)
           .maybeSingle();
 
         if (error) {
@@ -224,7 +235,54 @@ const BookingPage = () => {
     };
 
     fetchServiceDuration();
-  }, [bookingData.service, bookingData.selectedGroomerId, bookingData.selectedPets]);
+  }, [bookingData.service, bookingData.selectedGroomerId, bookingData.selectedGroomingService]);
+
+  // Fetch grooming services when grooming is selected
+  useEffect(() => {
+    const fetchGroomingServices = async () => {
+      if (bookingData.service !== "grooming") {
+        setGroomingServices([]);
+        return;
+      }
+
+      setLoadingGroomingServices(true);
+      try {
+        // Fetch grooming service mappings from shopify_service_mappings
+        const { data, error } = await supabase
+          .from("shopify_service_mappings")
+          .select("id, shopify_product_id, shopify_product_title")
+          .eq("service_type", "grooming");
+
+        if (error) throw error;
+
+        const services: GroomingService[] = (data || []).map(item => ({
+          id: item.id,
+          shopify_product_id: item.shopify_product_id,
+          shopify_product_title: item.shopify_product_title,
+        }));
+
+        setGroomingServices(services);
+
+        // Pre-select the pet's recommended service if available
+        const selectedPet = bookingData.selectedPets[0];
+        if (selectedPet?.grooming_product_id && !bookingData.selectedGroomingService) {
+          const recommendedService = services.find(
+            s => s.shopify_product_id === selectedPet.grooming_product_id
+          );
+          if (recommendedService) {
+            setBookingData(prev => ({ ...prev, selectedGroomingService: recommendedService }));
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching grooming services:", error);
+        toast.error("Failed to load grooming services");
+      } finally {
+        setLoadingGroomingServices(false);
+      }
+    };
+
+    fetchGroomingServices();
+  }, [bookingData.service]);
 
   // Fetch the linked credit product for daycare/boarding
   useEffect(() => {
@@ -255,10 +313,10 @@ const BookingPage = () => {
   // Calculate total steps based on service type
   const getStepConfig = () => {
     if (bookingData.service === "grooming") {
-      // Grooming: Service → Pet → Groomer → Calendar → Time → Confirm
+      // Grooming: Service → Pet → Groomer → Groom Type → Date → Time → Confirm
       return {
-        totalSteps: 6,
-        labels: ["Service", "Pet", "Groomer", "Date", "Time", "Confirm"],
+        totalSteps: 7,
+        labels: ["Service", "Pet", "Groomer", "Groom Type", "Date", "Time", "Confirm"],
       };
     } else if (bookingData.service === "daycare" || bookingData.service === "boarding") {
       // Daycare/Boarding: Service → Pets → Date/Time → Credits → Confirm
@@ -319,8 +377,10 @@ const BookingPage = () => {
       ...bookingData, 
       service,
       selectedGroomerId: null,
+      selectedGroomingService: null,
       groomingDate: null,
       groomingTime: null,
+      groomingEndTime: null,
     });
     setStep(2);
   };
@@ -330,14 +390,16 @@ const BookingPage = () => {
     if (isSelected) {
       setBookingData({
         ...bookingData,
-        selectedPets: bookingData.selectedPets.filter(p => p.id !== pet.id)
+        selectedPets: bookingData.selectedPets.filter(p => p.id !== pet.id),
+        selectedGroomingService: null, // Reset service when pet changes
       });
     } else {
       // For grooming, only allow one pet at a time
       if (isGrooming) {
         setBookingData({
           ...bookingData,
-          selectedPets: [pet]
+          selectedPets: [pet],
+          selectedGroomingService: null, // Reset service when pet changes
         });
       } else {
         setBookingData({
@@ -354,6 +416,7 @@ const BookingPage = () => {
       selectedGroomerId: groomerId,
       groomingDate: null, // Reset date when groomer changes
       groomingTime: null,
+      groomingEndTime: null,
     });
   };
 
@@ -405,14 +468,20 @@ const BookingPage = () => {
         return !!bookingData.date && !!bookingData.time;
       case 4:
         if (isGrooming) {
-          // Calendar step - date must be selected
-          return !!bookingData.groomingDate;
+          // Grooming service selection step - must select a service
+          return !!bookingData.selectedGroomingService;
         }
         if (needsCreditsStep) {
           return hasEnoughCredits;
         }
         return true;
       case 5:
+        if (isGrooming) {
+          // Calendar step - date must be selected
+          return !!bookingData.groomingDate;
+        }
+        return true;
+      case 6:
         if (isGrooming) {
           // Time slot step - time must be selected
           return !!bookingData.groomingTime;
@@ -467,6 +536,7 @@ const BookingPage = () => {
         endDate: "",
         endTime: "",
         selectedGroomerId: null,
+        selectedGroomingService: null,
         groomingDate: null,
         groomingTime: null,
         groomingEndTime: null,
@@ -800,10 +870,91 @@ const BookingPage = () => {
               </motion.div>
             )}
 
-            {/* Step 4: Calendar (Grooming only) */}
+            {/* Step 4: Grooming Service Selection (Grooming only) */}
             {step === 4 && isGrooming && (
               <motion.div
-                key="step4-calendar"
+                key="step4-service"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
+              >
+                <h2 className="font-display text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
+                  <Scissors className="w-5 h-5 text-primary" />
+                  Select Grooming Service
+                </h2>
+                <p className="text-muted-foreground">
+                  Choose the grooming service you'd like for {bookingData.selectedPets[0]?.name}.
+                </p>
+                
+                {/* Show recommended service if pet has one */}
+                {bookingData.selectedPets[0]?.grooming_product_title && (
+                  <div className="bg-primary/10 border border-primary/20 rounded-xl p-4">
+                    <p className="text-sm text-primary font-medium flex items-center gap-2">
+                      <Scissors className="w-4 h-4" />
+                      Recommended: {bookingData.selectedPets[0].grooming_product_title}
+                    </p>
+                  </div>
+                )}
+
+                {loadingGroomingServices ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                  </div>
+                ) : groomingServices.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Scissors className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No grooming services available</p>
+                    <p className="text-sm">Please contact us to book a grooming appointment.</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-3">
+                    {groomingServices.map((service) => {
+                      const isSelected = bookingData.selectedGroomingService?.id === service.id;
+                      const isRecommended = service.shopify_product_id === bookingData.selectedPets[0]?.grooming_product_id;
+                      
+                      return (
+                        <button
+                          key={service.id}
+                          onClick={() => setBookingData({ ...bookingData, selectedGroomingService: service })}
+                          className={`relative w-full p-4 rounded-xl border-2 transition-all text-left ${
+                            isSelected 
+                              ? "border-primary bg-primary/5 ring-2 ring-primary/20" 
+                              : "border-border hover:border-primary/50 hover:bg-muted/50"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                isSelected ? "bg-primary text-primary-foreground" : "bg-muted"
+                              }`}>
+                                <Scissors className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <span className="font-medium text-foreground">{service.shopify_product_title}</span>
+                                {isRecommended && (
+                                  <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-primary/10 text-primary rounded-full">
+                                    Recommended
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            {isSelected && (
+                              <Check className="w-5 h-5 text-primary" />
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* Step 5: Calendar (Grooming only) */}
+            {step === 5 && isGrooming && (
+              <motion.div
+                key="step5-calendar"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
@@ -830,10 +981,10 @@ const BookingPage = () => {
               </motion.div>
             )}
 
-            {/* Step 5: Time Slots (Grooming only) */}
-            {step === 5 && isGrooming && (
+            {/* Step 6: Time Slots (Grooming only) */}
+            {step === 6 && isGrooming && (
               <motion.div
-                key="step5-time"
+                key="step6-time"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
@@ -857,10 +1008,10 @@ const BookingPage = () => {
               </motion.div>
             )}
 
-            {/* Step 6: Confirmation (Grooming) */}
-            {step === 6 && isGrooming && (
+            {/* Step 7: Confirmation (Grooming) */}
+            {step === 7 && isGrooming && (
               <motion.div
-                key="step6-confirm-grooming"
+                key="step7-confirm-grooming"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
@@ -892,13 +1043,13 @@ const BookingPage = () => {
                     </div>
                   </div>
 
-                  {/* Recommended Groom Type */}
-                  {bookingData.selectedPets[0]?.grooming_product_title && (
+                  {/* Selected Grooming Service */}
+                  {bookingData.selectedGroomingService && (
                     <div className="flex justify-between items-center pb-4 border-b border-border">
-                      <span className="text-muted-foreground">Recommended Service</span>
-                      <span className="font-semibold text-primary flex items-center gap-1">
+                      <span className="text-muted-foreground">Service</span>
+                      <span className="font-semibold text-foreground flex items-center gap-1">
                         <Scissors className="w-4 h-4" />
-                        {bookingData.selectedPets[0].grooming_product_title}
+                        {bookingData.selectedGroomingService.shopify_product_title}
                       </span>
                     </div>
                   )}
@@ -923,12 +1074,6 @@ const BookingPage = () => {
                       </div>
                     );
                   })()}
-
-                  {/* Service */}
-                  <div className="flex justify-between items-center pb-4 border-b border-border">
-                    <span className="text-muted-foreground">Service</span>
-                    <span className="font-semibold text-foreground">Grooming</span>
-                  </div>
 
                   {/* Groomer */}
                   <div className="flex justify-between items-center pb-4 border-b border-border">
