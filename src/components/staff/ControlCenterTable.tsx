@@ -32,7 +32,15 @@ import {
   Tags,
   DollarSign
 } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
+
+// Parse date string as local date (not UTC) to avoid timezone shifting
+const parseLocalDate = (dateStr: string): Date => {
+  // For date-only strings like "2025-02-01", parse as local midnight
+  // This prevents the date from shifting when displayed in local timezone
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day);
+};
 import { PetTraitBadges, type PetTrait } from './PetTraitBadges';
 import { ManagePetTraitsDialog } from './ManagePetTraitsDialog';
 import { CancelReservationDialog } from './CancelReservationDialog';
@@ -208,14 +216,14 @@ export function ControlCenterTable({
   };
 
   const formatDateTime = (date: string, time: string | null) => {
-    const d = parseISO(date);
+    const d = parseLocalDate(date);
     const dateStr = format(d, 'EEE, MM/dd');
     const timeStr = time ? time.slice(0, 5) : '';
     return timeStr ? `${dateStr}, ${timeStr}` : dateStr;
   };
 
   const formatDateTimeWithNotes = (date: string, time: string | null, noteTime: string | null) => {
-    const d = parseISO(date);
+    const d = parseLocalDate(date);
     const dateStr = format(d, 'EEE, MM/dd');
     // Use database time if available, otherwise use parsed note time
     if (time) {

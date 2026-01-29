@@ -2,7 +2,13 @@ import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Calendar, Clock, Dog, ArrowRight, ArrowLeft, Check, LogIn, CreditCard, AlertTriangle, ShoppingCart, Loader2, Scissors, User, CalendarClock } from "lucide-react";
 import { Link } from "react-router-dom";
-import { differenceInDays, format, parse, addMinutes, parseISO } from "date-fns";
+import { differenceInDays, format, parse, addMinutes } from "date-fns";
+
+// Parse date string as local date (not UTC) to avoid timezone shifting
+const parseLocalDate = (dateStr: string): Date => {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day);
+};
 import { calculateNextGroomingDate, getGroomingDueStatus } from "@/lib/groomingUtils";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -2044,13 +2050,13 @@ const BookingPage = () => {
                           <div className="flex justify-between items-center pb-4 border-b border-border">
                             <span className="text-muted-foreground">Drop-off</span>
                             <span className="font-semibold text-foreground">
-                              {bookingData.date ? format(parseISO(bookingData.date), 'EEE, MMM d') : ''} at {bookingData.time}
+                              {bookingData.date ? format(parseLocalDate(bookingData.date), 'EEE, MMM d') : ''} at {bookingData.time}
                             </span>
                           </div>
                           <div className="flex justify-between items-center">
                             <span className="text-muted-foreground">Pick-up</span>
                             <span className="font-semibold text-foreground">
-                              {bookingData.endDate ? format(parseISO(bookingData.endDate), 'EEE, MMM d') : ''} at {bookingData.endTime}
+                              {bookingData.endDate ? format(parseLocalDate(bookingData.endDate), 'EEE, MMM d') : ''} at {bookingData.endTime}
                             </span>
                           </div>
                         </>
@@ -2059,7 +2065,7 @@ const BookingPage = () => {
                           <div className="flex justify-between items-center pb-4 border-b border-border">
                             <span className="text-muted-foreground">Date</span>
                             <span className="font-semibold text-foreground">
-                              {bookingData.date ? format(parseISO(bookingData.date), 'EEEE, MMMM d') : ''}
+                              {bookingData.date ? format(parseLocalDate(bookingData.date), 'EEEE, MMMM d') : ''}
                             </span>
                           </div>
                           <div className="flex justify-between items-center">
