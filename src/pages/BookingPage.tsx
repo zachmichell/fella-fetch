@@ -75,6 +75,7 @@ interface BookingData {
   groomingTime: string | null;
   groomingEndTime: string | null;
   groomingDurationMinutes: number;
+  payInStore: boolean;
 }
 
 const serviceOptions = [
@@ -132,6 +133,7 @@ const BookingPage = () => {
     groomingTime: null,
     groomingEndTime: null,
     groomingDurationMinutes: 60,
+    payInStore: false,
   });
 
   // Fetch groomers and schedules when grooming is selected
@@ -532,7 +534,8 @@ const BookingPage = () => {
           return !!bookingData.selectedGroomingService && !!bookingData.selectedGroomingVariant;
         }
         if (needsCreditsStep) {
-          return hasEnoughCredits;
+          // Allow proceeding if has enough credits OR chose to pay in store
+          return hasEnoughCredits || bookingData.payInStore;
         }
         return true;
       case 5:
@@ -607,6 +610,68 @@ const BookingPage = () => {
         groomingTime: null,
         groomingEndTime: null,
         groomingDurationMinutes: 60,
+        payInStore: false,
+      });
+    } catch (error) {
+      console.error("Error creating reservation:", error);
+      toast.error("Failed to submit reservation");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Submit non-grooming reservation (daycare, boarding, training)
+  const handleSubmitReservation = async () => {
+    if (!bookingData.service || bookingData.selectedPets.length === 0) {
+      toast.error("Please complete all booking details");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Create reservations for each pet
+      const reservations = bookingData.selectedPets.map((pet) => ({
+        pet_id: pet.id,
+        service_type: bookingData.service as ServiceType,
+        status: "pending" as const,
+        start_date: bookingData.date,
+        end_date: bookingData.endDate || bookingData.date,
+        notes: bookingData.time && bookingData.endTime 
+          ? `Drop-off: ${bookingData.time}, Pick-up: ${bookingData.endTime}` 
+          : null,
+        payment_pending: bookingData.payInStore,
+      }));
+
+      const { error } = await supabase.from("reservations").insert(reservations);
+
+      if (error) throw error;
+
+      toast.success(
+        bookingData.payInStore 
+          ? "Reservation requested! Payment will be collected at drop-off." 
+          : "Reservation requested!",
+        {
+          description: "We'll confirm your reservation shortly.",
+        }
+      );
+
+      // Reset form
+      setStep(1);
+      setBookingData({
+        service: null,
+        selectedPets: [],
+        date: "",
+        time: "",
+        endDate: "",
+        endTime: "",
+        selectedGroomerId: null,
+        selectedGroomingService: null,
+        selectedGroomingVariant: null,
+        groomingDate: null,
+        groomingTime: null,
+        groomingEndTime: null,
+        groomingDurationMinutes: 60,
+        payInStore: false,
       });
     } catch (error) {
       console.error("Error creating reservation:", error);
@@ -1455,30 +1520,50 @@ const BookingPage = () => {
                         <h3 className="font-semibold text-foreground">Not Enough Credits</h3>
                         <p className="text-muted-foreground text-sm">
                           You need <strong>{creditsNeeded} more {bookingData.service === "boarding" ? "boarding" : "daycare"} credit{creditsNeeded !== 1 ? 's' : ''}</strong> to complete this booking.
-                          Purchase a credit package to continue.
                         </p>
                       </div>
                     </div>
 
-                    <Button 
-                      variant="hero" 
-                      className="w-full" 
-                      onClick={handlePurchaseCredits}
-                      disabled={isCreatingCart}
-                    >
-                      {isCreatingCart ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                      ) : (
-                        <>
-                          <ShoppingCart className="w-5 h-5" />
-                          Purchase Credit Package
-                        </>
-                      )}
-                    </Button>
+                    <div className="space-y-3">
+                      <Button 
+                        variant="hero" 
+                        className="w-full" 
+                        onClick={handlePurchaseCredits}
+                        disabled={isCreatingCart}
+                      >
+                        {isCreatingCart ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <>
+                            <ShoppingCart className="w-5 h-5" />
+                            Purchase Credit Package
+                          </>
+                        )}
+                      </Button>
 
-                    <p className="text-sm text-muted-foreground text-center mt-3">
-                      After completing your purchase, please return to this page to finish your reservation.
-                    </p>
+                      <div className="relative flex items-center justify-center">
+                        <div className="absolute inset-0 flex items-center">
+                          <div className="w-full border-t border-border" />
+                        </div>
+                        <span className="relative bg-destructive/10 px-3 text-sm text-muted-foreground">or</span>
+                      </div>
+
+                      <Button 
+                        variant="outline" 
+                        className="w-full" 
+                        onClick={() => {
+                          setBookingData({ ...bookingData, payInStore: true });
+                          setStep(step + 1);
+                        }}
+                      >
+                        <CreditCard className="w-5 h-5" />
+                        Pay In Store
+                      </Button>
+
+                      <p className="text-sm text-muted-foreground text-center">
+                        Choose "Pay In Store" to book now and pay when you drop off your pet.
+                      </p>
+                    </div>
                   </div>
                 )}
 
@@ -1581,7 +1666,7 @@ const BookingPage = () => {
                   ))}
                 </div>
 
-                {needsCreditsStep && (
+                {needsCreditsStep && !bookingData.payInStore && (
                   <div className="bg-accent/20 rounded-2xl p-6 text-center space-y-2">
                     <p className="text-foreground">
                       <strong>{creditsRequired}</strong> {bookingData.service === "boarding" ? "boarding" : "daycare"} credit{creditsRequired !== 1 ? 's' : ''} will be used
@@ -1589,6 +1674,20 @@ const BookingPage = () => {
                     <p className="text-sm text-muted-foreground">
                       New balance: {creditsAfterBooking} credit{creditsAfterBooking !== 1 ? 's' : ''}
                     </p>
+                  </div>
+                )}
+
+                {bookingData.payInStore && (
+                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-6">
+                    <div className="flex items-center gap-3">
+                      <CreditCard className="w-6 h-6 text-amber-600 flex-shrink-0" />
+                      <div>
+                        <h3 className="font-semibold text-foreground">Pay In Store</h3>
+                        <p className="text-muted-foreground text-sm">
+                          Payment of <strong>{creditsNeeded} {bookingData.service === "boarding" ? "boarding" : "daycare"} credit{creditsNeeded !== 1 ? 's' : ''}</strong> will be collected when you drop off your pet.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -1649,9 +1748,20 @@ const BookingPage = () => {
                 )}
               </Button>
             ) : (
-              <Button variant="hero" size="lg">
-                Request Reservation
-                <ArrowRight className="w-5 h-5" />
+              <Button 
+                variant="hero" 
+                size="lg"
+                onClick={handleSubmitReservation}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    Request Reservation
+                    <ArrowRight className="w-5 h-5" />
+                  </>
+                )}
               </Button>
             )}
           </div>
