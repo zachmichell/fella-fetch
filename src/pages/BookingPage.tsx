@@ -567,6 +567,10 @@ const BookingPage = () => {
       // Convert time to 24h format for database
       const parsedTime = parse(bookingData.groomingTime, "h:mm a", new Date());
       const startTime = format(parsedTime, "HH:mm:ss");
+      
+      // Calculate end time based on duration
+      const endTimeDate = addMinutes(parsedTime, bookingData.groomingDurationMinutes);
+      const endTime = format(endTimeDate, "HH:mm:ss");
 
       const { error } = await supabase.from("reservations").insert({
         pet_id: pet.id,
@@ -574,6 +578,7 @@ const BookingPage = () => {
         status: "pending",
         start_date: startDate,
         start_time: startTime,
+        end_time: endTime,
         groomer_id: bookingData.selectedGroomerId,
         notes: bookingData.selectedGroomerId 
           ? `Requested groomer: ${groomers.find(g => g.id === bookingData.selectedGroomerId)?.name}`
