@@ -19,7 +19,8 @@ import {
   Save,
   Mail,
   Phone,
-  Clock
+  Clock,
+  CalendarDays
 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
@@ -42,6 +43,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { GroomerDurationsDialog } from '@/components/staff/grooming/GroomerDurationsDialog';
+import { GroomerScheduleDialog } from '@/components/staff/grooming/GroomerScheduleDialog';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface Groomer {
@@ -81,6 +83,7 @@ const StaffGroomers = () => {
   const [editingGroomer, setEditingGroomer] = useState<Groomer | null>(null);
   const [deleteConfirmGroomer, setDeleteConfirmGroomer] = useState<Groomer | null>(null);
   const [durationsGroomer, setDurationsGroomer] = useState<Groomer | null>(null);
+  const [scheduleGroomer, setScheduleGroomer] = useState<Groomer | null>(null);
   const [formData, setFormData] = useState<GroomerFormData>({
     name: '',
     email: '',
@@ -385,6 +388,18 @@ const StaffGroomers = () => {
                           <Button
                             variant="ghost"
                             size="icon"
+                            onClick={() => setScheduleGroomer(groomer)}
+                          >
+                            <CalendarDays className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Set weekly schedule</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={() => setDurationsGroomer(groomer)}
                           >
                             <Clock className="h-4 w-4" />
@@ -551,6 +566,13 @@ const StaffGroomers = () => {
         onOpenChange={(open) => !open && setDurationsGroomer(null)}
         groomerId={durationsGroomer?.id ?? ''}
         groomerName={durationsGroomer?.name ?? ''}
+      />
+
+      {/* Groomer Schedule Dialog */}
+      <GroomerScheduleDialog
+        groomer={scheduleGroomer}
+        open={!!scheduleGroomer}
+        onOpenChange={(open) => !open && setScheduleGroomer(null)}
       />
     </StaffLayout>
   );
