@@ -7,9 +7,12 @@ import { LodgingMonthlyView } from '@/components/staff/lodging/LodgingMonthlyVie
 import { LodgingPetDetailsDialog } from '@/components/staff/lodging/LodgingPetDetailsDialog';
 import { LodgingAssignSuiteDialog } from '@/components/staff/lodging/LodgingAssignSuiteDialog';
 import { CreateBoardingDialog } from '@/components/staff/lodging/CreateBoardingDialog';
-import { startOfWeek, startOfMonth, parseISO } from 'date-fns';
+import { startOfWeek, startOfMonth, parseISO, format } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { X, Info } from 'lucide-react';
 
 export type ViewMode = 'weekly' | 'monthly';
 
@@ -37,6 +40,9 @@ const StaffLodgingCalendar = () => {
   const [assignSuiteOpen, setAssignSuiteOpen] = useState(false);
   const [reservationToAssign, setReservationToAssign] = useState<BoardingReservation | null>(null);
   
+  // Banner state for pending assignment from Control Center
+  const [pendingAssignment, setPendingAssignment] = useState<BoardingReservation | null>(null);
+  
   // Create booking dialog state
   const [createBookingOpen, setCreateBookingOpen] = useState(false);
   const [createBookingSuiteId, setCreateBookingSuiteId] = useState<string | null>(null);
@@ -46,7 +52,7 @@ const StaffLodgingCalendar = () => {
   const reservationIdFromUrl = searchParams.get('reservationId');
   const startDateFromUrl = searchParams.get('startDate');
 
-  // Fetch reservation from URL param to open assign dialog
+  // Fetch reservation from URL param to show assignment banner
   const { data: urlReservation } = useQuery({
     queryKey: ['reservation-for-assignment', reservationIdFromUrl],
     queryFn: async () => {
@@ -96,11 +102,10 @@ const StaffLodgingCalendar = () => {
     enabled: !!reservationIdFromUrl,
   });
 
-  // Open assign suite dialog when URL has reservation ID and reservation is loaded
+  // Show banner and navigate calendar when URL has reservation ID
   useEffect(() => {
     if (urlReservation && reservationIdFromUrl) {
-      setReservationToAssign(urlReservation);
-      setAssignSuiteOpen(true);
+      setPendingAssignment(urlReservation);
       
       // Navigate calendar to the reservation's start date
       if (startDateFromUrl) {
@@ -109,11 +114,26 @@ const StaffLodgingCalendar = () => {
     }
   }, [urlReservation, reservationIdFromUrl, startDateFromUrl]);
 
+  // Handle clicking "Assign Now" from the banner
+  const handleAssignFromBanner = () => {
+    if (pendingAssignment) {
+      setReservationToAssign(pendingAssignment);
+      setAssignSuiteOpen(true);
+    }
+  };
+
+  // Dismiss the banner
+  const handleDismissBanner = () => {
+    setPendingAssignment(null);
+    setSearchParams({});
+  };
+
   // Clear URL params when assign dialog closes
   const handleAssignDialogClose = (open: boolean) => {
     setAssignSuiteOpen(open);
-    if (!open && reservationIdFromUrl) {
-      // Clear URL params after closing
+    if (!open) {
+      // Clear pending assignment and URL params after closing
+      setPendingAssignment(null);
       setSearchParams({});
       setReservationToAssign(null);
     }
@@ -156,6 +176,38 @@ const StaffLodgingCalendar = () => {
   return (
     <StaffLayout>
       <div className="space-y-4">
+        {/* Assignment banner when navigating from Control Center */}
+        {pendingAssignment && (
+          <Alert className="bg-primary/10 border-primary">
+            <Info className="h-4 w-4" />
+            <AlertDescription className="flex items-center justify-between flex-1">
+              <span>
+                <strong>Assign Suite for {pendingAssignment.pet_name}</strong>
+                {' • '}
+                {format(parseISO(pendingAssignment.start_date), 'MMM d')}
+                {pendingAssignment.end_date && ` - ${format(parseISO(pendingAssignment.end_date), 'MMM d')}`}
+                {' • '}
+                Click on an available suite cell below, or{' '}
+                <Button 
+                  variant="link" 
+                  className="p-0 h-auto font-semibold"
+                  onClick={handleAssignFromBanner}
+                >
+                  assign now
+                </Button>
+              </span>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-6 w-6 shrink-0"
+                onClick={handleDismissBanner}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
         <LodgingCalendarHeader
           viewMode={viewMode}
           onViewModeChange={setViewMode}
