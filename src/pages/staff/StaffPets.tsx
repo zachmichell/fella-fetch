@@ -53,6 +53,7 @@ import {
 } from 'lucide-react';
 import { format, differenceInYears, differenceInMonths } from 'date-fns';
 import { PetTraitsSection } from '@/components/staff/PetTraitsSection';
+import { StaffVaccinationEditor } from '@/components/staff/StaffVaccinationEditor';
 interface Pet {
   id: string;
   name: string;
@@ -65,6 +66,9 @@ interface Pet {
   vaccination_rabies: string | null;
   vaccination_bordetella: string | null;
   vaccination_distemper: string | null;
+  vaccination_rabies_doc_url: string | null;
+  vaccination_bordetella_doc_url: string | null;
+  vaccination_distemper_doc_url: string | null;
   behavior_notes: string | null;
   feeding_instructions: string | null;
   special_needs: string | null;
@@ -718,45 +722,39 @@ const StaffPets = () => {
                       </CardHeader>
                       <CardContent className="py-3">
                         <div className="grid grid-cols-3 gap-4">
-                          <div>
-                            <p className="text-sm text-muted-foreground">Rabies</p>
-                            <div className="flex items-center gap-2">
-                              <Badge variant={isVaccinationExpired(selectedPet.vaccination_rabies) ? 'destructive' : 'secondary'}>
-                                {selectedPet.vaccination_rabies 
-                                  ? format(new Date(selectedPet.vaccination_rabies), 'MMM d, yyyy')
-                                  : 'Not on file'}
-                              </Badge>
-                              {isVaccinationExpired(selectedPet.vaccination_rabies) && (
-                                <AlertCircle className="h-4 w-4 text-destructive" />
-                              )}
-                            </div>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Bordetella</p>
-                            <div className="flex items-center gap-2">
-                              <Badge variant={isVaccinationExpired(selectedPet.vaccination_bordetella) ? 'destructive' : 'secondary'}>
-                                {selectedPet.vaccination_bordetella 
-                                  ? format(new Date(selectedPet.vaccination_bordetella), 'MMM d, yyyy')
-                                  : 'Not on file'}
-                              </Badge>
-                              {isVaccinationExpired(selectedPet.vaccination_bordetella) && (
-                                <AlertCircle className="h-4 w-4 text-destructive" />
-                              )}
-                            </div>
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Distemper</p>
-                            <div className="flex items-center gap-2">
-                              <Badge variant={isVaccinationExpired(selectedPet.vaccination_distemper) ? 'destructive' : 'secondary'}>
-                                {selectedPet.vaccination_distemper 
-                                  ? format(new Date(selectedPet.vaccination_distemper), 'MMM d, yyyy')
-                                  : 'Not on file'}
-                              </Badge>
-                              {isVaccinationExpired(selectedPet.vaccination_distemper) && (
-                                <AlertCircle className="h-4 w-4 text-destructive" />
-                              )}
-                            </div>
-                          </div>
+                          <StaffVaccinationEditor
+                            petId={selectedPet.id}
+                            petName={selectedPet.name}
+                            vaccinationType="rabies"
+                            vaccinationDate={selectedPet.vaccination_rabies}
+                            documentUrl={selectedPet.vaccination_rabies_doc_url}
+                            onUpdate={() => {
+                              fetchPets();
+                              setSelectedPet(prev => prev ? { ...prev } : null);
+                            }}
+                          />
+                          <StaffVaccinationEditor
+                            petId={selectedPet.id}
+                            petName={selectedPet.name}
+                            vaccinationType="bordetella"
+                            vaccinationDate={selectedPet.vaccination_bordetella}
+                            documentUrl={selectedPet.vaccination_bordetella_doc_url}
+                            onUpdate={() => {
+                              fetchPets();
+                              setSelectedPet(prev => prev ? { ...prev } : null);
+                            }}
+                          />
+                          <StaffVaccinationEditor
+                            petId={selectedPet.id}
+                            petName={selectedPet.name}
+                            vaccinationType="distemper"
+                            vaccinationDate={selectedPet.vaccination_distemper}
+                            documentUrl={selectedPet.vaccination_distemper_doc_url}
+                            onUpdate={() => {
+                              fetchPets();
+                              setSelectedPet(prev => prev ? { ...prev } : null);
+                            }}
+                          />
                         </div>
                       </CardContent>
                     </Card>
