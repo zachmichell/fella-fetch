@@ -21,6 +21,7 @@ interface GroomingDayViewProps {
   date: Date;
   onAppointmentClick: (appointment: GroomingAppointment) => void;
   onCreateAppointment: (groomerId: string, date: Date, time: string) => void;
+  filterGroomerId?: string | null;
 }
 
 // Generate 15-minute time slots from 8 AM to 6 PM
@@ -40,20 +41,26 @@ export const GroomingDayView = ({
   date,
   onAppointmentClick,
   onCreateAppointment,
+  filterGroomerId,
 }: GroomingDayViewProps) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Fetch groomers
+  // Fetch groomers (filtered if needed)
   const { data: groomers, isLoading: groomersLoading } = useQuery({
-    queryKey: ['groomers'],
+    queryKey: ['groomers', filterGroomerId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('groomers')
         .select('*')
         .eq('is_active', true)
         .order('sort_order', { ascending: true });
       
+      if (filterGroomerId) {
+        query = query.eq('id', filterGroomerId);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       return data as Groomer[];
     },

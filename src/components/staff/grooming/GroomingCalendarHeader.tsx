@@ -2,16 +2,26 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CalendarIcon, ChevronLeft, ChevronRight, Scissors } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CalendarIcon, ChevronLeft, ChevronRight, Scissors, User } from 'lucide-react';
 import { format, addDays, subDays, addWeeks, subWeeks } from 'date-fns';
 import { GroomingViewMode } from '@/pages/staff/StaffGroomingCalendar';
 import { cn } from '@/lib/utils';
+
+interface Groomer {
+  id: string;
+  name: string;
+  color: string | null;
+}
 
 interface GroomingCalendarHeaderProps {
   viewMode: GroomingViewMode;
   onViewModeChange: (mode: GroomingViewMode) => void;
   currentDate: Date;
   onDateChange: (date: Date) => void;
+  groomers?: Groomer[];
+  selectedGroomerId: string | null;
+  onGroomerFilterChange: (groomerId: string | null) => void;
 }
 
 export const GroomingCalendarHeader = ({
@@ -19,6 +29,9 @@ export const GroomingCalendarHeader = ({
   onViewModeChange,
   currentDate,
   onDateChange,
+  groomers = [],
+  selectedGroomerId,
+  onGroomerFilterChange,
 }: GroomingCalendarHeaderProps) => {
   const handlePrevious = () => {
     if (viewMode === 'day') {
@@ -55,6 +68,31 @@ export const GroomingCalendarHeader = ({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
+        {/* Groomer Filter */}
+        <Select
+          value={selectedGroomerId || 'all'}
+          onValueChange={(v) => onGroomerFilterChange(v === 'all' ? null : v)}
+        >
+          <SelectTrigger className="w-[180px]">
+            <User className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Filter by groomer" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Groomers</SelectItem>
+            {groomers.map((groomer) => (
+              <SelectItem key={groomer.id} value={groomer.id}>
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: groomer.color || '#6b7280' }}
+                  />
+                  {groomer.name}
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         <Tabs value={viewMode} onValueChange={(v) => onViewModeChange(v as GroomingViewMode)}>
           <TabsList>
             <TabsTrigger value="day">Day</TabsTrigger>
