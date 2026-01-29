@@ -172,6 +172,7 @@ const StaffDashboard = () => {
         half_daycare_credits: r.pets?.clients?.half_daycare_credits ?? 0,
         boarding_credits: r.pets?.clients?.boarding_credits ?? 0,
         payment_pending: r.payment_pending || false,
+        notes: r.notes || null,
       })) || [];
 
       setReservations(formattedReservations);
