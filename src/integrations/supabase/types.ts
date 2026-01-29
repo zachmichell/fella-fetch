@@ -317,6 +317,157 @@ export type Database = {
           },
         ]
       }
+      pet_care_logs: {
+        Row: {
+          administered_at: string
+          administered_by: string
+          amount_given: string | null
+          amount_taken: string | null
+          created_at: string
+          id: string
+          log_type: string
+          notes: string | null
+          pet_id: string
+          reference_id: string
+          reservation_id: string | null
+        }
+        Insert: {
+          administered_at?: string
+          administered_by: string
+          amount_given?: string | null
+          amount_taken?: string | null
+          created_at?: string
+          id?: string
+          log_type: string
+          notes?: string | null
+          pet_id: string
+          reference_id: string
+          reservation_id?: string | null
+        }
+        Update: {
+          administered_at?: string
+          administered_by?: string
+          amount_given?: string | null
+          amount_taken?: string | null
+          created_at?: string
+          id?: string
+          log_type?: string
+          notes?: string | null
+          pet_id?: string
+          reference_id?: string
+          reservation_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_care_logs_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pet_care_logs_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pet_feeding_schedules: {
+        Row: {
+          amount: string
+          created_at: string
+          food_type: string
+          frequency: string
+          id: string
+          instructions: string | null
+          is_active: boolean
+          pet_id: string
+          timing: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: string
+          created_at?: string
+          food_type: string
+          frequency: string
+          id?: string
+          instructions?: string | null
+          is_active?: boolean
+          pet_id: string
+          timing?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: string
+          created_at?: string
+          food_type?: string
+          frequency?: string
+          id?: string
+          instructions?: string | null
+          is_active?: boolean
+          pet_id?: string
+          timing?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_feeding_schedules_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pet_medications: {
+        Row: {
+          created_at: string
+          dosage: string
+          frequency: string
+          id: string
+          instructions: string | null
+          is_active: boolean
+          name: string
+          pet_id: string
+          timing: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dosage: string
+          frequency: string
+          id?: string
+          instructions?: string | null
+          is_active?: boolean
+          name: string
+          pet_id: string
+          timing?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dosage?: string
+          frequency?: string
+          id?: string
+          instructions?: string | null
+          is_active?: boolean
+          name?: string
+          pet_id?: string
+          timing?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_medications_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pet_traits: {
         Row: {
           color_key: string

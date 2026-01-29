@@ -54,6 +54,7 @@ import {
 import { format, differenceInYears, differenceInMonths } from 'date-fns';
 import { PetTraitsSection } from '@/components/staff/PetTraitsSection';
 import { StaffVaccinationEditor } from '@/components/staff/StaffVaccinationEditor';
+import { StaffPetCareLogger } from '@/components/staff/StaffPetCareLogger';
 interface Pet {
   id: string;
   name: string;
@@ -761,6 +762,9 @@ const StaffPets = () => {
 
                     {/* Pet Traits */}
                     <PetTraitsSection petId={selectedPet.id} petName={selectedPet.name} />
+
+                    {/* Medications & Feeding Care Logger */}
+                    <StaffPetCareLogger petId={selectedPet.id} petName={selectedPet.name} />
 
                     {/* Care Notes */}
                     <Card>
