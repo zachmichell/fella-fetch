@@ -62,6 +62,7 @@ export interface ControlCenterReservation {
   half_daycare_credits: number;
   boarding_credits: number;
   payment_pending: boolean;
+  notes: string | null;
 }
 
 type TabValue = 'expected' | 'going_home' | 'checked_in' | 'requested';
@@ -79,11 +80,17 @@ interface ControlCenterTableProps {
   onTraitsUpdated?: () => void;
 }
 
-const serviceTypeLabels: Record<string, string> = {
-  daycare: 'Daycare | Full Day',
-  boarding: 'Boarding',
-  grooming: 'Grooming',
-  training: 'Training',
+const getServiceTypeLabel = (serviceType: string, notes: string | null): string => {
+  if (serviceType === 'daycare') {
+    const isHalfDay = notes?.toLowerCase().includes('half day');
+    return isHalfDay ? 'Daycare | Half Day' : 'Daycare | Full Day';
+  }
+  const labels: Record<string, string> = {
+    boarding: 'Boarding',
+    grooming: 'Grooming',
+    training: 'Training',
+  };
+  return labels[serviceType] || serviceType;
 };
 
 const serviceTypeColors: Record<string, string> = {
@@ -466,7 +473,7 @@ export function ControlCenterTable({
                       variant="secondary"
                       className={serviceTypeColors[reservation.service_type] || ''}
                     >
-                      {serviceTypeLabels[reservation.service_type] || reservation.service_type}
+                      {getServiceTypeLabel(reservation.service_type, reservation.notes)}
                     </Badge>
                   </TableCell>
 
