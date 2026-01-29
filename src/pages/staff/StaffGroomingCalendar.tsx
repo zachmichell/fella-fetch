@@ -5,6 +5,7 @@ import { GroomingDayView } from '@/components/staff/grooming/GroomingDayView';
 import { GroomingWeekView } from '@/components/staff/grooming/GroomingWeekView';
 import { CreateGroomingDialog } from '@/components/staff/grooming/CreateGroomingDialog';
 import { GroomingDetailsDialog } from '@/components/staff/grooming/GroomingDetailsDialog';
+import { PendingGroomingRequests } from '@/components/staff/grooming/PendingGroomingRequests';
 import { startOfWeek } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -82,6 +83,9 @@ const StaffGroomingCalendar = () => {
           selectedGroomerId={filterGroomerId}
           onGroomerFilterChange={setFilterGroomerId}
         />
+
+        {/* Pending Requests Section */}
+        <PendingGroomingRequests groomers={groomers || []} />
 
         {viewMode === 'day' ? (
           <GroomingDayView

@@ -4,12 +4,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
 import { GroomingAppointment } from '@/pages/staff/StaffGroomingCalendar';
 import { GroomingAppointmentCell } from './GroomingAppointmentCell';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { Scissors, AlertCircle } from 'lucide-react';
 interface Groomer {
   id: string;
   name: string;
@@ -95,7 +93,7 @@ export const GroomingDayView = ({
         `)
         .in('service_type', ['grooming'])
         .eq('start_date', format(date, 'yyyy-MM-dd'))
-        .neq('status', 'cancelled');
+        .in('status', ['confirmed', 'checked_in', 'checked_out']);
       
       if (error) throw error;
       
@@ -118,11 +116,6 @@ export const GroomingDayView = ({
     },
   });
 
-  // Get unassigned appointments for the day
-  const unassignedAppointments = useMemo(() => {
-    if (!appointments) return [];
-    return appointments.filter(apt => !apt.groomer_id);
-  }, [appointments]);
 
   // Get appointments for a specific groomer and time slot
   const getAppointmentForSlot = (groomerId: string, timeSlot: string): GroomingAppointment | null => {
@@ -216,48 +209,7 @@ export const GroomingDayView = ({
   }
 
   return (
-    <div className="space-y-4">
-      {/* Unassigned/Pending Appointments Alert */}
-      {unassignedAppointments.length > 0 && (
-        <Card className="border-amber-300 bg-amber-50/50 dark:bg-amber-950/20">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <AlertCircle className="h-5 w-5 text-amber-600" />
-              <h3 className="font-semibold text-amber-700 dark:text-amber-400">
-                Unassigned Appointments ({unassignedAppointments.length})
-              </h3>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {unassignedAppointments.map((apt) => (
-                <div
-                  key={apt.id}
-                  onClick={() => onAppointmentClick(apt)}
-                  className="p-3 rounded-lg cursor-pointer bg-white dark:bg-background border border-amber-300 hover:ring-2 hover:ring-primary/50 transition-all"
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <Scissors className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">{apt.pet_name}</span>
-                    <Badge variant="outline" className="ml-auto text-xs bg-amber-100 text-amber-700 border-amber-300">
-                      {apt.status}
-                    </Badge>
-                  </div>
-                  <div className="text-sm text-muted-foreground">{apt.client_name}</div>
-                  {apt.start_time && (
-                    <div className="text-sm text-muted-foreground mt-1">
-                      {format(parseISO(`2000-01-01T${apt.start_time}`), 'h:mm a')}
-                      {apt.end_time && ` - ${format(parseISO(`2000-01-01T${apt.end_time}`), 'h:mm a')}`}
-                    </div>
-                  )}
-                  <div className="text-xs text-amber-600 mt-2">Click to assign groomer</div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Main Calendar Grid */}
-      <Card>
+    <Card>
         <CardContent className="p-0 overflow-x-auto">
           <table className="w-full border-collapse min-w-[800px]">
             <thead>
@@ -347,6 +299,5 @@ export const GroomingDayView = ({
           </table>
         </CardContent>
       </Card>
-    </div>
   );
 };
