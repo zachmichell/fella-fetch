@@ -86,7 +86,7 @@ export const GroomingWeekView = ({
         .in('service_type', ['grooming'])
         .gte('start_date', format(startDate, 'yyyy-MM-dd'))
         .lte('start_date', format(endDate, 'yyyy-MM-dd'))
-        .neq('status', 'cancelled');
+        .in('status', ['confirmed', 'checked_in', 'checked_out']);
       
       if (error) throw error;
       
@@ -122,15 +122,6 @@ export const GroomingWeekView = ({
     });
   };
 
-  // Get unassigned appointments for a day
-  const getUnassignedForDay = (date: Date): GroomingAppointment[] => {
-    if (!appointments) return [];
-    
-    return appointments.filter(apt => 
-      !apt.groomer_id && 
-      isSameDay(parseISO(apt.start_date), date)
-    );
-  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -253,48 +244,6 @@ export const GroomingWeekView = ({
               </tr>
             ))}
             
-            {/* Unassigned row */}
-            <tr className="bg-amber-50/50 dark:bg-amber-950/20">
-              <td className="border-b border-r p-3 font-medium text-amber-700 dark:text-amber-400">
-                Unassigned
-              </td>
-              {weekDays.map((day) => {
-                const unassigned = getUnassignedForDay(day);
-                
-                return (
-                  <td
-                    key={day.toISOString()}
-                    className={cn(
-                      "border-b border-r p-1 align-top",
-                      isSameDay(day, new Date()) && "bg-primary/5"
-                    )}
-                  >
-                    <div className="space-y-1 min-h-[60px]">
-                      {unassigned.map((apt) => (
-                        <div
-                          key={apt.id}
-                          onClick={() => onAppointmentClick(apt)}
-                          className="p-1.5 rounded cursor-pointer bg-amber-100 dark:bg-amber-900/30 border border-amber-300 hover:ring-1 hover:ring-primary/50"
-                        >
-                          <div className="flex items-center gap-1">
-                            <Scissors className="h-3 w-3 text-muted-foreground" />
-                            <span className="font-medium text-xs truncate">{apt.pet_name}</span>
-                          </div>
-                          {apt.start_time && (
-                            <div className="text-xs text-muted-foreground">
-                              {format(parseISO(`2000-01-01T${apt.start_time}`), 'h:mm a')}
-                            </div>
-                          )}
-                          <Badge variant="outline" className="text-xs mt-1">
-                            Needs Assignment
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </td>
-                );
-              })}
-            </tr>
           </tbody>
         </table>
       </CardContent>
