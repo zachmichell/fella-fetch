@@ -124,6 +124,14 @@ serve(async (req) => {
       .slice(0, 100)
       .trim();
 
+    // Sanitize message content - encode HTML entities to prevent XSS in downstream systems
+    const sanitizedMessage = trimmedMessage
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#x27;');
+
     console.log('Sending message to webhook for client:', clientId);
 
     // Forward to Make.com webhook
@@ -135,7 +143,7 @@ serve(async (req) => {
       body: JSON.stringify({
         clientId,
         clientName: sanitizedClientName,
-        message: trimmedMessage,
+        message: sanitizedMessage,
         messageId: messageId || null,
         threadId: threadId || null,
       }),
