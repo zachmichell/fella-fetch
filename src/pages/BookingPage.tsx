@@ -654,6 +654,10 @@ const BookingPage = () => {
                         </>
                       )}
                     </Button>
+
+                    <p className="text-sm text-muted-foreground text-center mt-3">
+                      After completing your purchase, please return to this page to finish your reservation.
+                    </p>
                   </div>
                 )}
 
