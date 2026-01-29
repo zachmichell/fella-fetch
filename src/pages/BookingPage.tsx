@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Calendar, Clock, Dog, ArrowRight, ArrowLeft, Check, LogIn, CreditCard, AlertTriangle, ShoppingCart, Loader2, Scissors, User, CalendarClock } from "lucide-react";
 import { Link } from "react-router-dom";
-import { differenceInDays, format, parse } from "date-fns";
+import { differenceInDays, format, parse, addMinutes } from "date-fns";
 import { calculateNextGroomingDate, getGroomingDueStatus } from "@/lib/groomingUtils";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -58,6 +58,7 @@ interface BookingData {
   selectedGroomerId: string | null;
   groomingDate: Date | null;
   groomingTime: string | null;
+  groomingEndTime: string | null;
 }
 
 const serviceOptions = [
@@ -108,6 +109,7 @@ const BookingPage = () => {
     selectedGroomerId: null,
     groomingDate: null,
     groomingTime: null,
+    groomingEndTime: null,
   });
 
   // Fetch groomers and schedules when grooming is selected
@@ -318,9 +320,16 @@ const BookingPage = () => {
   };
 
   const handleGroomingTimeSelect = (time: string) => {
+    // Calculate end time (default 60 minute duration)
+    const baseDate = new Date(2000, 0, 1);
+    const startTime = parse(time, "h:mm a", baseDate);
+    const endTime = addMinutes(startTime, 60);
+    const endTimeStr = format(endTime, "h:mm a");
+    
     setBookingData({
       ...bookingData,
       groomingTime: time,
+      groomingEndTime: endTimeStr,
     });
   };
 
@@ -414,6 +423,7 @@ const BookingPage = () => {
         selectedGroomerId: null,
         groomingDate: null,
         groomingTime: null,
+        groomingEndTime: null,
       });
     } catch (error) {
       console.error("Error creating reservation:", error);
@@ -906,7 +916,10 @@ const BookingPage = () => {
                   {/* Time */}
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Time</span>
-                    <span className="font-semibold text-foreground">{bookingData.groomingTime}</span>
+                    <span className="font-semibold text-foreground">
+                      {bookingData.groomingTime}
+                      {bookingData.groomingEndTime && ` – ${bookingData.groomingEndTime}`}
+                    </span>
                   </div>
                 </div>
 
