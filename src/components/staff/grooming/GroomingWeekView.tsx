@@ -21,28 +21,35 @@ interface GroomingWeekViewProps {
   startDate: Date;
   onAppointmentClick: (appointment: GroomingAppointment) => void;
   onCreateAppointment: (groomerId: string, date: Date, time: string) => void;
+  filterGroomerId?: string | null;
 }
 
 export const GroomingWeekView = ({
   startDate,
   onAppointmentClick,
   onCreateAppointment,
+  filterGroomerId,
 }: GroomingWeekViewProps) => {
   // Generate week days
   const weekDays = useMemo(() => {
     return Array.from({ length: 7 }, (_, i) => addDays(startDate, i));
   }, [startDate]);
 
-  // Fetch groomers
+  // Fetch groomers (filtered if needed)
   const { data: groomers, isLoading: groomersLoading } = useQuery({
-    queryKey: ['groomers'],
+    queryKey: ['groomers', filterGroomerId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('groomers')
         .select('*')
         .eq('is_active', true)
         .order('sort_order', { ascending: true });
       
+      if (filterGroomerId) {
+        query = query.eq('id', filterGroomerId);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       return data as Groomer[];
     },

@@ -31,6 +31,7 @@ const StaffGroomingCalendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedAppointment, setSelectedAppointment] = useState<GroomingAppointment | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [filterGroomerId, setFilterGroomerId] = useState<string | null>(null);
   
   // Create appointment dialog state
   const [createOpen, setCreateOpen] = useState(false);
@@ -38,7 +39,7 @@ const StaffGroomingCalendar = () => {
   const [createDate, setCreateDate] = useState<Date | null>(null);
   const [createTime, setCreateTime] = useState<string | null>(null);
 
-  // Fetch groomers for name lookup
+  // Fetch groomers for name lookup and filter dropdown
   const { data: groomers } = useQuery({
     queryKey: ['groomers'],
     queryFn: async () => {
@@ -77,6 +78,9 @@ const StaffGroomingCalendar = () => {
           onViewModeChange={setViewMode}
           currentDate={currentDate}
           onDateChange={setCurrentDate}
+          groomers={groomers || []}
+          selectedGroomerId={filterGroomerId}
+          onGroomerFilterChange={setFilterGroomerId}
         />
 
         {viewMode === 'day' ? (
@@ -84,12 +88,14 @@ const StaffGroomingCalendar = () => {
             date={currentDate}
             onAppointmentClick={handleAppointmentClick}
             onCreateAppointment={handleCreateAppointment}
+            filterGroomerId={filterGroomerId}
           />
         ) : (
           <GroomingWeekView
             startDate={startOfWeek(currentDate, { weekStartsOn: 0 })}
             onAppointmentClick={handleAppointmentClick}
             onCreateAppointment={handleCreateAppointment}
+            filterGroomerId={filterGroomerId}
           />
         )}
 
