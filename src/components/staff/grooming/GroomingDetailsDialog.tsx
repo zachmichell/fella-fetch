@@ -84,34 +84,31 @@ export const GroomingDetailsDialog = ({
     },
   });
 
-  // Fetch grooming products from Shopify (via service mappings)
-  const { data: groomingProducts, isLoading: productsLoading } = useQuery({
-    queryKey: ['grooming-products-for-staff'],
-    queryFn: async () => {
-      // Get grooming service mappings
-      const { data: mappings, error } = await supabase
-        .from('shopify_service_mappings')
-        .select('shopify_product_id, shopify_product_title')
-        .eq('service_type', 'grooming');
-      
-      if (error) throw error;
-      if (!mappings || mappings.length === 0) return [];
+  // Get the product name from the appointment notes
+  const currentProductName = parseServiceName(appointment?.notes);
 
-      // Fetch product variants from Shopify
-      const productIds = mappings.map(m => `gid://shopify/Product/${m.shopify_product_id}`);
+  // Fetch variants for the current product from Shopify
+  const { data: productVariants, isLoading: variantsLoading } = useQuery({
+    queryKey: ['grooming-product-variants', currentProductName],
+    queryFn: async () => {
+      if (!currentProductName) return [];
+      
+      // Fetch groom products and find the one matching our service name
       const query = `
-        query getProducts($ids: [ID!]!) {
-          nodes(ids: $ids) {
-            ... on Product {
-              id
-              title
-              variants(first: 50) {
-                edges {
-                  node {
-                    id
-                    title
-                    price {
-                      amount
+        query GetGroomProducts {
+          products(first: 50, query: "product_type:Groom") {
+            edges {
+              node {
+                id
+                title
+                variants(first: 50) {
+                  edges {
+                    node {
+                      id
+                      title
+                      price {
+                        amount
+                      }
                     }
                   }
                 }
@@ -121,29 +118,25 @@ export const GroomingDetailsDialog = ({
         }
       `;
 
-      const response = await storefrontApiRequest(query, { ids: productIds });
+      const response = await storefrontApiRequest(query, {});
+      if (!response?.data?.products?.edges) return [];
       
-      const products: GroomingProduct[] = response.data.nodes
-        .filter((node: any) => node !== null)
-        .map((product: any) => ({
-          id: product.id,
-          title: product.title,
-          variants: product.variants.edges.map((edge: any) => ({
-            id: edge.node.id,
-            title: edge.node.title,
-            price: edge.node.price.amount,
-          })),
-        }));
-
-      return products;
+      // Find the product that matches the service name
+      const matchingProduct = response.data.products.edges.find(
+        (edge: any) => edge.node.title.toLowerCase() === currentProductName.toLowerCase()
+      );
+      
+      if (!matchingProduct) return [];
+      
+      return matchingProduct.node.variants.edges.map((edge: any) => ({
+        id: edge.node.id,
+        title: edge.node.title,
+        price: edge.node.price.amount,
+      }));
     },
-    enabled: open,
+    enabled: open && !!currentProductName,
   });
 
-  // Get all variants flattened
-  const allVariants = groomingProducts?.flatMap(p => 
-    p.variants.map(v => ({ ...v, productTitle: p.title }))
-  ) || [];
 
   // Sync state when dialog opens
   useEffect(() => {
@@ -360,35 +353,33 @@ export const GroomingDetailsDialog = ({
 
           {/* Change Groom Type */}
           <div className="space-y-2">
-            <Label>Change Groom Type</Label>
-            {productsLoading ? (
+            <Label>Change Groom Type {currentProductName && <span className="text-muted-foreground font-normal">({currentProductName})</span>}</Label>
+            {!currentProductName ? (
+              <p className="text-sm text-muted-foreground italic">No service specified for this appointment</p>
+            ) : variantsLoading ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Loading options...
               </div>
-            ) : (
+            ) : productVariants && productVariants.length > 0 ? (
               <Select 
-                value={selectedVariantTitle || ''} 
-                onValueChange={(v) => setSelectedVariantTitle(v || null)}
+                value={selectedVariantTitle || '__none__'} 
+                onValueChange={(v) => setSelectedVariantTitle(v === '__none__' ? null : v)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select groom type..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {groomingProducts?.map((product) => (
-                    <div key={product.id}>
-                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                        {product.title}
-                      </div>
-                      {product.variants.map((variant) => (
-                        <SelectItem key={variant.id} value={variant.title}>
-                          {variant.title}
-                        </SelectItem>
-                      ))}
-                    </div>
+                  <SelectItem value="__none__">Not specified</SelectItem>
+                  {productVariants.map((variant) => (
+                    <SelectItem key={variant.id} value={variant.title}>
+                      {variant.title} - ${parseFloat(variant.price).toFixed(0)}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">No variants found</p>
             )}
           </div>
 
