@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Table,
   TableBody,
@@ -43,6 +44,7 @@ export interface ControlCenterReservation {
   pet_id: string;
   pet_name: string;
   pet_breed: string | null;
+  pet_photo_url: string | null;
   pet_traits?: PetTrait[];
   client_id: string;
   client_name: string;
@@ -388,33 +390,41 @@ export function ControlCenterTable({
 
                   {/* Animal Column */}
                   <TableCell>
-                    <div>
-                      <div className="flex items-center gap-1">
-                        <span className="font-medium">{reservation.pet_name}</span>
-                        {reservation.pet_breed && (
-                          <span className="text-muted-foreground text-sm">
-                            ({reservation.pet_breed})
-                          </span>
-                        )}
-                      </div>
-                      {/* Show days since last reservation for Requested tab */}
-                      {activeTab === 'requested' && reservation.status === 'pending' && (
-                        <div className="text-xs mt-0.5">
-                          {petLastActivity[reservation.pet_id] !== undefined ? (
-                            petLastActivity[reservation.pet_id] === null ? (
-                              <span className="text-muted-foreground italic">New pet - no history</span>
-                            ) : (
-                              <span className={petLastActivity[reservation.pet_id]! >= inactivityDays ? 'text-destructive font-medium' : 'text-muted-foreground'}>
-                                {petLastActivity[reservation.pet_id]} days since last visit
-                              </span>
-                            )
-                          ) : (
-                            <span className="text-muted-foreground">Loading...</span>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10 shrink-0">
+                        <AvatarImage src={reservation.pet_photo_url || undefined} alt={reservation.pet_name} />
+                        <AvatarFallback className="bg-muted">
+                          <Dog className="h-5 w-5 text-muted-foreground" />
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <div className="flex items-center gap-1">
+                          <span className="font-medium">{reservation.pet_name}</span>
+                          {reservation.pet_breed && (
+                            <span className="text-muted-foreground text-sm">
+                              ({reservation.pet_breed})
+                            </span>
                           )}
                         </div>
-                      )}
-                      {/* Pet Trait Icons */}
-                      <PetTraitBadges traits={reservation.pet_traits || []} maxDisplay={6} />
+                        {/* Show days since last reservation for Requested tab */}
+                        {activeTab === 'requested' && reservation.status === 'pending' && (
+                          <div className="text-xs mt-0.5">
+                            {petLastActivity[reservation.pet_id] !== undefined ? (
+                              petLastActivity[reservation.pet_id] === null ? (
+                                <span className="text-muted-foreground italic">New pet - no history</span>
+                              ) : (
+                                <span className={petLastActivity[reservation.pet_id]! >= inactivityDays ? 'text-destructive font-medium' : 'text-muted-foreground'}>
+                                  {petLastActivity[reservation.pet_id]} days since last visit
+                                </span>
+                              )
+                            ) : (
+                              <span className="text-muted-foreground">Loading...</span>
+                            )}
+                          </div>
+                        )}
+                        {/* Pet Trait Icons */}
+                        <PetTraitBadges traits={reservation.pet_traits || []} maxDisplay={6} />
+                      </div>
                     </div>
                   </TableCell>
 
