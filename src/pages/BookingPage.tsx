@@ -1,8 +1,9 @@
 import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Calendar, Clock, Dog, ArrowRight, ArrowLeft, Check, LogIn, CreditCard, AlertTriangle, ShoppingCart, Loader2, Scissors, User } from "lucide-react";
+import { Calendar, Clock, Dog, ArrowRight, ArrowLeft, Check, LogIn, CreditCard, AlertTriangle, ShoppingCart, Loader2, Scissors, User, CalendarClock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { differenceInDays, format, parse } from "date-fns";
+import { calculateNextGroomingDate, getGroomingDueStatus } from "@/lib/groomingUtils";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -677,6 +678,21 @@ const BookingPage = () => {
                                     Recommended: {pet.grooming_product_title}
                                   </p>
                                 )}
+                                {isGrooming && (() => {
+                                  const nextDate = calculateNextGroomingDate(pet.last_grooming_date, pet.grooming_frequency);
+                                  const status = getGroomingDueStatus(nextDate);
+                                  if (!status.label) return null;
+                                  return (
+                                    <p className={`text-xs mt-1 flex items-center gap-1 ${
+                                      status.isOverdue ? 'text-destructive font-medium' : 
+                                      status.isDueToday ? 'text-warning font-medium' :
+                                      status.isDueSoon ? 'text-primary' : 'text-muted-foreground'
+                                    }`}>
+                                      <CalendarClock className="w-3 h-3" />
+                                      {status.label}
+                                    </p>
+                                  );
+                                })()}
                               </div>
                             </div>
                             {isSelected && (
@@ -829,6 +845,27 @@ const BookingPage = () => {
                       </span>
                     </div>
                   )}
+
+                  {/* Next Grooming Due */}
+                  {(() => {
+                    const pet = bookingData.selectedPets[0];
+                    const nextDate = calculateNextGroomingDate(pet?.last_grooming_date, pet?.grooming_frequency);
+                    const status = getGroomingDueStatus(nextDate);
+                    if (!status.label) return null;
+                    return (
+                      <div className="flex justify-between items-center pb-4 border-b border-border">
+                        <span className="text-muted-foreground">Grooming Due</span>
+                        <span className={`font-semibold flex items-center gap-1 ${
+                          status.isOverdue ? 'text-destructive' : 
+                          status.isDueToday ? 'text-warning' :
+                          status.isDueSoon ? 'text-primary' : 'text-foreground'
+                        }`}>
+                          <CalendarClock className="w-4 h-4" />
+                          {status.label}
+                        </span>
+                      </div>
+                    );
+                  })()}
 
                   {/* Service */}
                   <div className="flex justify-between items-center pb-4 border-b border-border">
