@@ -23,10 +23,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Dog, Syringe, AlertCircle, Plus, Pencil, Loader2, FileText } from 'lucide-react';
+import { Dog, Syringe, Plus, Pencil, Loader2 } from 'lucide-react';
 import { ClientPortalLayout } from '@/components/client/ClientPortalLayout';
 import { useToast } from '@/hooks/use-toast';
 import { VaccinationUpload } from '@/components/client/VaccinationUpload';
+import { PetPhotoUpload } from '@/components/client/PetPhotoUpload';
 
 interface Pet {
   id: string;
@@ -295,9 +296,13 @@ const ClientPets = () => {
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                          <Dog className="h-6 w-6 text-primary" />
-                        </div>
+                        <PetPhotoUpload
+                          petId={pet.id}
+                          petName={pet.name}
+                          photoUrl={pet.photo_url}
+                          onUploadComplete={fetchClientData}
+                          size="md"
+                        />
                         <div>
                           <p className="font-semibold">{pet.name}</p>
                           <p className="text-sm text-muted-foreground">
