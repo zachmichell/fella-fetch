@@ -1,18 +1,24 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useClientAuth } from '@/contexts/ClientAuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, CalendarDays, Plus } from 'lucide-react';
+import { Calendar, Clock, CalendarDays, Plus, AlertTriangle, ExternalLink } from 'lucide-react';
 import { ClientPortalLayout } from '@/components/client/ClientPortalLayout';
 import AIAssistantChat from '@/components/client/AIAssistantChat';
 import { format, parseISO, isFuture, isToday } from 'date-fns';
+
+const SHOPIFY_STORE_URL = 'https://fella-fetch.myshopify.com';
 
 const ClientDashboard = () => {
   const {
     clientData,
     reservations,
+    orders,
     fetchClientData,
+    fetchOrders,
+    isAuthenticated,
   } = useClientAuth();
 
   const getStatusColor = (status: string) => {
@@ -32,6 +38,26 @@ const ClientDashboard = () => {
     }
   };
 
+  // Fetch orders when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchOrders();
+    }
+  }, [isAuthenticated]);
+
+  // Filter unpaid orders
+  const unpaidOrders = orders.filter(order => {
+    const unpaidStatuses = ['pending', 'unpaid', 'partially_paid', 'authorized'];
+    return unpaidStatuses.includes(order.financialStatus.toLowerCase());
+  });
+
+  const formatCurrency = (amount: string, currencyCode: string) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currencyCode,
+    }).format(parseFloat(amount));
+  };
+
   const upcomingReservations = reservations.filter(r =>
     (isFuture(parseISO(r.start_date)) || isToday(parseISO(r.start_date))) &&
     r.status !== 'cancelled' && r.status !== 'checked_out'
@@ -39,7 +65,42 @@ const ClientDashboard = () => {
 
   return (
     <ClientPortalLayout description="Manage your pets and appointments">
-      <div className="max-w-2xl">
+      <div className="max-w-2xl space-y-6">
+        {/* Unpaid Invoices Alert */}
+        {unpaidOrders.length > 0 && (
+          <Card className="border-yellow-500/50 bg-yellow-500/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2 text-yellow-700">
+                <AlertTriangle className="h-5 w-5" />
+                Unpaid Invoice{unpaidOrders.length > 1 ? 's' : ''}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {unpaidOrders.map((order) => (
+                <div
+                  key={order.id}
+                  className="flex items-center justify-between p-3 rounded-lg bg-background border"
+                >
+                  <div>
+                    <p className="font-medium">Order #{order.orderNumber}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {formatCurrency(order.totalPrice.amount, order.totalPrice.currencyCode)}
+                    </p>
+                  </div>
+                  <Button 
+                    size="sm"
+                    onClick={() => window.open(`${SHOPIFY_STORE_URL}/account`, '_blank')}
+                    className="gap-2"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Pay Now
+                  </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
