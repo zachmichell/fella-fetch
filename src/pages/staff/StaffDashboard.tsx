@@ -54,6 +54,7 @@ const StaffDashboard = () => {
     try {
       // Fetch today's reservations (for Expected, Check-In, Going Home tabs)
       // Filter out linked services (those with parent_reservation_id)
+      // Filter out standalone grooming reservations (they belong in Grooming Calendar only)
       const { data: todayData, error: todayError } = await supabase
         .from('reservations')
         .select(`
@@ -88,12 +89,14 @@ const StaffDashboard = () => {
         .eq('start_date', today)
         .neq('status', 'cancelled')
         .is('parent_reservation_id', null)
+        .neq('service_type', 'grooming')
         .order('start_time', { ascending: true });
 
       if (todayError) throw todayError;
 
       // Fetch all pending reservations (for Requested tab - any date)
       // Filter out linked services (those with parent_reservation_id)
+      // Filter out standalone grooming reservations (they belong in Grooming Calendar only)
       const { data: pendingData, error: pendingError } = await supabase
         .from('reservations')
         .select(`
@@ -127,6 +130,7 @@ const StaffDashboard = () => {
         `)
         .eq('status', 'pending')
         .is('parent_reservation_id', null)
+        .neq('service_type', 'grooming')
         .neq('start_date', today) // Exclude today's pending (already in todayData)
         .order('start_date', { ascending: true });
 
