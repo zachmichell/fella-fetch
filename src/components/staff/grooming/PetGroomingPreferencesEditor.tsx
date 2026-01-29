@@ -174,15 +174,15 @@ export const PetGroomingPreferencesEditor = ({
           Recommended Groom Type
         </Label>
         <Select
-          value={selectedProductId || ''}
-          onValueChange={(v) => setSelectedProductId(v || null)}
+          value={selectedProductId || '__none__'}
+          onValueChange={(v) => setSelectedProductId(v === '__none__' ? null : v)}
           disabled={loadingProducts}
         >
           <SelectTrigger>
             <SelectValue placeholder={loadingProducts ? "Loading..." : "Select groom type..."} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">No preference</SelectItem>
+            <SelectItem value="__none__">No preference</SelectItem>
             {groomingProducts?.map((product: ShopifyProduct) => (
               <SelectItem key={product.node.id} value={product.node.id}>
                 {product.node.title}
@@ -203,14 +203,14 @@ export const PetGroomingPreferencesEditor = ({
           Grooming Frequency
         </Label>
         <Select
-          value={selectedFrequency || ''}
-          onValueChange={(v) => setSelectedFrequency(v || null)}
+          value={selectedFrequency || '__none__'}
+          onValueChange={(v) => setSelectedFrequency(v === '__none__' ? null : v)}
         >
           <SelectTrigger>
             <SelectValue placeholder="Select frequency..." />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">No preference</SelectItem>
+            <SelectItem value="__none__">No preference</SelectItem>
             {FREQUENCY_OPTIONS.map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>
                 {opt.label}
