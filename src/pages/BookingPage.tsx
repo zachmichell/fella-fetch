@@ -61,9 +61,12 @@ interface GroomingService {
   variants: GroomingVariant[];
 }
 
+type DaycareType = "full" | "half";
+
 interface BookingData {
   service: ServiceType | null;
   selectedPets: SelectedPet[];
+  daycareType: DaycareType | null;
   date: string;
   time: string;
   endDate: string;
@@ -122,6 +125,7 @@ const BookingPage = () => {
   const [bookingData, setBookingData] = useState<BookingData>({
     service: null,
     selectedPets: [],
+    daycareType: null,
     date: "",
     time: "",
     endDate: "",
@@ -380,8 +384,14 @@ const BookingPage = () => {
         totalSteps: 7,
         labels: ["Service", "Pet", "Groomer", "Groom Type", "Date", "Time", "Confirm"],
       };
-    } else if (bookingData.service === "daycare" || bookingData.service === "boarding") {
-      // Daycare/Boarding: Service → Pets → Date/Time → Credits → Confirm
+    } else if (bookingData.service === "daycare") {
+      // Daycare: Service → Pets → Day Type → Date/Time → Credits → Confirm
+      return {
+        totalSteps: 6,
+        labels: ["Service", "Select Pets", "Day Type", "Date & Time", "Credits", "Confirm"],
+      };
+    } else if (bookingData.service === "boarding") {
+      // Boarding: Service → Pets → Date/Time → Credits → Confirm
       return {
         totalSteps: 5,
         labels: ["Service", "Select Pets", "Date & Time", "Credits", "Confirm"],
@@ -398,6 +408,7 @@ const BookingPage = () => {
   const { totalSteps, labels: stepLabels } = getStepConfig();
   const needsCreditsStep = bookingData.service === "daycare" || bookingData.service === "boarding";
   const isGrooming = bookingData.service === "grooming";
+  const isDaycare = bookingData.service === "daycare";
 
   // Calculate required credits
   const creditsRequired = useMemo(() => {
@@ -425,10 +436,14 @@ const BookingPage = () => {
     if (bookingData.service === "boarding") {
       return clientData.boarding_credits;
     } else if (bookingData.service === "daycare") {
+      // Return half day credits if half day type is selected, otherwise full day
+      if (bookingData.daycareType === "half") {
+        return clientData.half_daycare_credits;
+      }
       return clientData.daycare_credits;
     }
     return 0;
-  }, [clientData, bookingData.service]);
+  }, [clientData, bookingData.service, bookingData.daycareType]);
 
   const creditsAfterBooking = currentCredits - creditsRequired;
   const hasEnoughCredits = creditsAfterBooking >= 0;
@@ -523,18 +538,27 @@ const BookingPage = () => {
           // Groomer selection step - always can proceed (null = any available)
           return true;
         }
-        // Date/Time step for other services
-        if (bookingData.service === "daycare" || bookingData.service === "boarding") {
+        if (isDaycare) {
+          // Daycare type selection step
+          return !!bookingData.daycareType;
+        }
+        // Date/Time step for boarding
+        if (bookingData.service === "boarding") {
           return !!bookingData.date && !!bookingData.time && !!bookingData.endDate && !!bookingData.endTime;
         }
+        // Date/Time step for training
         return !!bookingData.date && !!bookingData.time;
       case 4:
         if (isGrooming) {
           // Grooming service selection step - must select a service AND a variant
           return !!bookingData.selectedGroomingService && !!bookingData.selectedGroomingVariant;
         }
-        if (needsCreditsStep) {
-          // Allow proceeding if has enough credits OR chose to pay in store
+        if (isDaycare) {
+          // Date/Time step for daycare (step 4 after day type)
+          return !!bookingData.date && !!bookingData.time && !!bookingData.endDate && !!bookingData.endTime;
+        }
+        if (bookingData.service === "boarding") {
+          // Credits step for boarding
           return hasEnoughCredits || bookingData.payInStore;
         }
         return true;
@@ -542,6 +566,10 @@ const BookingPage = () => {
         if (isGrooming) {
           // Calendar step - date must be selected
           return !!bookingData.groomingDate;
+        }
+        if (isDaycare) {
+          // Credits step for daycare
+          return hasEnoughCredits || bookingData.payInStore;
         }
         return true;
       case 6:
@@ -599,6 +627,7 @@ const BookingPage = () => {
       setBookingData({
         service: null,
         selectedPets: [],
+        daycareType: null,
         date: "",
         time: "",
         endDate: "",
@@ -629,6 +658,18 @@ const BookingPage = () => {
 
     setIsSubmitting(true);
     try {
+      // Build notes string
+      const buildNotes = () => {
+        const parts: string[] = [];
+        if (bookingData.service === "daycare" && bookingData.daycareType) {
+          parts.push(bookingData.daycareType === "half" ? "Half Day" : "Full Day");
+        }
+        if (bookingData.time && bookingData.endTime) {
+          parts.push(`Drop-off: ${bookingData.time}, Pick-up: ${bookingData.endTime}`);
+        }
+        return parts.length > 0 ? parts.join(" | ") : null;
+      };
+
       // Create reservations for each pet
       const reservations = bookingData.selectedPets.map((pet) => ({
         pet_id: pet.id,
@@ -636,9 +677,7 @@ const BookingPage = () => {
         status: "pending" as const,
         start_date: bookingData.date,
         end_date: bookingData.endDate || bookingData.date,
-        notes: bookingData.time && bookingData.endTime 
-          ? `Drop-off: ${bookingData.time}, Pick-up: ${bookingData.endTime}` 
-          : null,
+        notes: buildNotes(),
         payment_pending: bookingData.payInStore,
       }));
 
@@ -660,6 +699,7 @@ const BookingPage = () => {
       setBookingData({
         service: null,
         selectedPets: [],
+        daycareType: null,
         date: "",
         time: "",
         endDate: "",
@@ -998,6 +1038,60 @@ const BookingPage = () => {
                   onSelect={handleGroomerSelect}
                   loading={loadingGroomers}
                 />
+              </motion.div>
+            )}
+
+            {/* Step 3: Daycare Type Selection (Daycare only) */}
+            {step === 3 && isDaycare && (
+              <motion.div
+                key="step3-daycare-type"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
+              >
+                <h2 className="font-display text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-primary" />
+                  Select Day Type
+                </h2>
+                <p className="text-muted-foreground">
+                  Choose whether you'd like to book a full day or half day of daycare.
+                </p>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <button
+                    onClick={() => setBookingData({ ...bookingData, daycareType: "full" })}
+                    className={`p-6 rounded-2xl border-2 text-left transition-all ${
+                      bookingData.daycareType === "full"
+                        ? "border-primary bg-accent/30"
+                        : "border-border hover:border-primary/50 bg-card"
+                    }`}
+                  >
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                      <Clock className="w-6 h-6 text-primary" />
+                    </div>
+                    <h3 className="font-semibold text-foreground text-lg">Full Day</h3>
+                    <p className="text-sm text-muted-foreground">A complete day of play, socialization, and care</p>
+                  </button>
+                  <button
+                    onClick={() => setBookingData({ ...bookingData, daycareType: "half" })}
+                    className={`p-6 rounded-2xl border-2 text-left transition-all ${
+                      bookingData.daycareType === "half"
+                        ? "border-primary bg-accent/30"
+                        : "border-border hover:border-primary/50 bg-card"
+                    }`}
+                  >
+                    <div className="w-12 h-12 rounded-full bg-secondary/10 flex items-center justify-center mb-3">
+                      <Clock className="w-6 h-6 text-secondary-foreground" />
+                    </div>
+                    <h3 className="font-semibold text-foreground text-lg">Half Day</h3>
+                    <p className="text-sm text-muted-foreground">A shorter session, perfect for quick visits</p>
+                  </button>
+                </div>
+                {bookingData.daycareType && (
+                  <div className="bg-accent/20 rounded-xl p-4 text-sm text-foreground">
+                    Selected: <strong>{bookingData.daycareType === "full" ? "Full Day" : "Half Day"}</strong> Daycare
+                  </div>
+                )}
               </motion.div>
             )}
 
@@ -1351,8 +1445,8 @@ const BookingPage = () => {
               </motion.div>
             )}
 
-            {/* Step 3: Date & Time (Non-grooming services) */}
-            {step === 3 && !isGrooming && (
+            {/* Step 3: Date & Time (Boarding and Training only) */}
+            {step === 3 && !isGrooming && !isDaycare && (
               <motion.div
                 key="step3"
                 initial={{ opacity: 0, x: 20 }}
@@ -1464,8 +1558,84 @@ const BookingPage = () => {
               </motion.div>
             )}
 
-            {/* Step 4: Credits Check (for daycare/boarding only) */}
-            {step === 4 && needsCreditsStep && (
+            {/* Step 4: Date & Time (Daycare only - after day type selection) */}
+            {step === 4 && isDaycare && (
+              <motion.div
+                key="step4-daycare-datetime"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-8"
+              >
+                {/* Start Date & Time */}
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <h2 className="font-display text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <Calendar className="w-5 h-5 text-primary" />
+                      Drop-off Date
+                    </h2>
+                    <input
+                      type="date"
+                      value={bookingData.date}
+                      onChange={(e) => setBookingData({ ...bookingData, date: e.target.value })}
+                      min={new Date().toISOString().split('T')[0]}
+                      className="w-full p-4 rounded-xl border border-border bg-card text-foreground text-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                  <div>
+                    <h2 className="font-display text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-primary" />
+                      Drop-off Time
+                    </h2>
+                    <Input
+                      type="text"
+                      value={bookingData.time}
+                      onChange={(e) => setBookingData({ ...bookingData, time: e.target.value })}
+                      placeholder="e.g., 8:30 AM"
+                      className="w-full p-4 h-14 rounded-xl border border-border bg-card text-foreground text-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                </div>
+
+                {/* End Date & Time */}
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <h2 className="font-display text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <Calendar className="w-5 h-5 text-primary" />
+                      Pick-up Date
+                    </h2>
+                    <input
+                      type="date"
+                      value={bookingData.endDate}
+                      onChange={(e) => setBookingData({ ...bookingData, endDate: e.target.value })}
+                      min={bookingData.date || new Date().toISOString().split('T')[0]}
+                      className="w-full p-4 rounded-xl border border-border bg-card text-foreground text-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                  <div>
+                    <h2 className="font-display text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-primary" />
+                      Pick-up Time
+                    </h2>
+                    <Input
+                      type="text"
+                      value={bookingData.endTime}
+                      onChange={(e) => setBookingData({ ...bookingData, endTime: e.target.value })}
+                      placeholder="e.g., 5:00 PM"
+                      className="w-full p-4 h-14 rounded-xl border border-border bg-card text-foreground text-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                </div>
+
+                {/* Day type reminder */}
+                <div className="bg-accent/20 rounded-xl p-4 text-sm text-foreground">
+                  Booking: <strong>{bookingData.daycareType === "full" ? "Full Day" : "Half Day"}</strong> Daycare
+                </div>
+              </motion.div>
+            )}
+
+            {/* Step 4: Credits Check (for boarding only) */}
+            {step === 4 && bookingData.service === "boarding" && (
               <motion.div
                 key="step4-credits"
                 initial={{ opacity: 0, x: 20 }}
@@ -1584,8 +1754,131 @@ const BookingPage = () => {
               </motion.div>
             )}
 
+            {/* Step 5: Credits Check (for daycare only) */}
+            {step === 5 && isDaycare && (
+              <motion.div
+                key="step5-daycare-credits"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
+              >
+                <h2 className="font-display text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-primary" />
+                  {bookingData.daycareType === "half" ? "Half Day" : "Full Day"} Daycare Credits
+                </h2>
+
+                {/* Credit Summary Card */}
+                <div className="bg-card rounded-2xl border border-border p-6 space-y-4">
+                  <div className="flex justify-between items-center pb-4 border-b border-border">
+                    <span className="text-muted-foreground">Current Balance</span>
+                    <span className="font-semibold text-foreground text-lg">
+                      {bookingData.daycareType === "half" ? clientData?.half_daycare_credits || 0 : currentCredits} {bookingData.daycareType === "half" ? "half day" : "day"}{(bookingData.daycareType === "half" ? clientData?.half_daycare_credits || 0 : currentCredits) !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center pb-4 border-b border-border">
+                    <div>
+                      <span className="text-muted-foreground">Required for this booking</span>
+                      <p className="text-sm text-muted-foreground">
+                        {bookingData.selectedPets.length} pet{bookingData.selectedPets.length > 1 ? 's' : ''} × {' '}
+                        {differenceInDays(new Date(bookingData.endDate), new Date(bookingData.date)) + 1} {bookingData.daycareType === "half" ? "half day" : "day"}{differenceInDays(new Date(bookingData.endDate), new Date(bookingData.date)) + 1 !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                    <span className="font-semibold text-foreground text-lg">
+                      -{creditsRequired} {bookingData.daycareType === "half" ? "half day" : "day"}{creditsRequired !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center pt-2">
+                    <span className="font-semibold text-foreground">Balance After Booking</span>
+                    <span className={`font-bold text-xl ${hasEnoughCredits ? 'text-green-600' : 'text-destructive'}`}>
+                      {bookingData.daycareType === "half" 
+                        ? (clientData?.half_daycare_credits || 0) - creditsRequired 
+                        : creditsAfterBooking
+                      } {bookingData.daycareType === "half" ? "half day" : "day"}{(bookingData.daycareType === "half" ? (clientData?.half_daycare_credits || 0) - creditsRequired : creditsAfterBooking) !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Not Enough Credits Warning */}
+                {!hasEnoughCredits && (
+                  <div className="bg-destructive/10 border border-destructive/30 rounded-2xl p-6 space-y-4">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="w-6 h-6 text-destructive flex-shrink-0 mt-0.5" />
+                      <div>
+                        <h3 className="font-semibold text-foreground">Not Enough Credits</h3>
+                        <p className="text-muted-foreground text-sm">
+                          You need <strong>{creditsNeeded} more {bookingData.daycareType === "half" ? "half day" : "daycare"} credit{creditsNeeded !== 1 ? 's' : ''}</strong> to complete this booking.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Button 
+                        variant="hero" 
+                        className="w-full" 
+                        onClick={handlePurchaseCredits}
+                        disabled={isCreatingCart}
+                      >
+                        {isCreatingCart ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <>
+                            <ShoppingCart className="w-5 h-5" />
+                            Purchase Credit Package
+                          </>
+                        )}
+                      </Button>
+
+                      <div className="relative flex items-center justify-center">
+                        <div className="absolute inset-0 flex items-center">
+                          <div className="w-full border-t border-border" />
+                        </div>
+                        <span className="relative bg-destructive/10 px-3 text-sm text-muted-foreground">or</span>
+                      </div>
+
+                      <Button 
+                        variant="outline" 
+                        className="w-full" 
+                        onClick={() => {
+                          setBookingData({ ...bookingData, payInStore: true });
+                          setStep(step + 1);
+                        }}
+                      >
+                        <CreditCard className="w-5 h-5" />
+                        Pay In Store
+                      </Button>
+
+                      <p className="text-sm text-muted-foreground text-center">
+                        Choose "Pay In Store" to book now and pay when you drop off your pet.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Enough Credits Success */}
+                {hasEnoughCredits && (
+                  <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-6">
+                    <div className="flex items-center gap-3">
+                      <Check className="w-6 h-6 text-green-600" />
+                      <div>
+                        <h3 className="font-semibold text-foreground">You have enough credits!</h3>
+                        <p className="text-muted-foreground text-sm">
+                          Continue to review and submit your reservation request.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            )}
+
             {/* Final Step: Confirmation (Non-grooming) */}
-            {((step === 4 && !needsCreditsStep && !isGrooming) || (step === 5 && needsCreditsStep)) && (
+            {/* Daycare: step 6, Boarding: step 5, Training: step 4 */}
+            {((step === 4 && bookingData.service === "training") || 
+              (step === 5 && bookingData.service === "boarding") || 
+              (step === 6 && isDaycare)) && (
               <motion.div
                 key="step-confirm"
                 initial={{ opacity: 0, x: 20 }}
@@ -1629,7 +1922,10 @@ const BookingPage = () => {
                       <div className="flex justify-between items-center pb-4 border-b border-border">
                         <span className="text-muted-foreground">Service</span>
                         <span className="font-semibold text-foreground capitalize">
-                          {serviceOptions.find(s => s.id === bookingData.service)?.name}
+                          {bookingData.service === "daycare" 
+                            ? `${bookingData.daycareType === "half" ? "Half Day" : "Full Day"} Daycare`
+                            : serviceOptions.find(s => s.id === bookingData.service)?.name
+                          }
                         </span>
                       </div>
 
