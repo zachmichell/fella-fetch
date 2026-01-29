@@ -8,6 +8,8 @@ import { Calendar, Clock, CalendarDays, Plus, AlertTriangle, ExternalLink, Dog, 
 import { ClientPortalLayout } from '@/components/client/ClientPortalLayout';
 import AIAssistantChat from '@/components/client/AIAssistantChat';
 import { Progress } from '@/components/ui/progress';
+import { VisitCareLogList } from '@/components/client/VisitCareLogList';
+import { useVisitCareLogs } from '@/hooks/useVisitCareLogs';
 import { format, parseISO, isFuture, isToday, differenceInMinutes, differenceInHours } from 'date-fns';
 
 const SHOPIFY_STORE_URL = 'https://fella-fetch.myshopify.com';
@@ -109,6 +111,71 @@ const ClientDashboard = () => {
     return { progress, elapsed, estimatedEnd };
   };
 
+  // Component for each current visit with care logs
+  const CurrentVisitCard = ({ 
+    visit, 
+    getVisitProgress 
+  }: { 
+    visit: typeof currentVisits[0]; 
+    getVisitProgress: (v: typeof currentVisits[0]) => { progress: number; elapsed: string; estimatedEnd: Date | null } 
+  }) => {
+    const { data: careLogs = [], isLoading: careLogsLoading } = useVisitCareLogs(visit.pets.id, visit.id);
+    const { progress, elapsed, estimatedEnd } = getVisitProgress(visit);
+    
+    return (
+      <div className="p-4 rounded-lg bg-background border">
+        <div className="flex items-center gap-4">
+          {visit.pets.photo_url ? (
+            <img 
+              src={visit.pets.photo_url} 
+              alt={visit.pets.name}
+              className="w-12 h-12 rounded-full object-cover shrink-0"
+            />
+          ) : (
+            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center shrink-0">
+              <Dog className="w-6 h-6 text-muted-foreground" />
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-medium">{visit.pets.name}</p>
+              <Badge className="bg-primary/20 text-primary border-primary/30 shrink-0">
+                Checked In
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground capitalize">
+              {visit.service_type}
+            </p>
+          </div>
+        </div>
+        
+        {/* Progress Section */}
+        <div className="mt-4 space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground flex items-center gap-1">
+              <Clock className="h-3.5 w-3.5" />
+              Time here: {elapsed}
+            </span>
+            {estimatedEnd && (
+              <span className="text-muted-foreground">
+                Est. pickup: {format(estimatedEnd, 'h:mm a')}
+              </span>
+            )}
+          </div>
+          <Progress value={progress} className="h-2" />
+          {visit.service_type === 'boarding' && visit.end_date && (
+            <p className="text-xs text-muted-foreground text-center">
+              Staying until {format(parseISO(visit.end_date), 'EEEE, MMM d')}
+            </p>
+          )}
+        </div>
+
+        {/* Care Logs */}
+        <VisitCareLogList logs={careLogs} isLoading={careLogsLoading} />
+      </div>
+    );
+  };
+
   return (
     <ClientPortalLayout description="Manage your pets and appointments">
       <div className="max-w-2xl space-y-6">
@@ -157,61 +224,9 @@ const ClientDashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {currentVisits.map((visit) => {
-                const { progress, elapsed, estimatedEnd } = getVisitProgress(visit);
-                return (
-                  <div
-                    key={visit.id}
-                    className="p-4 rounded-lg bg-background border"
-                  >
-                    <div className="flex items-center gap-4">
-                      {visit.pets.photo_url ? (
-                        <img 
-                          src={visit.pets.photo_url} 
-                          alt={visit.pets.name}
-                          className="w-12 h-12 rounded-full object-cover shrink-0"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center shrink-0">
-                          <Dog className="w-6 h-6 text-muted-foreground" />
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="font-medium">{visit.pets.name}</p>
-                          <Badge className="bg-primary/20 text-primary border-primary/30 shrink-0">
-                            Checked In
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground capitalize">
-                          {visit.service_type}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    {/* Progress Section */}
-                    <div className="mt-4 space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground flex items-center gap-1">
-                          <Clock className="h-3.5 w-3.5" />
-                          Time here: {elapsed}
-                        </span>
-                        {estimatedEnd && (
-                          <span className="text-muted-foreground">
-                            Est. pickup: {format(estimatedEnd, 'h:mm a')}
-                          </span>
-                        )}
-                      </div>
-                      <Progress value={progress} className="h-2" />
-                      {visit.service_type === 'boarding' && visit.end_date && (
-                        <p className="text-xs text-muted-foreground text-center">
-                          Staying until {format(parseISO(visit.end_date), 'EEEE, MMM d')}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+              {currentVisits.map((visit) => (
+                <CurrentVisitCard key={visit.id} visit={visit} getVisitProgress={getVisitProgress} />
+              ))}
             </CardContent>
           </Card>
         )}
