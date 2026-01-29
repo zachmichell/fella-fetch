@@ -1196,6 +1196,10 @@ export type Database = {
         Returns: number
       }
       deduct_daycare_credit: { Args: { p_client_id: string }; Returns: number }
+      deduct_half_daycare_credit: {
+        Args: { p_client_id: string }
+        Returns: number
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1209,6 +1213,10 @@ export type Database = {
         Returns: number
       }
       restore_daycare_credit: { Args: { p_client_id: string }; Returns: number }
+      restore_half_daycare_credit: {
+        Args: { p_client_id: string }
+        Returns: number
+      }
     }
     Enums: {
       app_role: "admin" | "staff"
