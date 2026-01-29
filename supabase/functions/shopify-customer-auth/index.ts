@@ -22,7 +22,7 @@ serve(async (req) => {
       throw new Error('Shopify storefront token not configured');
     }
 
-    const { action, email, password, accessToken } = await req.json();
+    const { action, email, password, accessToken, reservations } = await req.json();
 
     // Create a Storefront Access Token using Admin API
     if (action === 'createStorefrontToken') {
@@ -676,9 +676,6 @@ serve(async (req) => {
           { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-
-      // Get the reservations from the request body
-      const { reservations } = await req.clone().json();
 
       if (!reservations || !Array.isArray(reservations) || reservations.length === 0) {
         return new Response(
