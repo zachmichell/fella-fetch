@@ -519,7 +519,7 @@ export function ControlCenterTable({
                         <span className="text-sm">{reservation.lodging}</span>
                       ) : (
                         <Link 
-                          to={`/staff/lodging-calendar?reservationId=${reservation.id}&startDate=${reservation.start_date}${reservation.end_date ? `&endDate=${reservation.end_date}` : ''}`}
+                          to={`/staff/lodging?reservationId=${reservation.id}&startDate=${reservation.start_date}${reservation.end_date ? `&endDate=${reservation.end_date}` : ''}`}
                           className="text-sm text-amber-600 hover:text-amber-700 hover:underline font-medium"
                         >
                           Assign Suite
