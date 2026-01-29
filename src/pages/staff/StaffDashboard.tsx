@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { StaffLayout } from '@/components/staff/StaffLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ControlCenterTable, ControlCenterReservation } from '@/components/staff/ControlCenterTable';
-import { AddServiceDialog, type SelectedService } from '@/components/staff/AddServiceDialog';
+import { AddServiceDialog } from '@/components/staff/AddServiceDialog';
 import { InactivityAlertDialog } from '@/components/staff/InactivityAlertDialog';
 import { TraitAlertDialog } from '@/components/staff/TraitAlertDialog';
 import { DailySummaryTable } from '@/components/staff/DailySummaryTable';
@@ -533,26 +533,9 @@ const StaffDashboard = () => {
     setAddServiceOpen(true);
   };
 
-  const handleServicesAdded = async (services: SelectedService[], notes: string) => {
-    if (!selectedReservation) return;
-
-    // Log the additional services
-    await logActivity({
-      petId: selectedReservation.pet_id,
-      reservationId: selectedReservation.id,
-      actionType: 'services_added',
-      actionCategory: 'service',
-      description: `Additional services added for ${selectedReservation.pet_name}`,
-      details: {
-        services: services.map(s => ({ id: s.id, title: s.title, price: s.price })),
-        notes,
-      }
-    });
-
-    toast({ 
-      title: 'Services added', 
-      description: `${services.length} service(s) added for ${selectedReservation.pet_name}` 
-    });
+  const handleServiceAdded = () => {
+    // Refresh dashboard data after service is added
+    fetchDashboardData();
     setSelectedReservation(null);
   };
 
@@ -609,12 +592,16 @@ const StaffDashboard = () => {
       </div>
 
       {/* Add Service Dialog */}
-      <AddServiceDialog
-        open={addServiceOpen}
-        onOpenChange={setAddServiceOpen}
-        petName={selectedReservation?.pet_name || ''}
-        onAddServices={handleServicesAdded}
-      />
+      {selectedReservation && (
+        <AddServiceDialog
+          open={addServiceOpen}
+          onOpenChange={setAddServiceOpen}
+          petId={selectedReservation.pet_id}
+          petName={selectedReservation.pet_name}
+          reservationId={selectedReservation.id}
+          onServiceAdded={handleServiceAdded}
+        />
+      )}
 
       {/* Inactivity Alert Dialog */}
       <InactivityAlertDialog
