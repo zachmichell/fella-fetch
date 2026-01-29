@@ -59,6 +59,7 @@ interface BookingData {
   groomingDate: Date | null;
   groomingTime: string | null;
   groomingEndTime: string | null;
+  groomingDurationMinutes: number;
 }
 
 const serviceOptions = [
@@ -98,6 +99,7 @@ const BookingPage = () => {
   const [groomerSchedules, setGroomerSchedules] = useState<GroomerSchedule[]>([]);
   const [loadingGroomers, setLoadingGroomers] = useState(false);
   const [existingGroomingReservations, setExistingGroomingReservations] = useState<any[]>([]);
+  const [groomerServiceDurations, setGroomerServiceDurations] = useState<Map<string, number>>(new Map());
 
   const [bookingData, setBookingData] = useState<BookingData>({
     service: null,
@@ -110,6 +112,7 @@ const BookingPage = () => {
     groomingDate: null,
     groomingTime: null,
     groomingEndTime: null,
+    groomingDurationMinutes: 60,
   });
 
   // Fetch groomers and schedules when grooming is selected
@@ -179,6 +182,49 @@ const BookingPage = () => {
 
     fetchGroomersAndSchedules();
   }, [bookingData.service]);
+
+  // Fetch groomer service durations when groomer and pet are selected
+  useEffect(() => {
+    const fetchServiceDuration = async () => {
+      // Only fetch if we have grooming service, a groomer, and pets with grooming product
+      if (bookingData.service !== "grooming") return;
+      if (!bookingData.selectedGroomerId) {
+        // Reset to default when no groomer selected
+        setBookingData(prev => ({ ...prev, groomingDurationMinutes: 60 }));
+        return;
+      }
+      
+      // Get the first selected pet's grooming product
+      const selectedPet = bookingData.selectedPets[0];
+      if (!selectedPet?.grooming_product_id) {
+        // No recommended product, use default duration
+        setBookingData(prev => ({ ...prev, groomingDurationMinutes: 60 }));
+        return;
+      }
+
+      try {
+        // Fetch duration for this groomer + product combination
+        const { data, error } = await supabase
+          .from("groomer_service_durations")
+          .select("duration_minutes")
+          .eq("groomer_id", bookingData.selectedGroomerId)
+          .eq("shopify_product_id", selectedPet.grooming_product_id)
+          .maybeSingle();
+
+        if (error) {
+          console.error("Error fetching service duration:", error);
+          return;
+        }
+
+        const duration = data?.duration_minutes || 60;
+        setBookingData(prev => ({ ...prev, groomingDurationMinutes: duration }));
+      } catch (error) {
+        console.error("Error fetching service duration:", error);
+      }
+    };
+
+    fetchServiceDuration();
+  }, [bookingData.service, bookingData.selectedGroomerId, bookingData.selectedPets]);
 
   // Fetch the linked credit product for daycare/boarding
   useEffect(() => {
@@ -320,10 +366,10 @@ const BookingPage = () => {
   };
 
   const handleGroomingTimeSelect = (time: string) => {
-    // Calculate end time (default 60 minute duration)
+    // Calculate end time using the fetched duration (or default 60 minutes)
     const baseDate = new Date(2000, 0, 1);
     const startTime = parse(time, "h:mm a", baseDate);
-    const endTime = addMinutes(startTime, 60);
+    const endTime = addMinutes(startTime, bookingData.groomingDurationMinutes);
     const endTimeStr = format(endTime, "h:mm a");
     
     setBookingData({
@@ -424,6 +470,7 @@ const BookingPage = () => {
         groomingDate: null,
         groomingTime: null,
         groomingEndTime: null,
+        groomingDurationMinutes: 60,
       });
     } catch (error) {
       console.error("Error creating reservation:", error);
