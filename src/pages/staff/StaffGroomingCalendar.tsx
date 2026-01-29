@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { StaffLayout } from '@/components/staff/StaffLayout';
 import { GroomingCalendarHeader } from '@/components/staff/grooming/GroomingCalendarHeader';
 import { GroomingDayView } from '@/components/staff/grooming/GroomingDayView';
@@ -7,7 +7,7 @@ import { CreateGroomingDialog } from '@/components/staff/grooming/CreateGrooming
 import { GroomingDetailsDialog } from '@/components/staff/grooming/GroomingDetailsDialog';
 import { PendingGroomingRequests } from '@/components/staff/grooming/PendingGroomingRequests';
 import { startOfWeek } from 'date-fns';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 export type GroomingViewMode = 'day' | 'week';
@@ -28,6 +28,7 @@ export interface GroomingAppointment {
 }
 
 const StaffGroomingCalendar = () => {
+  const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState<GroomingViewMode>('day');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedAppointment, setSelectedAppointment] = useState<GroomingAppointment | null>(null);
@@ -53,6 +54,33 @@ const StaffGroomingCalendar = () => {
       return data;
     },
   });
+
+  // Real-time subscription for auto-refresh
+  useEffect(() => {
+    const channel = supabase
+      .channel('grooming-calendar-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'reservations' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['grooming-appointments'] });
+          queryClient.invalidateQueries({ queryKey: ['grooming-appointments-week'] });
+          queryClient.invalidateQueries({ queryKey: ['pending-grooming'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'groomers' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['groomers'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const handleAppointmentClick = (appointment: GroomingAppointment) => {
     setSelectedAppointment(appointment);

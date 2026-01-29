@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { StaffLayout } from '@/components/staff/StaffLayout';
 import { LodgingCalendarHeader } from '@/components/staff/lodging/LodgingCalendarHeader';
@@ -116,6 +116,32 @@ const StaffLodgingCalendar = () => {
       }
     }
   }, [urlReservation, reservationIdFromUrl, startDateFromUrl]);
+
+  // Real-time subscription for auto-refresh
+  useEffect(() => {
+    const channel = supabase
+      .channel('lodging-calendar-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'reservations' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['boarding-reservations'] });
+          queryClient.invalidateQueries({ queryKey: ['reservation-for-assignment'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'suites' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['suites'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   // Handle clicking "Assign Now" from the banner
   const handleAssignFromBanner = () => {
