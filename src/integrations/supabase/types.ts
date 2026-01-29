@@ -233,6 +233,47 @@ export type Database = {
         }
         Relationships: []
       }
+      groomer_schedules: {
+        Row: {
+          created_at: string
+          day_of_week: number
+          end_time: string
+          groomer_id: string
+          id: string
+          is_available: boolean
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          end_time?: string
+          groomer_id: string
+          id?: string
+          is_available?: boolean
+          start_time?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          groomer_id?: string
+          id?: string
+          is_available?: boolean
+          start_time?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "groomer_schedules_groomer_id_fkey"
+            columns: ["groomer_id"]
+            isOneToOne: false
+            referencedRelation: "groomers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       groomer_service_durations: {
         Row: {
           created_at: string
