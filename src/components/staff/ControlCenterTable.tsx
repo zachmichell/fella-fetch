@@ -31,7 +31,9 @@ import {
   Loader2,
   Dog,
   Tags,
-  DollarSign
+  DollarSign,
+  Scissors,
+  Clock
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -48,6 +50,18 @@ import { CancelReservationDialog } from './CancelReservationDialog';
 import { DeclineReservationDialog } from './DeclineReservationDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { usePetInactivityDays } from '@/hooks/useSystemSettings';
+
+export interface LinkedService {
+  id: string;
+  service_type: string;
+  status: string;
+  start_date: string;
+  start_time: string | null;
+  end_time: string | null;
+  notes: string | null;
+  price: number | null;
+  groomer_name: string | null;
+}
 
 export interface ControlCenterReservation {
   id: string;
@@ -72,6 +86,7 @@ export interface ControlCenterReservation {
   boarding_credits: number;
   payment_pending: boolean;
   notes: string | null;
+  linked_services?: LinkedService[];
 }
 
 type TabValue = 'expected' | 'going_home' | 'checked_in' | 'requested';
@@ -532,15 +547,43 @@ export function ControlCenterTable({
 
                   {/* Services Column */}
                   <TableCell>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-7 w-7 text-green-600 border-green-300 hover:bg-green-50"
-                      onClick={() => onAddService(reservation)}
-                      title="Add Service"
-                    >
-                      <Plus className="h-3 w-3" />
-                    </Button>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Display linked services */}
+                      {reservation.linked_services && reservation.linked_services.length > 0 ? (
+                        reservation.linked_services.map((service) => {
+                          // Parse service name from notes (e.g., "Service: Full Groom | Groom Type: Large Dog")
+                          const serviceMatch = service.notes?.match(/Groom Type:\s*([^|]+)/i);
+                          const serviceName = serviceMatch ? serviceMatch[1].trim() : 'Grooming';
+                          
+                          return (
+                            <Badge 
+                              key={service.id}
+                              variant="secondary"
+                              className="bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200 text-xs flex items-center gap-1"
+                              title={`${serviceName} - ${service.start_time ? service.start_time.slice(0, 5) : 'TBD'}${service.groomer_name ? ` with ${service.groomer_name}` : ''}`}
+                            >
+                              <Scissors className="h-3 w-3" />
+                              {serviceName}
+                              {service.start_time && (
+                                <span className="text-pink-600 dark:text-pink-300">
+                                  @ {service.start_time.slice(0, 5)}
+                                </span>
+                              )}
+                            </Badge>
+                          );
+                        })
+                      ) : null}
+                      {/* Add Service Button */}
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="h-7 w-7 text-green-600 border-green-300 hover:bg-green-50"
+                        onClick={() => onAddService(reservation)}
+                        title="Add Service"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </TableCell>
 
                   {/* Start Column */}

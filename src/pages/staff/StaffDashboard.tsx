@@ -53,6 +53,7 @@ const StaffDashboard = () => {
 
     try {
       // Fetch today's reservations (for Expected, Check-In, Going Home tabs)
+      // Filter out linked services (those with parent_reservation_id)
       const { data: todayData, error: todayError } = await supabase
         .from('reservations')
         .select(`
@@ -68,6 +69,7 @@ const StaffDashboard = () => {
           checked_out_at,
           notes,
           payment_pending,
+          parent_reservation_id,
           pets (
             id,
             name,
@@ -85,11 +87,13 @@ const StaffDashboard = () => {
         `)
         .eq('start_date', today)
         .neq('status', 'cancelled')
+        .is('parent_reservation_id', null)
         .order('start_time', { ascending: true });
 
       if (todayError) throw todayError;
 
       // Fetch all pending reservations (for Requested tab - any date)
+      // Filter out linked services (those with parent_reservation_id)
       const { data: pendingData, error: pendingError } = await supabase
         .from('reservations')
         .select(`
@@ -105,6 +109,7 @@ const StaffDashboard = () => {
           checked_out_at,
           notes,
           payment_pending,
+          parent_reservation_id,
           pets (
             id,
             name,
@@ -121,6 +126,7 @@ const StaffDashboard = () => {
           )
         `)
         .eq('status', 'pending')
+        .is('parent_reservation_id', null)
         .neq('start_date', today) // Exclude today's pending (already in todayData)
         .order('start_date', { ascending: true });
 
@@ -128,6 +134,52 @@ const StaffDashboard = () => {
 
       // Combine both datasets
       const data = [...(todayData || []), ...(pendingData || [])];
+
+      // Get all reservation IDs to fetch linked services
+      const reservationIds = data?.map((r: any) => r.id).filter(Boolean) || [];
+      let linkedServicesMap: Record<string, any[]> = {};
+      
+      if (reservationIds.length > 0) {
+        // Fetch linked services (child reservations)
+        const { data: linkedServicesData } = await supabase
+          .from('reservations')
+          .select(`
+            id,
+            parent_reservation_id,
+            service_type,
+            status,
+            start_date,
+            start_time,
+            end_time,
+            notes,
+            price,
+            groomers (
+              id,
+              name
+            )
+          `)
+          .in('parent_reservation_id', reservationIds)
+          .neq('status', 'cancelled');
+        
+        if (linkedServicesData) {
+          linkedServicesMap = linkedServicesData.reduce((acc: Record<string, any[]>, service: any) => {
+            const parentId = service.parent_reservation_id;
+            if (!acc[parentId]) acc[parentId] = [];
+            acc[parentId].push({
+              id: service.id,
+              service_type: service.service_type,
+              status: service.status,
+              start_date: service.start_date,
+              start_time: service.start_time,
+              end_time: service.end_time,
+              notes: service.notes,
+              price: service.price,
+              groomer_name: service.groomers?.name || null,
+            });
+            return acc;
+          }, {});
+        }
+      }
 
       // Fetch pet traits for all pets in today's reservations
       const petIds = [...new Set(data?.map((r: any) => r.pets?.id).filter(Boolean) || [])];
@@ -173,6 +225,7 @@ const StaffDashboard = () => {
         boarding_credits: r.pets?.clients?.boarding_credits ?? 0,
         payment_pending: r.payment_pending || false,
         notes: r.notes || null,
+        linked_services: linkedServicesMap[r.id] || [],
       })) || [];
 
       setReservations(formattedReservations);

@@ -832,6 +832,7 @@ export type Database = {
           groomer_id: string | null
           id: string
           notes: string | null
+          parent_reservation_id: string | null
           payment_pending: boolean
           pet_id: string
           price: number | null
@@ -853,6 +854,7 @@ export type Database = {
           groomer_id?: string | null
           id?: string
           notes?: string | null
+          parent_reservation_id?: string | null
           payment_pending?: boolean
           pet_id: string
           price?: number | null
@@ -874,6 +876,7 @@ export type Database = {
           groomer_id?: string | null
           id?: string
           notes?: string | null
+          parent_reservation_id?: string | null
           payment_pending?: boolean
           pet_id?: string
           price?: number | null
@@ -890,6 +893,13 @@ export type Database = {
             columns: ["groomer_id"]
             isOneToOne: false
             referencedRelation: "groomers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservations_parent_reservation_id_fkey"
+            columns: ["parent_reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
             referencedColumns: ["id"]
           },
           {
