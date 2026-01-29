@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { fetchCollectionProducts, ShopifyProduct } from '@/lib/shopify';
+import { storefrontApiRequest } from '@/lib/shopify';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -14,22 +15,23 @@ import {
 } from '@/components/ui/select';
 import { Loader2, Save, Scissors, CalendarClock } from 'lucide-react';
 
+interface GroomingVariant {
+  id: string;
+  title: string;
+  price: string;
+}
+
+interface GroomingProduct {
+  id: string;
+  title: string;
+  variants: GroomingVariant[];
+}
+
 interface PetGroomingPreferencesEditorProps {
   petId: string;
   petName: string;
   onSaved?: () => void;
 }
-
-const FREQUENCY_OPTIONS = [
-  { value: '2 weeks', label: 'Every 2 weeks' },
-  { value: '3 weeks', label: 'Every 3 weeks' },
-  { value: '4 weeks', label: 'Every 4 weeks' },
-  { value: '5 weeks', label: 'Every 5 weeks' },
-  { value: '6 weeks', label: 'Every 6 weeks' },
-  { value: '8 weeks', label: 'Every 8 weeks' },
-  { value: '10 weeks', label: 'Every 10 weeks' },
-  { value: '12 weeks', label: 'Every 12 weeks' },
-];
 
 export const PetGroomingPreferencesEditor = ({
   petId,
@@ -39,7 +41,9 @@ export const PetGroomingPreferencesEditor = ({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
-  const [selectedFrequency, setSelectedFrequency] = useState<string | null>(null);
+  const [selectedVariantTitle, setSelectedVariantTitle] = useState<string | null>(null);
+  const [frequencyNumber, setFrequencyNumber] = useState<string>('');
+  const [frequencyUnit, setFrequencyUnit] = useState<string>('weeks');
   const [hasChanges, setHasChanges] = useState(false);
 
   // Fetch current pet grooming preferences
@@ -56,84 +60,140 @@ export const PetGroomingPreferencesEditor = ({
     },
   });
 
-  // Fetch grooming collection mapping to get products
-  const { data: groomingCollectionMapping } = useQuery({
-    queryKey: ['grooming-collection-mapping'],
+  // Fetch grooming products from Shopify
+  const { data: groomingProducts, isLoading: loadingProducts } = useQuery({
+    queryKey: ['grooming-products-shopify'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('shopify_collection_mappings')
-        .select('shopify_collection_id, shopify_collection_title')
-        .or('category.eq.services,category.eq.addons')
-        .limit(10);
-      if (error) throw error;
-      return data;
+      const query = `
+        query GetGroomProducts {
+          products(first: 50, query: "product_type:Groom") {
+            edges {
+              node {
+                id
+                title
+                productType
+                variants(first: 50) {
+                  edges {
+                    node {
+                      id
+                      title
+                      price {
+                        amount
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      `;
+
+      const response = await storefrontApiRequest(query, {});
+      if (!response?.data?.products?.edges) return [];
+
+      // Filter to only actual grooming services (exclude tips, retail, etc.)
+      return response.data.products.edges
+        .filter((edge: any) => {
+          const title = edge.node.title.toLowerCase();
+          // Include products that are likely grooming services
+          return !title.includes('tip') && 
+                 !title.includes('brush') &&
+                 edge.node.productType?.toLowerCase() === 'groom';
+        })
+        .map((edge: any) => ({
+          id: edge.node.id,
+          title: edge.node.title,
+          variants: edge.node.variants.edges.map((v: any) => ({
+            id: v.node.id,
+            title: v.node.title,
+            price: v.node.price.amount,
+          })),
+        })) as GroomingProduct[];
     },
   });
 
-  // Fetch grooming products from Shopify
-  const { data: groomingProducts, isLoading: loadingProducts } = useQuery({
-    queryKey: ['grooming-products-for-prefs'],
-    queryFn: async () => {
-      // Try to fetch from a grooming collection, or fetch all products with "groom" in title
-      const allProducts: ShopifyProduct[] = [];
-      
-      // Fetch products - we'll filter for grooming-related ones
-      const products = await fetchCollectionProducts('groom', 50);
-      if (products && products.length > 0) {
-        allProducts.push(...products);
-      }
-      
-      // If no collection found, try fetching products with grooming keywords
-      if (allProducts.length === 0) {
-        const { fetchShopifyProducts } = await import('@/lib/shopify');
-        const result = await fetchShopifyProducts(100);
-        if (result?.edges) {
-          const groomingKeywords = ['groom', 'bath', 'brush', 'haircut', 'trim', 'wash', 'spa'];
-          const filtered = result.edges.filter((p: ShopifyProduct) => 
-            groomingKeywords.some(kw => 
-              p.node.title.toLowerCase().includes(kw) ||
-              p.node.productType?.toLowerCase().includes(kw)
-            )
-          );
-          allProducts.push(...filtered);
-        }
-      }
-      
-      return allProducts;
-    },
-  });
+  // Get variants for selected product
+  const selectedProduct = groomingProducts?.find(p => p.id === selectedProductId);
+  const availableVariants = selectedProduct?.variants || [];
+
+  // Parse frequency from stored value (e.g., "6 weeks" -> { number: 6, unit: "weeks" })
+  const parseFrequency = (freq: string | null): { number: string; unit: string } => {
+    if (!freq) return { number: '', unit: 'weeks' };
+    const match = freq.match(/^(\d+)\s*(weeks?|months?)$/i);
+    if (match) {
+      return { 
+        number: match[1], 
+        unit: match[2].toLowerCase().endsWith('s') ? match[2].toLowerCase() : match[2].toLowerCase() + 's'
+      };
+    }
+    return { number: '', unit: 'weeks' };
+  };
 
   // Initialize state from pet data
   useEffect(() => {
     if (pet) {
       setSelectedProductId(pet.grooming_product_id || null);
-      setSelectedFrequency(pet.grooming_frequency || null);
+      
+      // Find the product to get the variant title if we have a stored product
+      if (pet.grooming_product_id && groomingProducts) {
+        const product = groomingProducts.find(p => p.id === pet.grooming_product_id);
+        if (product && pet.grooming_product_title) {
+          // The stored title might be the variant title
+          const variant = product.variants.find(v => v.title === pet.grooming_product_title);
+          if (variant) {
+            setSelectedVariantTitle(variant.title);
+          }
+        }
+      }
+      
+      const parsed = parseFrequency(pet.grooming_frequency);
+      setFrequencyNumber(parsed.number);
+      setFrequencyUnit(parsed.unit);
       setHasChanges(false);
     }
-  }, [pet]);
+  }, [pet, groomingProducts]);
+
+  // Reset variant when product changes
+  useEffect(() => {
+    if (selectedProductId && pet?.grooming_product_id !== selectedProductId) {
+      setSelectedVariantTitle(null);
+    }
+  }, [selectedProductId, pet?.grooming_product_id]);
 
   // Track changes
   useEffect(() => {
     if (pet) {
       const productChanged = selectedProductId !== (pet.grooming_product_id || null);
-      const frequencyChanged = selectedFrequency !== (pet.grooming_frequency || null);
-      setHasChanges(productChanged || frequencyChanged);
+      
+      const currentFreq = parseFrequency(pet.grooming_frequency);
+      const newFreq = frequencyNumber && frequencyUnit 
+        ? `${frequencyNumber} ${frequencyUnit}`
+        : null;
+      const frequencyChanged = (pet.grooming_frequency || null) !== newFreq;
+      
+      setHasChanges(productChanged || frequencyChanged || selectedVariantTitle !== null);
     }
-  }, [selectedProductId, selectedFrequency, pet]);
+  }, [selectedProductId, selectedVariantTitle, frequencyNumber, frequencyUnit, pet]);
 
   // Save mutation
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const selectedProduct = groomingProducts?.find(
-        (p: ShopifyProduct) => p.node.id === selectedProductId
-      );
+      const frequency = frequencyNumber && frequencyUnit 
+        ? `${frequencyNumber} ${frequencyUnit}` 
+        : null;
+
+      // Store the variant title as the product title for display
+      const displayTitle = selectedVariantTitle 
+        ? `${selectedProduct?.title} - ${selectedVariantTitle}`
+        : selectedProduct?.title || null;
 
       const { error } = await supabase
         .from('pets')
         .update({
           grooming_product_id: selectedProductId,
-          grooming_product_title: selectedProduct?.node.title || null,
-          grooming_frequency: selectedFrequency,
+          grooming_product_title: displayTitle,
+          grooming_frequency: frequency,
         })
         .eq('id', petId);
 
@@ -168,6 +228,7 @@ export const PetGroomingPreferencesEditor = ({
 
   return (
     <div className="space-y-4">
+      {/* Product Selection */}
       <div className="space-y-2">
         <Label className="flex items-center gap-2">
           <Scissors className="h-4 w-4" />
@@ -183,41 +244,74 @@ export const PetGroomingPreferencesEditor = ({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="__none__">No preference</SelectItem>
-            {groomingProducts?.map((product: ShopifyProduct) => (
-              <SelectItem key={product.node.id} value={product.node.id}>
-                {product.node.title}
+            {groomingProducts?.map((product) => (
+              <SelectItem key={product.id} value={product.id}>
+                {product.title}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        {pet?.grooming_product_title && !selectedProductId && (
-          <p className="text-xs text-muted-foreground">
-            Previously: {pet.grooming_product_title}
-          </p>
-        )}
       </div>
 
+      {/* Variant Selection - only show when a product is selected */}
+      {selectedProductId && availableVariants.length > 0 && (
+        <div className="space-y-2">
+          <Label className="text-sm text-muted-foreground">Preferred Size/Variant</Label>
+          <Select
+            value={selectedVariantTitle || '__none__'}
+            onValueChange={(v) => setSelectedVariantTitle(v === '__none__' ? null : v)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select variant..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">No preference</SelectItem>
+              {availableVariants.map((variant) => (
+                <SelectItem key={variant.id} value={variant.title}>
+                  {variant.title} - ${parseFloat(variant.price).toFixed(0)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {/* Frequency Selection */}
       <div className="space-y-2">
         <Label className="flex items-center gap-2">
           <CalendarClock className="h-4 w-4" />
           Grooming Frequency
         </Label>
-        <Select
-          value={selectedFrequency || '__none__'}
-          onValueChange={(v) => setSelectedFrequency(v === '__none__' ? null : v)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select frequency..." />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__none__">No preference</SelectItem>
-            {FREQUENCY_OPTIONS.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <Input
+              type="number"
+              min="1"
+              max="52"
+              placeholder="e.g. 6"
+              value={frequencyNumber}
+              onChange={(e) => setFrequencyNumber(e.target.value)}
+              className="w-full"
+            />
+          </div>
+          <Select
+            value={frequencyUnit}
+            onValueChange={setFrequencyUnit}
+          >
+            <SelectTrigger className="w-28">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="weeks">weeks</SelectItem>
+              <SelectItem value="months">months</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {frequencyNumber && (
+          <p className="text-xs text-muted-foreground">
+            Every {frequencyNumber} {frequencyUnit}
+          </p>
+        )}
       </div>
 
       {hasChanges && (
