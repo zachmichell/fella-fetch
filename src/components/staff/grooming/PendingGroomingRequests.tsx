@@ -196,75 +196,112 @@ export const PendingGroomingRequests = ({ groomers }: PendingGroomingRequestsPro
             Pending Grooming Requests ({pendingRequests.length})
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {pendingRequests.map((request) => (
-              <div
-                key={request.id}
-                className="flex items-center justify-between p-3 bg-white dark:bg-background rounded-lg border border-amber-200 dark:border-amber-800"
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium">{request.pet_name}</span>
-                    {request.pet_breed && (
-                      <span className="text-sm text-muted-foreground">
-                        ({request.pet_breed})
-                      </span>
-                    )}
-                    <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-300">
-                      Pending
-                    </Badge>
-                  </div>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <User className="h-3 w-3" />
-                      {request.client_name}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {format(parseISO(request.start_date), 'EEE, MMM d')}
-                    </span>
-                    {request.start_time && (
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {format(parseISO(`2000-01-01T${request.start_time}`), 'h:mm a')}
-                        {request.end_time && ` - ${format(parseISO(`2000-01-01T${request.end_time}`), 'h:mm a')}`}
-                      </span>
-                    )}
-                    {request.groomer_name && (
-                      <span className="text-primary font-medium">
-                        Requested: {request.groomer_name}
-                      </span>
-                    )}
-                    {(request.groomService || request.groomType) && (
-                      <span className="font-medium text-foreground">
-                        {request.groomService}{request.groomType && ` — ${request.groomType}`}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 ml-4">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-emerald-600 border-emerald-300 hover:bg-emerald-50"
-                    onClick={() => handleAccept(request)}
-                  >
-                    <CheckCircle className="h-4 w-4 mr-1" />
-                    Accept
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-destructive border-destructive/30 hover:bg-destructive/10"
-                    onClick={() => handleDeclineClick(request)}
-                  >
-                    <XCircle className="h-4 w-4 mr-1" />
-                    Decline
-                  </Button>
-                </div>
-              </div>
-            ))}
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-amber-200 dark:border-amber-800 bg-amber-100/50 dark:bg-amber-900/20">
+                  <th className="text-left p-3 text-sm font-medium text-amber-800 dark:text-amber-300">Pet</th>
+                  <th className="text-left p-3 text-sm font-medium text-amber-800 dark:text-amber-300">Client</th>
+                  <th className="text-left p-3 text-sm font-medium text-amber-800 dark:text-amber-300">Date & Time</th>
+                  <th className="text-left p-3 text-sm font-medium text-amber-800 dark:text-amber-300">Groomer</th>
+                  <th className="text-left p-3 text-sm font-medium text-amber-800 dark:text-amber-300">Service</th>
+                  <th className="text-right p-3 text-sm font-medium text-amber-800 dark:text-amber-300">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingRequests.map((request) => {
+                  const groomerInfo = request.groomer_id 
+                    ? groomers?.find((g) => g.id === request.groomer_id)
+                    : null;
+                  
+                  return (
+                    <tr
+                      key={request.id}
+                      className="border-b border-amber-100 dark:border-amber-900 last:border-0 hover:bg-amber-50/50 dark:hover:bg-amber-950/30"
+                    >
+                      <td className="p-3">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{request.pet_name}</span>
+                          {request.pet_breed && (
+                            <span className="text-sm text-muted-foreground">
+                              ({request.pet_breed})
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-3 text-sm text-muted-foreground">
+                        {request.client_name}
+                      </td>
+                      <td className="p-3 text-sm">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3 text-muted-foreground" />
+                            {format(parseISO(request.start_date), 'EEE, MMM d')}
+                          </span>
+                          {request.start_time && (
+                            <span className="flex items-center gap-1 text-muted-foreground">
+                              <Clock className="h-3 w-3" />
+                              {format(parseISO(`2000-01-01T${request.start_time}`), 'h:mm a')}
+                              {request.end_time && ` - ${format(parseISO(`2000-01-01T${request.end_time}`), 'h:mm a')}`}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        {groomerInfo ? (
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-3 h-3 rounded-full flex-shrink-0" 
+                              style={{ backgroundColor: groomerInfo.color || '#3b82f6' }}
+                            />
+                            <span className="text-sm font-medium">{groomerInfo.name}</span>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground italic">No preference</span>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        {(request.groomService || request.groomType) ? (
+                          <div className="text-sm">
+                            {request.groomService && (
+                              <div className="font-medium">{request.groomService}</div>
+                            )}
+                            {request.groomType && (
+                              <div className="text-muted-foreground">{request.groomType}</div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground italic">—</span>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-emerald-600 border-emerald-300 hover:bg-emerald-50"
+                            onClick={() => handleAccept(request)}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Accept
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                            onClick={() => handleDeclineClick(request)}
+                          >
+                            <XCircle className="h-4 w-4 mr-1" />
+                            Decline
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </CardContent>
       </Card>
