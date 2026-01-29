@@ -685,6 +685,20 @@ const BookingPage = () => {
       const endTimeDate = addMinutes(parsedTime, bookingData.groomingDurationMinutes);
       const endTime = format(endTimeDate, "HH:mm:ss");
 
+      // Build notes with groom type and groomer info
+      const notesParts: string[] = [];
+      if (bookingData.selectedGroomingVariant) {
+        notesParts.push(`Groom Type: ${bookingData.selectedGroomingVariant.title}`);
+      }
+      if (bookingData.selectedGroomingService) {
+        notesParts.push(`Service: ${bookingData.selectedGroomingService.shopify_product_title}`);
+      }
+      if (bookingData.selectedGroomerId) {
+        notesParts.push(`Requested groomer: ${groomers.find(g => g.id === bookingData.selectedGroomerId)?.name}`);
+      } else {
+        notesParts.push("Any available groomer");
+      }
+
       const { error } = await supabase.from("reservations").insert({
         pet_id: pet.id,
         service_type: "grooming",
@@ -693,9 +707,7 @@ const BookingPage = () => {
         start_time: startTime,
         end_time: endTime,
         groomer_id: bookingData.selectedGroomerId,
-        notes: bookingData.selectedGroomerId 
-          ? `Requested groomer: ${groomers.find(g => g.id === bookingData.selectedGroomerId)?.name}`
-          : "Any available groomer",
+        notes: notesParts.join(" | "),
       });
 
       if (error) throw error;

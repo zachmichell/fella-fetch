@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -514,9 +515,16 @@ export function ControlCenterTable({
                   {/* Lodging Column */}
                   <TableCell>
                     {reservation.service_type === 'boarding' ? (
-                      <span className="text-sm">
-                        {reservation.lodging || 'Not assigned'}
-                      </span>
+                      reservation.lodging ? (
+                        <span className="text-sm">{reservation.lodging}</span>
+                      ) : (
+                        <Link 
+                          to="/staff/lodging-calendar" 
+                          className="text-sm text-amber-600 hover:text-amber-700 hover:underline font-medium"
+                        >
+                          Not assigned
+                        </Link>
+                      )
                     ) : (
                       <span className="text-muted-foreground text-sm">—</span>
                     )}
