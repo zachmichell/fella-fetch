@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Calendar, Clock, Dog, ArrowRight, ArrowLeft, Check, LogIn, CreditCard, AlertTriangle, ShoppingCart, Loader2 } from "lucide-react";
+import { Calendar, Clock, Dog, ArrowRight, ArrowLeft, Check, LogIn, CreditCard, AlertTriangle, ShoppingCart, Loader2, Scissors, User } from "lucide-react";
 import { Link } from "react-router-dom";
-import { differenceInDays } from "date-fns";
+import { differenceInDays, format, parse } from "date-fns";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,9 @@ import { useClientAuth } from "@/contexts/ClientAuthContext";
 import { storefrontApiRequest, SHOPIFY_STORE_PERMANENT_DOMAIN } from "@/lib/shopify";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { GroomerSelector } from "@/components/booking/GroomerSelector";
+import { GroomingCalendar } from "@/components/booking/GroomingCalendar";
+import { GroomingTimeSlots } from "@/components/booking/GroomingTimeSlots";
 
 import iconStay from "@/assets/icons/icon-stay.png";
 import iconGroom from "@/assets/icons/icon-groom.png";
@@ -26,6 +29,20 @@ interface SelectedPet {
   photo_url: string | null;
 }
 
+interface Groomer {
+  id: string;
+  name: string;
+  color: string | null;
+}
+
+interface GroomerSchedule {
+  groomer_id: string;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  is_available: boolean;
+}
+
 interface BookingData {
   service: ServiceType | null;
   selectedPets: SelectedPet[];
@@ -33,6 +50,9 @@ interface BookingData {
   time: string;
   endDate: string;
   endTime: string;
+  selectedGroomerId: string | null;
+  groomingDate: Date | null;
+  groomingTime: string | null;
 }
 
 const serviceOptions = [
@@ -64,7 +84,15 @@ const BookingPage = () => {
   const { isAuthenticated, pets, clientData, loading } = useClientAuth();
   const [step, setStep] = useState(1);
   const [isCreatingCart, setIsCreatingCart] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [creditProduct, setCreditProduct] = useState<{ shopify_product_id: string; shopify_product_title: string } | null>(null);
+  
+  // Grooming-specific state
+  const [groomers, setGroomers] = useState<Groomer[]>([]);
+  const [groomerSchedules, setGroomerSchedules] = useState<GroomerSchedule[]>([]);
+  const [loadingGroomers, setLoadingGroomers] = useState(false);
+  const [existingGroomingReservations, setExistingGroomingReservations] = useState<any[]>([]);
+
   const [bookingData, setBookingData] = useState<BookingData>({
     service: null,
     selectedPets: [],
@@ -72,7 +100,54 @@ const BookingPage = () => {
     time: "",
     endDate: "",
     endTime: "",
+    selectedGroomerId: null,
+    groomingDate: null,
+    groomingTime: null,
   });
+
+  // Fetch groomers and schedules when grooming is selected
+  useEffect(() => {
+    const fetchGroomersAndSchedules = async () => {
+      if (bookingData.service !== "grooming") return;
+      
+      setLoadingGroomers(true);
+      try {
+        // Fetch active groomers
+        const { data: groomersData, error: groomersError } = await supabase
+          .from("groomers")
+          .select("id, name, color")
+          .eq("is_active", true)
+          .order("sort_order");
+
+        if (groomersError) throw groomersError;
+        setGroomers(groomersData || []);
+
+        // Fetch all groomer schedules
+        const { data: schedulesData, error: schedulesError } = await supabase
+          .from("groomer_schedules")
+          .select("groomer_id, day_of_week, start_time, end_time, is_available");
+
+        if (schedulesError) throw schedulesError;
+        setGroomerSchedules(schedulesData || []);
+
+        // Fetch existing grooming reservations to check availability
+        const { data: reservationsData } = await supabase
+          .from("reservations")
+          .select("start_date, start_time, end_time, groomer_id")
+          .eq("service_type", "grooming")
+          .neq("status", "cancelled");
+
+        setExistingGroomingReservations(reservationsData || []);
+      } catch (error) {
+        console.error("Error fetching groomers:", error);
+        toast.error("Failed to load groomers");
+      } finally {
+        setLoadingGroomers(false);
+      }
+    };
+
+    fetchGroomersAndSchedules();
+  }, [bookingData.service]);
 
   // Fetch the linked credit product for daycare/boarding
   useEffect(() => {
@@ -101,8 +176,31 @@ const BookingPage = () => {
   }, [bookingData.service]);
 
   // Calculate total steps based on service type
+  const getStepConfig = () => {
+    if (bookingData.service === "grooming") {
+      // Grooming: Service → Pet → Groomer → Calendar → Time → Confirm
+      return {
+        totalSteps: 6,
+        labels: ["Service", "Pet", "Groomer", "Date", "Time", "Confirm"],
+      };
+    } else if (bookingData.service === "daycare" || bookingData.service === "boarding") {
+      // Daycare/Boarding: Service → Pets → Date/Time → Credits → Confirm
+      return {
+        totalSteps: 5,
+        labels: ["Service", "Select Pets", "Date & Time", "Credits", "Confirm"],
+      };
+    } else {
+      // Training: Service → Pet → Date/Time → Confirm
+      return {
+        totalSteps: 4,
+        labels: ["Service", "Select Pets", "Date & Time", "Confirm"],
+      };
+    }
+  };
+
+  const { totalSteps, labels: stepLabels } = getStepConfig();
   const needsCreditsStep = bookingData.service === "daycare" || bookingData.service === "boarding";
-  const totalSteps = needsCreditsStep ? 5 : 4;
+  const isGrooming = bookingData.service === "grooming";
 
   // Calculate required credits
   const creditsRequired = useMemo(() => {
@@ -114,12 +212,10 @@ const BookingPage = () => {
     const endDate = new Date(bookingData.endDate);
 
     if (bookingData.service === "boarding") {
-      // Boarding: 1 credit per night per pet
       const nights = Math.max(1, differenceInDays(endDate, startDate));
       return nights * bookingData.selectedPets.length;
     } else if (bookingData.service === "daycare") {
-      // Daycare: 1 credit per day per pet (each day they're there)
-      const days = differenceInDays(endDate, startDate) + 1; // Include both start and end day
+      const days = differenceInDays(endDate, startDate) + 1;
       return days * bookingData.selectedPets.length;
     }
 
@@ -142,7 +238,13 @@ const BookingPage = () => {
   const creditsNeeded = hasEnoughCredits ? 0 : Math.abs(creditsAfterBooking);
 
   const handleServiceSelect = (service: ServiceType) => {
-    setBookingData({ ...bookingData, service });
+    setBookingData({ 
+      ...bookingData, 
+      service,
+      selectedGroomerId: null,
+      groomingDate: null,
+      groomingTime: null,
+    });
     setStep(2);
   };
 
@@ -154,11 +256,43 @@ const BookingPage = () => {
         selectedPets: bookingData.selectedPets.filter(p => p.id !== pet.id)
       });
     } else {
-      setBookingData({
-        ...bookingData,
-        selectedPets: [...bookingData.selectedPets, pet]
-      });
+      // For grooming, only allow one pet at a time
+      if (isGrooming) {
+        setBookingData({
+          ...bookingData,
+          selectedPets: [pet]
+        });
+      } else {
+        setBookingData({
+          ...bookingData,
+          selectedPets: [...bookingData.selectedPets, pet]
+        });
+      }
     }
+  };
+
+  const handleGroomerSelect = (groomerId: string | null) => {
+    setBookingData({
+      ...bookingData,
+      selectedGroomerId: groomerId,
+      groomingDate: null, // Reset date when groomer changes
+      groomingTime: null,
+    });
+  };
+
+  const handleGroomingDateSelect = (date: Date) => {
+    setBookingData({
+      ...bookingData,
+      groomingDate: date,
+      groomingTime: null, // Reset time when date changes
+    });
+  };
+
+  const handleGroomingTimeSelect = (time: string) => {
+    setBookingData({
+      ...bookingData,
+      groomingTime: time,
+    });
   };
 
   const nextStep = () => {
@@ -171,19 +305,92 @@ const BookingPage = () => {
 
   const canProceed = () => {
     switch (step) {
-      case 1: return !!bookingData.service;
-      case 2: return bookingData.selectedPets.length > 0;
-      case 3: 
+      case 1: 
+        return !!bookingData.service;
+      case 2: 
+        return bookingData.selectedPets.length > 0;
+      case 3:
+        if (isGrooming) {
+          // Groomer selection step - always can proceed (null = any available)
+          return true;
+        }
+        // Date/Time step for other services
         if (bookingData.service === "daycare" || bookingData.service === "boarding") {
           return !!bookingData.date && !!bookingData.time && !!bookingData.endDate && !!bookingData.endTime;
         }
         return !!bookingData.date && !!bookingData.time;
       case 4:
+        if (isGrooming) {
+          // Calendar step - date must be selected
+          return !!bookingData.groomingDate;
+        }
         if (needsCreditsStep) {
           return hasEnoughCredits;
         }
         return true;
-      default: return true;
+      case 5:
+        if (isGrooming) {
+          // Time slot step - time must be selected
+          return !!bookingData.groomingTime;
+        }
+        return true;
+      default: 
+        return true;
+    }
+  };
+
+  // Submit grooming reservation
+  const handleSubmitGroomingReservation = async () => {
+    if (!bookingData.groomingDate || !bookingData.groomingTime || bookingData.selectedPets.length === 0) {
+      toast.error("Please complete all booking details");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const pet = bookingData.selectedPets[0];
+      const startDate = format(bookingData.groomingDate, "yyyy-MM-dd");
+      
+      // Convert time to 24h format for database
+      const parsedTime = parse(bookingData.groomingTime, "h:mm a", new Date());
+      const startTime = format(parsedTime, "HH:mm:ss");
+
+      const { error } = await supabase.from("reservations").insert({
+        pet_id: pet.id,
+        service_type: "grooming",
+        status: "pending",
+        start_date: startDate,
+        start_time: startTime,
+        groomer_id: bookingData.selectedGroomerId,
+        notes: bookingData.selectedGroomerId 
+          ? `Requested groomer: ${groomers.find(g => g.id === bookingData.selectedGroomerId)?.name}`
+          : "Any available groomer",
+      });
+
+      if (error) throw error;
+
+      toast.success("Appointment requested!", {
+        description: "We'll confirm your grooming appointment shortly.",
+      });
+
+      // Reset form
+      setStep(1);
+      setBookingData({
+        service: null,
+        selectedPets: [],
+        date: "",
+        time: "",
+        endDate: "",
+        endTime: "",
+        selectedGroomerId: null,
+        groomingDate: null,
+        groomingTime: null,
+      });
+    } catch (error) {
+      console.error("Error creating reservation:", error);
+      toast.error("Failed to submit reservation");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -198,7 +405,6 @@ const BookingPage = () => {
 
     setIsCreatingCart(true);
     try {
-      // Fetch the product variants from Shopify
       const PRODUCT_QUERY = `
         query GetProduct($id: ID!) {
           product(id: $id) {
@@ -229,7 +435,6 @@ const BookingPage = () => {
 
       const firstVariant = productData.data.product.variants.edges[0].node;
       
-      // Create cart with the credit product
       const cartData = await storefrontApiRequest(CART_CREATE_MUTATION, {
         input: {
           lines: [{ quantity: creditsNeeded, merchandiseId: firstVariant.id }]
@@ -244,7 +449,6 @@ const BookingPage = () => {
 
       const checkoutUrl = cartData?.data?.cartCreate?.cart?.checkoutUrl;
       if (checkoutUrl) {
-        // Add channel=online_store parameter for checkout to work without password
         const url = new URL(checkoutUrl);
         url.searchParams.set('channel', 'online_store');
         window.open(url.toString(), '_blank');
@@ -258,16 +462,6 @@ const BookingPage = () => {
       setIsCreatingCart(false);
     }
   };
-
-  // Get the current step label for progress bar
-  const getStepLabels = () => {
-    if (needsCreditsStep) {
-      return ["Service", "Select Pets", "Date & Time", "Credits", "Confirm"];
-    }
-    return ["Service", "Select Pets", "Date & Time", "Confirm"];
-  };
-
-  const stepLabels = getStepLabels();
 
   return (
     <div className="min-h-screen bg-background">
@@ -304,16 +498,16 @@ const BookingPage = () => {
                     {s < step ? <Check className="w-5 h-5" /> : s}
                   </div>
                   {s < totalSteps && (
-                    <div className={`hidden sm:block w-12 lg:w-20 h-1 mx-2 rounded ${
+                    <div className={`hidden sm:block w-8 lg:w-16 h-1 mx-1 rounded ${
                       s < step ? "bg-primary" : "bg-muted"
                     }`} />
                   )}
                 </div>
               ))}
             </div>
-            <div className="flex justify-between text-sm text-muted-foreground">
+            <div className="flex justify-between text-xs sm:text-sm text-muted-foreground">
               {stepLabels.map((label, i) => (
-                <span key={i}>{label}</span>
+                <span key={i} className="text-center flex-1">{label}</span>
               ))}
             </div>
           </div>
@@ -363,7 +557,7 @@ const BookingPage = () => {
               >
                 <h2 className="font-display text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
                   <Dog className="w-5 h-5 text-primary" />
-                  Select Your Pets
+                  {isGrooming ? "Select Your Pet" : "Select Your Pets"}
                 </h2>
 
                 {!isAuthenticated ? (
@@ -376,7 +570,7 @@ const BookingPage = () => {
                       Log in to your account to select from your registered pets.
                     </p>
                     <Button asChild variant="hero">
-                      <Link to="/client/login">Sign In</Link>
+                      <Link to="/login">Sign In</Link>
                     </Button>
                   </div>
                 ) : loading ? (
@@ -393,13 +587,16 @@ const BookingPage = () => {
                       You don't have any pets registered yet. Add pets to your profile to book services.
                     </p>
                     <Button asChild variant="outline">
-                      <Link to="/client/pets">Add a Pet</Link>
+                      <Link to="/portal/pets">Add a Pet</Link>
                     </Button>
                   </div>
                 ) : (
                   <>
                     <p className="text-muted-foreground">
-                      Select one or more pets for this booking. Each pet will have their own reservation.
+                      {isGrooming 
+                        ? "Select the pet for this grooming appointment."
+                        : "Select one or more pets for this booking. Each pet will have their own reservation."
+                      }
                     </p>
                     <div className="grid gap-3">
                       {pets.map((pet) => {
@@ -420,10 +617,12 @@ const BookingPage = () => {
                             }`}
                           >
                             <div className="flex items-center gap-3 flex-1">
-                              <Checkbox
-                                checked={isSelected}
-                                className="pointer-events-none"
-                              />
+                              {!isGrooming && (
+                                <Checkbox
+                                  checked={isSelected}
+                                  className="pointer-events-none"
+                                />
+                              )}
                               {pet.photo_url ? (
                                 <img 
                                   src={pet.photo_url} 
@@ -450,7 +649,7 @@ const BookingPage = () => {
                       })}
                     </div>
 
-                    {bookingData.selectedPets.length > 0 && (
+                    {bookingData.selectedPets.length > 0 && !isGrooming && (
                       <div className="bg-accent/20 rounded-xl p-4 text-sm text-foreground">
                         <strong>{bookingData.selectedPets.length}</strong> pet{bookingData.selectedPets.length > 1 ? 's' : ''} selected
                         {bookingData.selectedPets.length > 1 && (
@@ -465,8 +664,179 @@ const BookingPage = () => {
               </motion.div>
             )}
 
-            {/* Step 3: Date & Time */}
-            {step === 3 && (
+            {/* Step 3: Groomer Selection (Grooming only) */}
+            {step === 3 && isGrooming && (
+              <motion.div
+                key="step3-groomer"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
+              >
+                <h2 className="font-display text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
+                  <Scissors className="w-5 h-5 text-primary" />
+                  Select Your Groomer
+                </h2>
+                <p className="text-muted-foreground">
+                  Choose a specific groomer or let us match you with the first available.
+                </p>
+                <GroomerSelector
+                  groomers={groomers}
+                  selectedGroomerId={bookingData.selectedGroomerId}
+                  onSelect={handleGroomerSelect}
+                  loading={loadingGroomers}
+                />
+              </motion.div>
+            )}
+
+            {/* Step 4: Calendar (Grooming only) */}
+            {step === 4 && isGrooming && (
+              <motion.div
+                key="step4-calendar"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
+              >
+                <h2 className="font-display text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-primary" />
+                  Select a Date
+                </h2>
+                <p className="text-muted-foreground">
+                  {bookingData.selectedGroomerId 
+                    ? `Showing availability for ${groomers.find(g => g.id === bookingData.selectedGroomerId)?.name}`
+                    : "Showing dates when any groomer is available"
+                  }
+                </p>
+                <GroomingCalendar
+                  selectedGroomerId={bookingData.selectedGroomerId}
+                  groomers={groomers}
+                  schedules={groomerSchedules}
+                  selectedDate={bookingData.groomingDate}
+                  onSelectDate={handleGroomingDateSelect}
+                  existingReservations={existingGroomingReservations}
+                />
+              </motion.div>
+            )}
+
+            {/* Step 5: Time Slots (Grooming only) */}
+            {step === 5 && isGrooming && (
+              <motion.div
+                key="step5-time"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
+              >
+                <h2 className="font-display text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-primary" />
+                  Select a Time
+                </h2>
+                {bookingData.groomingDate && (
+                  <GroomingTimeSlots
+                    selectedDate={bookingData.groomingDate}
+                    selectedGroomerId={bookingData.selectedGroomerId}
+                    groomers={groomers}
+                    schedules={groomerSchedules}
+                    selectedTime={bookingData.groomingTime}
+                    onSelectTime={handleGroomingTimeSelect}
+                    existingReservations={existingGroomingReservations}
+                  />
+                )}
+              </motion.div>
+            )}
+
+            {/* Step 6: Confirmation (Grooming) */}
+            {step === 6 && isGrooming && (
+              <motion.div
+                key="step6-confirm-grooming"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
+              >
+                <h2 className="font-display text-xl font-semibold text-foreground mb-6">
+                  Review Your Appointment
+                </h2>
+
+                <div className="bg-card rounded-2xl border border-border p-6 space-y-4">
+                  {/* Pet */}
+                  <div className="flex items-center gap-3 pb-4 border-b border-border">
+                    {bookingData.selectedPets[0]?.photo_url ? (
+                      <img 
+                        src={bookingData.selectedPets[0].photo_url} 
+                        alt={bookingData.selectedPets[0].name} 
+                        className="w-12 h-12 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                        <Dog className="w-6 h-6 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div>
+                      <span className="font-semibold text-foreground">{bookingData.selectedPets[0]?.name}</span>
+                      {bookingData.selectedPets[0]?.breed && (
+                        <span className="text-muted-foreground text-sm ml-2">• {bookingData.selectedPets[0].breed}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Service */}
+                  <div className="flex justify-between items-center pb-4 border-b border-border">
+                    <span className="text-muted-foreground">Service</span>
+                    <span className="font-semibold text-foreground">Grooming</span>
+                  </div>
+
+                  {/* Groomer */}
+                  <div className="flex justify-between items-center pb-4 border-b border-border">
+                    <span className="text-muted-foreground">Groomer</span>
+                    <div className="flex items-center gap-2">
+                      {bookingData.selectedGroomerId ? (
+                        <>
+                          <div 
+                            className="w-6 h-6 rounded-full flex items-center justify-center"
+                            style={{ backgroundColor: groomers.find(g => g.id === bookingData.selectedGroomerId)?.color || '#3b82f6' }}
+                          >
+                            <User className="w-3 h-3 text-white" />
+                          </div>
+                          <span className="font-semibold text-foreground">
+                            {groomers.find(g => g.id === bookingData.selectedGroomerId)?.name}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="font-semibold text-foreground">Any Available</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Date */}
+                  <div className="flex justify-between items-center pb-4 border-b border-border">
+                    <span className="text-muted-foreground">Date</span>
+                    <span className="font-semibold text-foreground">
+                      {bookingData.groomingDate && format(bookingData.groomingDate, "EEEE, MMMM d, yyyy")}
+                    </span>
+                  </div>
+
+                  {/* Time */}
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Time</span>
+                    <span className="font-semibold text-foreground">{bookingData.groomingTime}</span>
+                  </div>
+                </div>
+
+                <div className="bg-accent/20 rounded-2xl p-6 text-center">
+                  <p className="text-foreground mb-2">
+                    Your appointment request will be sent to our team
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    You'll receive a confirmation once approved
+                  </p>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Step 3: Date & Time (Non-grooming services) */}
+            {step === 3 && !isGrooming && (
               <motion.div
                 key="step3"
                 initial={{ opacity: 0, x: 20 }}
@@ -678,8 +1048,8 @@ const BookingPage = () => {
               </motion.div>
             )}
 
-            {/* Final Step: Confirmation */}
-            {((step === 4 && !needsCreditsStep) || (step === 5 && needsCreditsStep)) && (
+            {/* Final Step: Confirmation (Non-grooming) */}
+            {((step === 4 && !needsCreditsStep && !isGrooming) || (step === 5 && needsCreditsStep)) && (
               <motion.div
                 key="step-confirm"
                 initial={{ opacity: 0, x: 20 }}
@@ -810,6 +1180,22 @@ const BookingPage = () => {
               >
                 Continue
                 <ArrowRight className="w-5 h-5" />
+              </Button>
+            ) : isGrooming ? (
+              <Button 
+                variant="hero" 
+                size="lg"
+                onClick={handleSubmitGroomingReservation}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    Request Appointment
+                    <ArrowRight className="w-5 h-5" />
+                  </>
+                )}
               </Button>
             ) : (
               <Button variant="hero" size="lg">
