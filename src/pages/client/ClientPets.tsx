@@ -23,7 +23,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Dog, Syringe, Plus, Pencil, Loader2, Pill, UtensilsCrossed } from 'lucide-react';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { Dog, Syringe, Plus, Pencil, Loader2, ChevronDown } from 'lucide-react';
 import { ClientPortalLayout } from '@/components/client/ClientPortalLayout';
 import { useToast } from '@/hooks/use-toast';
 import { VaccinationUpload } from '@/components/client/VaccinationUpload';
@@ -292,84 +297,97 @@ const ClientPets = () => {
             {pets && pets.length > 0 ? (
               <div className="space-y-4">
                 {pets.map((pet) => (
-                  <div
-                    key={pet.id}
-                    className="p-4 rounded-lg border bg-muted/30"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <PetPhotoUpload
-                          petId={pet.id}
-                          petName={pet.name}
-                          photoUrl={pet.photo_url}
-                          onUploadComplete={fetchClientData}
-                          size="md"
-                        />
-                        <div>
-                          <p className="font-semibold">{pet.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {pet.breed || 'Unknown breed'}
-                          </p>
+                  <Collapsible key={pet.id}>
+                    <div className="rounded-lg border bg-muted/30 overflow-hidden">
+                      {/* Collapsed Header - Always Visible */}
+                      <div className="flex items-center justify-between p-4">
+                        <div className="flex items-center gap-3">
+                          <PetPhotoUpload
+                            petId={pet.id}
+                            petName={pet.name}
+                            photoUrl={pet.photo_url}
+                            onUploadComplete={fetchClientData}
+                            size="md"
+                          />
+                          <div>
+                            <p className="font-semibold">{pet.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {pet.breed || 'Unknown breed'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => openEditPet(pet)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <CollapsibleTrigger asChild>
+                            <Button size="sm" variant="ghost">
+                              <ChevronDown className="h-4 w-4 transition-transform duration-200 [&[data-state=open]>svg]:rotate-180" />
+                              <span className="sr-only">Toggle details</span>
+                            </Button>
+                          </CollapsibleTrigger>
                         </div>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => openEditPet(pet)}
-                        className="gap-1"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+
+                      {/* Expandable Content */}
+                      <CollapsibleContent>
+                        <div className="px-4 pb-4 space-y-4">
+                          <Separator />
+
+                          {/* Vaccination Records */}
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground mb-3 flex items-center gap-1">
+                              <Syringe className="h-3 w-3" />
+                              Vaccination Records
+                            </p>
+                            <div className="grid gap-3">
+                              <VaccinationUpload
+                                petId={pet.id}
+                                vaccinationType="rabies"
+                                vaccinationDate={pet.vaccination_rabies}
+                                documentUrl={pet.vaccination_rabies_doc_url || null}
+                                onUploadComplete={fetchClientData}
+                              />
+                              <VaccinationUpload
+                                petId={pet.id}
+                                vaccinationType="bordetella"
+                                vaccinationDate={pet.vaccination_bordetella}
+                                documentUrl={pet.vaccination_bordetella_doc_url || null}
+                                onUploadComplete={fetchClientData}
+                              />
+                              <VaccinationUpload
+                                petId={pet.id}
+                                vaccinationType="distemper"
+                                vaccinationDate={pet.vaccination_distemper}
+                                documentUrl={pet.vaccination_distemper_doc_url || null}
+                                onUploadComplete={fetchClientData}
+                              />
+                            </div>
+                          </div>
+
+                          <Separator />
+
+                          {/* Medications & Feeding Section */}
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <PetMedicationsManager
+                              petId={pet.id}
+                              petName={pet.name}
+                              onUpdate={fetchClientData}
+                            />
+                            <PetFeedingManager
+                              petId={pet.id}
+                              petName={pet.name}
+                              onUpdate={fetchClientData}
+                            />
+                          </div>
+                        </div>
+                      </CollapsibleContent>
                     </div>
-
-                    <Separator className="my-3" />
-
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-3 flex items-center gap-1">
-                        <Syringe className="h-3 w-3" />
-                        Vaccination Records
-                      </p>
-                      <div className="grid gap-3">
-                        <VaccinationUpload
-                          petId={pet.id}
-                          vaccinationType="rabies"
-                          vaccinationDate={pet.vaccination_rabies}
-                          documentUrl={pet.vaccination_rabies_doc_url || null}
-                          onUploadComplete={fetchClientData}
-                        />
-                        <VaccinationUpload
-                          petId={pet.id}
-                          vaccinationType="bordetella"
-                          vaccinationDate={pet.vaccination_bordetella}
-                          documentUrl={pet.vaccination_bordetella_doc_url || null}
-                          onUploadComplete={fetchClientData}
-                        />
-                        <VaccinationUpload
-                          petId={pet.id}
-                          vaccinationType="distemper"
-                          vaccinationDate={pet.vaccination_distemper}
-                          documentUrl={pet.vaccination_distemper_doc_url || null}
-                          onUploadComplete={fetchClientData}
-                        />
-                      </div>
-                    </div>
-
-                    <Separator className="my-3" />
-
-                    {/* Medications & Feeding Section */}
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <PetMedicationsManager
-                        petId={pet.id}
-                        petName={pet.name}
-                        onUpdate={fetchClientData}
-                      />
-                      <PetFeedingManager
-                        petId={pet.id}
-                        petName={pet.name}
-                        onUpdate={fetchClientData}
-                      />
-                    </div>
-                  </div>
+                  </Collapsible>
                 ))}
               </div>
             ) : (
