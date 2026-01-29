@@ -29,7 +29,8 @@ import {
   XCircle,
   Loader2,
   Dog,
-  Tags
+  Tags,
+  DollarSign
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { PetTraitBadges, type PetTrait } from './PetTraitBadges';
@@ -60,6 +61,7 @@ export interface ControlCenterReservation {
   daycare_credits: number;
   half_daycare_credits: number;
   boarding_credits: number;
+  payment_pending: boolean;
 }
 
 type TabValue = 'expected' | 'going_home' | 'checked_in' | 'requested';
@@ -404,6 +406,16 @@ export function ControlCenterTable({
                             <span className="text-muted-foreground text-sm">
                               ({reservation.pet_breed})
                             </span>
+                          )}
+                          {/* Payment Pending Badge */}
+                          {reservation.payment_pending && (
+                            <Badge 
+                              variant="outline" 
+                              className="ml-1 bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900 dark:text-amber-200 dark:border-amber-700 text-xs px-1.5 py-0"
+                            >
+                              <DollarSign className="h-3 w-3 mr-0.5" />
+                              Pay
+                            </Badge>
                           )}
                         </div>
                         {/* Show days since last reservation for Requested tab */}

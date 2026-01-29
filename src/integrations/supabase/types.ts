@@ -832,6 +832,7 @@ export type Database = {
           groomer_id: string | null
           id: string
           notes: string | null
+          payment_pending: boolean
           pet_id: string
           price: number | null
           service_type: Database["public"]["Enums"]["service_type"]
@@ -852,6 +853,7 @@ export type Database = {
           groomer_id?: string | null
           id?: string
           notes?: string | null
+          payment_pending?: boolean
           pet_id: string
           price?: number | null
           service_type: Database["public"]["Enums"]["service_type"]
@@ -872,6 +874,7 @@ export type Database = {
           groomer_id?: string | null
           id?: string
           notes?: string | null
+          payment_pending?: boolean
           pet_id?: string
           price?: number | null
           service_type?: Database["public"]["Enums"]["service_type"]

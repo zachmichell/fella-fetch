@@ -66,6 +66,7 @@ const StaffDashboard = () => {
           checked_in_at,
           checked_out_at,
           notes,
+          payment_pending,
           pets (
             id,
             name,
@@ -129,6 +130,7 @@ const StaffDashboard = () => {
         daycare_credits: r.pets?.clients?.daycare_credits ?? 0,
         half_daycare_credits: r.pets?.clients?.half_daycare_credits ?? 0,
         boarding_credits: r.pets?.clients?.boarding_credits ?? 0,
+        payment_pending: r.payment_pending || false,
       })) || [];
 
       setReservations(formattedReservations);
