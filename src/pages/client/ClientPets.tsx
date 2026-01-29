@@ -23,9 +23,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Dog, Syringe, AlertCircle, Plus, Pencil, Loader2 } from 'lucide-react';
+import { Dog, Syringe, AlertCircle, Plus, Pencil, Loader2, FileText } from 'lucide-react';
 import { ClientPortalLayout } from '@/components/client/ClientPortalLayout';
 import { useToast } from '@/hooks/use-toast';
+import { VaccinationUpload } from '@/components/client/VaccinationUpload';
 
 interface Pet {
   id: string;
@@ -38,6 +39,9 @@ interface Pet {
   vaccination_rabies: string | null;
   vaccination_bordetella: string | null;
   vaccination_distemper: string | null;
+  vaccination_rabies_doc_url?: string | null;
+  vaccination_bordetella_doc_url?: string | null;
+  vaccination_distemper_doc_url?: string | null;
   photo_url: string | null;
 }
 
@@ -314,41 +318,32 @@ const ClientPets = () => {
                     <Separator className="my-3" />
 
                     <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                      <p className="text-xs font-medium text-muted-foreground mb-3 flex items-center gap-1">
                         <Syringe className="h-3 w-3" />
-                        Vaccinations
+                        Vaccination Records
                       </p>
-                      <div className="flex flex-wrap gap-2">
-                        <Badge
-                          variant="outline"
-                          className={isVaccinationExpired(pet.vaccination_rabies)
-                            ? 'border-destructive text-destructive'
-                            : 'border-green-500 text-green-600'}
-                        >
-                          Rabies {isVaccinationExpired(pet.vaccination_rabies) && (
-                            <AlertCircle className="h-3 w-3 ml-1" />
-                          )}
-                        </Badge>
-                        <Badge
-                          variant="outline"
-                          className={isVaccinationExpired(pet.vaccination_bordetella)
-                            ? 'border-destructive text-destructive'
-                            : 'border-green-500 text-green-600'}
-                        >
-                          Bordetella {isVaccinationExpired(pet.vaccination_bordetella) && (
-                            <AlertCircle className="h-3 w-3 ml-1" />
-                          )}
-                        </Badge>
-                        <Badge
-                          variant="outline"
-                          className={isVaccinationExpired(pet.vaccination_distemper)
-                            ? 'border-destructive text-destructive'
-                            : 'border-green-500 text-green-600'}
-                        >
-                          DHPP {isVaccinationExpired(pet.vaccination_distemper) && (
-                            <AlertCircle className="h-3 w-3 ml-1" />
-                          )}
-                        </Badge>
+                      <div className="grid gap-3">
+                        <VaccinationUpload
+                          petId={pet.id}
+                          vaccinationType="rabies"
+                          vaccinationDate={pet.vaccination_rabies}
+                          documentUrl={pet.vaccination_rabies_doc_url || null}
+                          onUploadComplete={fetchClientData}
+                        />
+                        <VaccinationUpload
+                          petId={pet.id}
+                          vaccinationType="bordetella"
+                          vaccinationDate={pet.vaccination_bordetella}
+                          documentUrl={pet.vaccination_bordetella_doc_url || null}
+                          onUploadComplete={fetchClientData}
+                        />
+                        <VaccinationUpload
+                          petId={pet.id}
+                          vaccinationType="distemper"
+                          vaccinationDate={pet.vaccination_distemper}
+                          documentUrl={pet.vaccination_distemper_doc_url || null}
+                          onUploadComplete={fetchClientData}
+                        />
                       </div>
                     </div>
                   </div>

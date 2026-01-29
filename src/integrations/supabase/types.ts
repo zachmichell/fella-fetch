@@ -373,8 +373,11 @@ export type Database = {
           special_needs: string | null
           updated_at: string
           vaccination_bordetella: string | null
+          vaccination_bordetella_doc_url: string | null
           vaccination_distemper: string | null
+          vaccination_distemper_doc_url: string | null
           vaccination_rabies: string | null
+          vaccination_rabies_doc_url: string | null
           weight: number | null
         }
         Insert: {
@@ -394,8 +397,11 @@ export type Database = {
           special_needs?: string | null
           updated_at?: string
           vaccination_bordetella?: string | null
+          vaccination_bordetella_doc_url?: string | null
           vaccination_distemper?: string | null
+          vaccination_distemper_doc_url?: string | null
           vaccination_rabies?: string | null
+          vaccination_rabies_doc_url?: string | null
           weight?: number | null
         }
         Update: {
@@ -415,8 +421,11 @@ export type Database = {
           special_needs?: string | null
           updated_at?: string
           vaccination_bordetella?: string | null
+          vaccination_bordetella_doc_url?: string | null
           vaccination_distemper?: string | null
+          vaccination_distemper_doc_url?: string | null
           vaccination_rabies?: string | null
+          vaccination_rabies_doc_url?: string | null
           weight?: number | null
         }
         Relationships: [
