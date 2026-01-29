@@ -22,7 +22,24 @@ interface PendingRequest {
   groomer_id: string | null;
   groomer_name: string | null;
   notes: string | null;
+  groomType: string | null;
+  groomService: string | null;
 }
+
+const parseGroomingNotes = (notes: string | null): { groomType: string | null; groomService: string | null } => {
+  if (!notes) return { groomType: null, groomService: null };
+  
+  let groomType: string | null = null;
+  let groomService: string | null = null;
+  
+  const groomTypeMatch = notes.match(/Groom Type:\s*([^\n|]+)/);
+  if (groomTypeMatch) groomType = groomTypeMatch[1].trim();
+  
+  const serviceMatch = notes.match(/Service:\s*([^\n|]+)/);
+  if (serviceMatch) groomService = serviceMatch[1].trim();
+  
+  return { groomType, groomService };
+};
 
 interface PendingGroomingRequestsProps {
   groomers?: { id: string; name: string; color: string | null }[];
@@ -64,23 +81,28 @@ export const PendingGroomingRequests = ({ groomers }: PendingGroomingRequestsPro
 
       if (error) throw error;
 
-      return data.map((r: any) => ({
-        id: r.id,
-        pet_id: r.pet_id,
-        pet_name: r.pets?.name || 'Unknown',
-        pet_breed: r.pets?.breed,
-        client_name: r.pets?.clients
-          ? `${r.pets.clients.first_name} ${r.pets.clients.last_name}`
-          : 'Unknown',
-        start_date: r.start_date,
-        start_time: r.start_time,
-        end_time: r.end_time,
-        groomer_id: r.groomer_id,
-        groomer_name: r.groomer_id
-          ? groomers?.find((g) => g.id === r.groomer_id)?.name || null
-          : null,
-        notes: r.notes,
-      })) as PendingRequest[];
+      return data.map((r: any) => {
+        const { groomType, groomService } = parseGroomingNotes(r.notes);
+        return {
+          id: r.id,
+          pet_id: r.pet_id,
+          pet_name: r.pets?.name || 'Unknown',
+          pet_breed: r.pets?.breed,
+          client_name: r.pets?.clients
+            ? `${r.pets.clients.first_name} ${r.pets.clients.last_name}`
+            : 'Unknown',
+          start_date: r.start_date,
+          start_time: r.start_time,
+          end_time: r.end_time,
+          groomer_id: r.groomer_id,
+          groomer_name: r.groomer_id
+            ? groomers?.find((g) => g.id === r.groomer_id)?.name || null
+            : null,
+          notes: r.notes,
+          groomType,
+          groomService,
+        };
+      }) as PendingRequest[];
     },
   });
 
@@ -214,12 +236,12 @@ export const PendingGroomingRequests = ({ groomers }: PendingGroomingRequestsPro
                         Requested: {request.groomer_name}
                       </span>
                     )}
+                    {(request.groomService || request.groomType) && (
+                      <span className="font-medium text-foreground">
+                        {request.groomService}{request.groomType && ` — ${request.groomType}`}
+                      </span>
+                    )}
                   </div>
-                  {request.notes && (
-                    <p className="text-xs text-muted-foreground mt-1 italic">
-                      {request.notes}
-                    </p>
-                  )}
                 </div>
                 <div className="flex items-center gap-2 ml-4">
                   <Button
