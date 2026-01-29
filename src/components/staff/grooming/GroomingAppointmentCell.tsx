@@ -1,13 +1,28 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { GroomingAppointment } from '@/pages/staff/StaffGroomingCalendar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, User, CheckCircle, XCircle, GripVertical, Scissors, Sparkles } from 'lucide-react';
+import { MoreHorizontal, User, CheckCircle, XCircle, GripVertical, Scissors } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
+
+const parseGroomingNotes = (notes: string | null): { groomType: string | null; groomService: string | null } => {
+  if (!notes) return { groomType: null, groomService: null };
+  
+  let groomType: string | null = null;
+  let groomService: string | null = null;
+  
+  const groomTypeMatch = notes.match(/Groom Type:\s*([^\n|]+)/);
+  if (groomTypeMatch) groomType = groomTypeMatch[1].trim();
+  
+  const serviceMatch = notes.match(/Service:\s*([^\n|]+)/);
+  if (serviceMatch) groomService = serviceMatch[1].trim();
+  
+  return { groomType, groomService };
+};
 
 interface GroomingAppointmentCellProps {
   appointment: GroomingAppointment;
@@ -25,6 +40,11 @@ export const GroomingAppointmentCell = ({
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [isDragging, setIsDragging] = useState(false);
+  
+  const { groomType, groomService } = useMemo(
+    () => parseGroomingNotes(appointment.notes),
+    [appointment.notes]
+  );
 
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData('application/json', JSON.stringify(appointment));
@@ -123,13 +143,20 @@ export const GroomingAppointmentCell = ({
           </div>
           <div className="text-xs text-muted-foreground truncate">{appointment.client_name}</div>
           
-          {/* Service type badge - one service per slot */}
-          <div className="mt-1">
-            <Badge variant="secondary" className="text-xs py-0 gap-1">
-              <Scissors className="h-3 w-3" />
-              Grooming
-            </Badge>
-          </div>
+          {/* Groom type display */}
+          {(groomService || groomType) ? (
+            <div className="mt-1 text-xs text-muted-foreground truncate">
+              <span className="font-medium text-foreground">{groomType || groomService}</span>
+              {groomService && groomType && <span className="text-muted-foreground"> ({groomService})</span>}
+            </div>
+          ) : (
+            <div className="mt-1">
+              <Badge variant="secondary" className="text-xs py-0 gap-1">
+                <Scissors className="h-3 w-3" />
+                Grooming
+              </Badge>
+            </div>
+          )}
         </div>
 
         <DropdownMenu>
