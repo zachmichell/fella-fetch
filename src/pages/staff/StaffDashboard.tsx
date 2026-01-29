@@ -70,6 +70,7 @@ const StaffDashboard = () => {
             id,
             name,
             breed,
+            photo_url,
             clients (
               id,
               first_name,
@@ -110,6 +111,7 @@ const StaffDashboard = () => {
         pet_id: r.pets?.id || r.pet_id,
         pet_name: r.pets?.name || 'Unknown',
         pet_breed: r.pets?.breed || null,
+        pet_photo_url: r.pets?.photo_url || null,
         pet_traits: traitsMap[r.pets?.id] || [],
         client_id: r.pets?.clients?.id || '',
         client_name: r.pets?.clients 
