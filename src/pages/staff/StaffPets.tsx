@@ -49,12 +49,14 @@ import {
   User,
   Clock,
   ChevronRight,
-  X
+  X,
+  Scissors
 } from 'lucide-react';
 import { format, differenceInYears, differenceInMonths } from 'date-fns';
 import { PetTraitsSection } from '@/components/staff/PetTraitsSection';
 import { StaffVaccinationEditor } from '@/components/staff/StaffVaccinationEditor';
 import { StaffPetCareLogger } from '@/components/staff/StaffPetCareLogger';
+import { PetGroomingPreferencesEditor } from '@/components/staff/grooming/PetGroomingPreferencesEditor';
 interface Pet {
   id: string;
   name: string;
@@ -77,6 +79,10 @@ interface Pet {
   is_active: boolean | null;
   created_at: string;
   client_id: string;
+  grooming_product_id: string | null;
+  grooming_product_title: string | null;
+  grooming_frequency: string | null;
+  last_grooming_date: string | null;
   client: {
     id: string;
     first_name: string;
@@ -762,6 +768,33 @@ const StaffPets = () => {
 
                     {/* Pet Traits */}
                     <PetTraitsSection petId={selectedPet.id} petName={selectedPet.name} />
+
+                    {/* Grooming Preferences */}
+                    <Card>
+                      <CardHeader className="py-3">
+                        <CardTitle className="text-sm font-medium flex items-center gap-2">
+                          <Scissors className="h-4 w-4" /> Grooming Preferences
+                        </CardTitle>
+                        <CardDescription className="text-xs">
+                          Set recommended groom type and frequency for this pet
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="py-3">
+                        <PetGroomingPreferencesEditor
+                          petId={selectedPet.id}
+                          petName={selectedPet.name}
+                          onSaved={() => fetchPets()}
+                        />
+                        {selectedPet.last_grooming_date && (
+                          <div className="mt-4 pt-4 border-t">
+                            <p className="text-sm text-muted-foreground">Last Groomed</p>
+                            <p className="font-medium">
+                              {format(new Date(selectedPet.last_grooming_date), 'MMMM d, yyyy')}
+                            </p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
 
                     {/* Medications & Feeding Care Logger */}
                     <StaffPetCareLogger petId={selectedPet.id} petName={selectedPet.name} />
