@@ -52,7 +52,8 @@ const StaffDashboard = () => {
     const today = format(new Date(), 'yyyy-MM-dd');
 
     try {
-      const { data, error } = await supabase
+      // Fetch today's reservations (for Expected, Check-In, Going Home tabs)
+      const { data: todayData, error: todayError } = await supabase
         .from('reservations')
         .select(`
           id,
@@ -86,7 +87,47 @@ const StaffDashboard = () => {
         .neq('status', 'cancelled')
         .order('start_time', { ascending: true });
 
-      if (error) throw error;
+      if (todayError) throw todayError;
+
+      // Fetch all pending reservations (for Requested tab - any date)
+      const { data: pendingData, error: pendingError } = await supabase
+        .from('reservations')
+        .select(`
+          id,
+          pet_id,
+          service_type,
+          status,
+          start_date,
+          end_date,
+          start_time,
+          end_time,
+          checked_in_at,
+          checked_out_at,
+          notes,
+          payment_pending,
+          pets (
+            id,
+            name,
+            breed,
+            photo_url,
+            clients (
+              id,
+              first_name,
+              last_name,
+              daycare_credits,
+              half_daycare_credits,
+              boarding_credits
+            )
+          )
+        `)
+        .eq('status', 'pending')
+        .neq('start_date', today) // Exclude today's pending (already in todayData)
+        .order('start_date', { ascending: true });
+
+      if (pendingError) throw pendingError;
+
+      // Combine both datasets
+      const data = [...(todayData || []), ...(pendingData || [])];
 
       // Fetch pet traits for all pets in today's reservations
       const petIds = [...new Set(data?.map((r: any) => r.pets?.id).filter(Boolean) || [])];
