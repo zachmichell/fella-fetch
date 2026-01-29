@@ -9,19 +9,21 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 
-const parseGroomingNotes = (notes: string | null): { groomType: string | null; groomService: string | null } => {
-  if (!notes) return { groomType: null, groomService: null };
+const parseGroomingNotes = (notes: string | null): { productTitle: string | null; variantTitle: string | null } => {
+  if (!notes) return { productTitle: null, variantTitle: null };
   
-  let groomType: string | null = null;
-  let groomService: string | null = null;
+  let productTitle: string | null = null;
+  let variantTitle: string | null = null;
   
-  const groomTypeMatch = notes.match(/Groom Type:\s*([^\n|]+)/);
-  if (groomTypeMatch) groomType = groomTypeMatch[1].trim();
-  
+  // Parse "Service: Product Title" format
   const serviceMatch = notes.match(/Service:\s*([^\n|]+)/);
-  if (serviceMatch) groomService = serviceMatch[1].trim();
+  if (serviceMatch) productTitle = serviceMatch[1].trim();
   
-  return { groomType, groomService };
+  // Parse "Groom Type: Variant Title" format  
+  const groomTypeMatch = notes.match(/Groom Type:\s*([^\n|]+)/);
+  if (groomTypeMatch) variantTitle = groomTypeMatch[1].trim();
+  
+  return { productTitle, variantTitle };
 };
 
 interface GroomingAppointmentCellProps {
@@ -41,7 +43,7 @@ export const GroomingAppointmentCell = ({
   const { toast } = useToast();
   const [isDragging, setIsDragging] = useState(false);
   
-  const { groomType, groomService } = useMemo(
+  const { productTitle, variantTitle } = useMemo(
     () => parseGroomingNotes(appointment.notes),
     [appointment.notes]
   );
@@ -143,11 +145,15 @@ export const GroomingAppointmentCell = ({
           </div>
           <div className="text-xs text-muted-foreground truncate">{appointment.client_name}</div>
           
-          {/* Groom type display */}
-          {(groomService || groomType) ? (
-            <div className="mt-1 text-xs text-muted-foreground truncate">
-              <span className="font-medium text-foreground">{groomType || groomService}</span>
-              {groomService && groomType && <span className="text-muted-foreground"> ({groomService})</span>}
+          {/* Product and variant display */}
+          {(productTitle || variantTitle) ? (
+            <div className="mt-1 space-y-0.5">
+              {productTitle && (
+                <div className="text-xs font-medium text-foreground truncate">{productTitle}</div>
+              )}
+              {variantTitle && (
+                <div className="text-xs text-muted-foreground truncate">{variantTitle}</div>
+              )}
             </div>
           ) : (
             <div className="mt-1">
