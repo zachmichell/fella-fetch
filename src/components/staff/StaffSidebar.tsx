@@ -9,6 +9,7 @@ import {
   BarChart3, 
   Settings,
   LogOut,
+  HeartPulse,
   UserCog,
   Sparkles,
   ShoppingBag,
@@ -43,6 +44,7 @@ const mainNavItems = [
 ];
 
 const operationsItems = [
+  { title: 'Pet Care', url: '/staff/pet-care', icon: HeartPulse },
   { title: 'Report Cards', url: '/staff/report-cards', icon: ClipboardList },
   { title: 'Trait Templates', url: '/staff/trait-templates', icon: Sparkles },
   { title: 'Time Clock', url: '/staff/time-clock', icon: Clock },

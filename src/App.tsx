@@ -39,6 +39,7 @@ import StaffServiceTypes from "./pages/staff/StaffServiceTypes";
 import StaffSettings from "./pages/staff/StaffSettings";
 import StaffSuites from "./pages/staff/StaffSuites";
 import StaffGroomers from "./pages/staff/StaffGroomers";
+import StaffPetCare from "./pages/staff/StaffPetCare";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +76,7 @@ const App = () => (
               <Route path="/staff/clients" element={<StaffClients />} />
               <Route path="/staff/pets" element={<StaffPets />} />
               <Route path="/staff/report-cards" element={<StaffReportCards />} />
+              <Route path="/staff/pet-care" element={<StaffPetCare />} />
               <Route path="/staff/time-clock" element={<StaffTimeClock />} />
               <Route path="/staff/analytics" element={<StaffAnalytics />} />
               <Route path="/staff/users" element={<StaffUsers />} />
