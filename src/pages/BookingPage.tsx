@@ -1251,13 +1251,23 @@ const BookingPage = () => {
                   </div>
 
                   {/* Time */}
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center pb-4 border-b border-border">
                     <span className="text-muted-foreground">Time</span>
                     <span className="font-semibold text-foreground">
                       {bookingData.groomingTime}
                       {bookingData.groomingEndTime && ` – ${bookingData.groomingEndTime}`}
                     </span>
                   </div>
+
+                  {/* Total */}
+                  {bookingData.selectedGroomingVariant && (
+                    <div className="flex justify-between items-center pt-2">
+                      <span className="text-lg font-semibold text-foreground">Total</span>
+                      <span className="text-xl font-bold text-primary">
+                        ${parseFloat(bookingData.selectedGroomingVariant.price).toFixed(2)}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="bg-accent/20 rounded-2xl p-6 text-center">
