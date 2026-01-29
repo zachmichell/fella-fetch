@@ -237,7 +237,7 @@ const BookingPage = () => {
     fetchServiceDuration();
   }, [bookingData.service, bookingData.selectedGroomerId, bookingData.selectedGroomingService]);
 
-  // Fetch grooming services when grooming is selected
+  // Fetch grooming services from Shopify collection mapped to "services" category (GROOM collection)
   useEffect(() => {
     const fetchGroomingServices = async () => {
       if (bookingData.service !== "grooming") {
@@ -247,26 +247,73 @@ const BookingPage = () => {
 
       setLoadingGroomingServices(true);
       try {
-        // Fetch grooming service mappings from shopify_service_mappings
-        const { data, error } = await supabase
-          .from("shopify_service_mappings")
-          .select("id, shopify_product_id, shopify_product_title")
-          .eq("service_type", "grooming");
+        // First, get the collection mapping for grooming services
+        const { data: collectionMappings, error: mappingError } = await supabase
+          .from("shopify_collection_mappings")
+          .select("shopify_collection_id, shopify_collection_title")
+          .eq("category", "services");
 
-        if (error) throw error;
+        if (mappingError) throw mappingError;
 
-        const services: GroomingService[] = (data || []).map(item => ({
-          id: item.id,
-          shopify_product_id: item.shopify_product_id,
-          shopify_product_title: item.shopify_product_title,
-        }));
+        if (!collectionMappings || collectionMappings.length === 0) {
+          console.log("No grooming collection mapped");
+          setGroomingServices([]);
+          return;
+        }
 
-        setGroomingServices(services);
+        // Fetch products from the mapped Shopify collection(s)
+        const allServices: GroomingService[] = [];
+        
+        for (const mapping of collectionMappings) {
+          // Query products in this collection using the collection ID
+          const COLLECTION_PRODUCTS_QUERY = `
+            query GetCollectionProducts($id: ID!) {
+              collection(id: $id) {
+                products(first: 50) {
+                  edges {
+                    node {
+                      id
+                      title
+                      priceRange {
+                        minVariantPrice {
+                          amount
+                          currencyCode
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          `;
+
+          const collectionGid = `gid://shopify/Collection/${mapping.shopify_collection_id}`;
+          const response = await storefrontApiRequest(COLLECTION_PRODUCTS_QUERY, { id: collectionGid });
+          
+          if (response?.data?.collection?.products?.edges) {
+            const products = response.data.collection.products.edges;
+            for (const edge of products) {
+              const product = edge.node;
+              // Extract numeric ID from gid://shopify/Product/123456
+              const productIdMatch = product.id.match(/Product\/(\d+)/);
+              const numericId = productIdMatch ? productIdMatch[1] : product.id;
+              
+              allServices.push({
+                id: numericId,
+                shopify_product_id: numericId,
+                shopify_product_title: product.title,
+                price: product.priceRange?.minVariantPrice?.amount,
+              });
+            }
+          }
+        }
+
+        setGroomingServices(allServices);
 
         // Pre-select the pet's recommended service if available
         const selectedPet = bookingData.selectedPets[0];
         if (selectedPet?.grooming_product_id && !bookingData.selectedGroomingService) {
-          const recommendedService = services.find(
+          const recommendedService = allServices.find(
             s => s.shopify_product_id === selectedPet.grooming_product_id
           );
           if (recommendedService) {
