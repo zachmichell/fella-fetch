@@ -964,10 +964,17 @@ const BookingPage = () => {
                                 <Scissors className="w-5 h-5" />
                               </div>
                               <div>
-                                <span className="font-medium text-foreground">{service.shopify_product_title}</span>
-                                {isRecommended && (
-                                  <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-primary/10 text-primary rounded-full">
-                                    Recommended
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-foreground">{service.shopify_product_title}</span>
+                                  {isRecommended && (
+                                    <span className="px-2 py-0.5 text-xs font-medium bg-primary/10 text-primary rounded-full">
+                                      Recommended
+                                    </span>
+                                  )}
+                                </div>
+                                {service.price && (
+                                  <span className="text-sm text-muted-foreground">
+                                    ${parseFloat(service.price).toFixed(2)}
                                   </span>
                                 )}
                               </div>
