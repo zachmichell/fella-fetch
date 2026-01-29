@@ -182,19 +182,24 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
           // Check if token is expired
           if (new Date(session.expiresAt) > new Date()) {
             // Verify token is still valid with Shopify
-            const { data, error } = await supabase.functions.invoke('shopify-customer-auth', {
+            const response = await supabase.functions.invoke('shopify-customer-auth', {
               body: { action: 'getCustomer', accessToken: session.accessToken },
             });
 
-            if (!error && data?.customer) {
+            // Check for error in response (401, invalid session, etc.)
+            if (response.error || response.data?.error) {
+              // Token invalid or expired on Shopify side, clear storage
+              console.log('Session invalid, clearing stored session');
+              localStorage.removeItem(STORAGE_KEY);
+            } else if (response.data?.customer) {
               setAccessToken(session.accessToken);
-              setShopifyCustomer(data.customer);
+              setShopifyCustomer(response.data.customer);
             } else {
-              // Token invalid, clear storage
+              // Unexpected response, clear storage
               localStorage.removeItem(STORAGE_KEY);
             }
           } else {
-            // Token expired, clear storage
+            // Token expired locally, clear storage
             localStorage.removeItem(STORAGE_KEY);
           }
         }
