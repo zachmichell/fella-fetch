@@ -60,13 +60,13 @@ export const PetGroomingPreferencesEditor = ({
     },
   });
 
-  // Fetch grooming products from Shopify
+  // Fetch grooming products from Shopify (same as GroomerDurationsDialog)
   const { data: groomingProducts, isLoading: loadingProducts } = useQuery({
     queryKey: ['grooming-products-shopify'],
     queryFn: async () => {
       const query = `
         query GetGroomProducts {
-          products(first: 50, query: "product_type:Groom") {
+          products(first: 100, query: "product_type:Groom") {
             edges {
               node {
                 id
@@ -92,14 +92,11 @@ export const PetGroomingPreferencesEditor = ({
       const response = await storefrontApiRequest(query, {});
       if (!response?.data?.products?.edges) return [];
 
-      // Filter to only actual grooming services (exclude tips, retail, etc.)
+      // Filter to only Groom/Grooming product types (same filter as GroomerDurationsDialog)
       return response.data.products.edges
         .filter((edge: any) => {
-          const title = edge.node.title.toLowerCase();
-          // Include products that are likely grooming services
-          return !title.includes('tip') && 
-                 !title.includes('brush') &&
-                 edge.node.productType?.toLowerCase() === 'groom';
+          const productType = edge.node.productType || '';
+          return productType === 'Groom' || productType === 'Grooming';
         })
         .map((edge: any) => ({
           id: edge.node.id,
