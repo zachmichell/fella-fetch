@@ -441,7 +441,7 @@ export function AddServiceDialog({
       const endMins = endMinutes % 60;
       const endTime = `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}:00`;
 
-      // Create grooming reservation
+      // Create grooming reservation linked to parent reservation
       const { error } = await supabase
         .from('reservations')
         .insert({
@@ -454,6 +454,7 @@ export function AddServiceDialog({
           groomer_id: selectedGroomer.id,
           price: parseFloat(selectedVariant.price),
           notes: `Service: ${selectedProduct.node.title} | Groom Type: ${selectedVariant.title}`,
+          parent_reservation_id: reservationId || null,
         });
 
       if (error) throw error;
