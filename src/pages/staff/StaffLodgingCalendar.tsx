@@ -8,11 +8,12 @@ import { LodgingPetDetailsDialog } from '@/components/staff/lodging/LodgingPetDe
 import { LodgingAssignSuiteDialog } from '@/components/staff/lodging/LodgingAssignSuiteDialog';
 import { CreateBoardingDialog } from '@/components/staff/lodging/CreateBoardingDialog';
 import { startOfWeek, startOfMonth, parseISO, format } from 'date-fns';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { X, Info } from 'lucide-react';
+import { toast } from 'sonner';
 
 export type ViewMode = 'weekly' | 'monthly';
 
@@ -33,6 +34,7 @@ export interface BoardingReservation {
 
 const StaffLodgingCalendar = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState<ViewMode>('weekly');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedReservation, setSelectedReservation] = useState<BoardingReservation | null>(null);
@@ -42,6 +44,7 @@ const StaffLodgingCalendar = () => {
   
   // Banner state for pending assignment from Control Center
   const [pendingAssignment, setPendingAssignment] = useState<BoardingReservation | null>(null);
+  const [isAssigning, setIsAssigning] = useState(false);
   
   // Create booking dialog state
   const [createBookingOpen, setCreateBookingOpen] = useState(false);
@@ -128,6 +131,35 @@ const StaffLodgingCalendar = () => {
     setSearchParams({});
   };
 
+  // Directly assign pending reservation to a suite (when clicking a cell)
+  const handleQuickAssignToSuite = async (suiteId: string, suiteName: string) => {
+    if (!pendingAssignment) return;
+    
+    setIsAssigning(true);
+    try {
+      const { error } = await supabase
+        .from('reservations')
+        .update({ suite_id: suiteId })
+        .eq('id', pendingAssignment.id);
+      
+      if (error) throw error;
+      
+      toast.success(`${pendingAssignment.pet_name} assigned to ${suiteName}`);
+      
+      // Clear pending assignment and URL params
+      setPendingAssignment(null);
+      setSearchParams({});
+      
+      // Refresh reservations data
+      queryClient.invalidateQueries({ queryKey: ['boarding-reservations'] });
+    } catch (error) {
+      console.error('Error assigning suite:', error);
+      toast.error('Failed to assign suite');
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
   // Clear URL params when assign dialog closes
   const handleAssignDialogClose = (open: boolean) => {
     setAssignSuiteOpen(open);
@@ -163,6 +195,14 @@ const StaffLodgingCalendar = () => {
   };
 
   const handleCreateBooking = (suiteId: string, date: Date) => {
+    // If there's a pending assignment, assign to this suite instead of creating new booking
+    if (pendingAssignment) {
+      const suiteName = suites?.find(s => s.id === suiteId)?.name || 'Suite';
+      handleQuickAssignToSuite(suiteId, suiteName);
+      return;
+    }
+    
+    // Otherwise, open the create booking dialog
     setCreateBookingSuiteId(suiteId);
     setCreateBookingDate(date);
     setCreateBookingOpen(true);
