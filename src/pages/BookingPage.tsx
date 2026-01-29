@@ -130,14 +130,38 @@ const BookingPage = () => {
         if (schedulesError) throw schedulesError;
         setGroomerSchedules(schedulesData || []);
 
-        // Fetch existing grooming reservations to check availability
+        // Fetch existing grooming reservations with pet/client info
         const { data: reservationsData } = await supabase
           .from("reservations")
-          .select("start_date, start_time, end_time, groomer_id")
+          .select(`
+            start_date, 
+            start_time, 
+            end_time, 
+            groomer_id,
+            pets:pet_id (
+              name,
+              clients:client_id (
+                first_name,
+                last_name
+              )
+            )
+          `)
           .eq("service_type", "grooming")
           .neq("status", "cancelled");
 
-        setExistingGroomingReservations(reservationsData || []);
+        // Transform to include pet_name and client_name
+        const transformedReservations = (reservationsData || []).map((r: any) => ({
+          start_date: r.start_date,
+          start_time: r.start_time,
+          end_time: r.end_time,
+          groomer_id: r.groomer_id,
+          pet_name: r.pets?.name || null,
+          client_name: r.pets?.clients 
+            ? `${r.pets.clients.first_name} ${r.pets.clients.last_name}` 
+            : null,
+        }));
+
+        setExistingGroomingReservations(transformedReservations);
       } catch (error) {
         console.error("Error fetching groomers:", error);
         toast.error("Failed to load groomers");

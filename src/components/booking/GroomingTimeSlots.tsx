@@ -1,6 +1,7 @@
 import { useMemo } from "react";
-import { Check, Clock } from "lucide-react";
-import { format, parse, addMinutes, isBefore, isAfter, setHours, setMinutes } from "date-fns";
+import { Check, Clock, User } from "lucide-react";
+import { format, parse, addMinutes, isBefore } from "date-fns";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface GroomerSchedule {
   groomer_id: string;
@@ -15,12 +16,14 @@ interface ExistingReservation {
   start_time: string | null;
   end_time: string | null;
   groomer_id: string | null;
+  pet_name?: string;
+  client_name?: string;
 }
 
 interface GroomingTimeSlotsProps {
   selectedDate: Date;
   selectedGroomerId: string | null;
-  groomers: { id: string; name: string }[];
+  groomers: { id: string; name: string; color?: string | null }[];
   schedules: GroomerSchedule[];
   selectedTime: string | null;
   onSelectTime: (time: string) => void;
@@ -39,6 +42,18 @@ export const GroomingTimeSlots = ({
   slotDurationMinutes = 60,
 }: GroomingTimeSlotsProps) => {
   const dayOfWeek = selectedDate.getDay();
+  const dateStr = format(selectedDate, "yyyy-MM-dd");
+
+  // Get reservations for this date with groomer info
+  const dayReservations = useMemo(() => {
+    return existingReservations
+      .filter((r) => r.start_date === dateStr)
+      .map((r) => ({
+        ...r,
+        groomerName: groomers.find(g => g.id === r.groomer_id)?.name || "Unknown",
+        groomerColor: groomers.find(g => g.id === r.groomer_id)?.color || "#6b7280",
+      }));
+  }, [existingReservations, dateStr, groomers]);
 
   // Generate time slots based on groomer availability
   const timeSlots = useMemo(() => {
@@ -73,7 +88,7 @@ export const GroomingTimeSlots = ({
 
     // Generate 15-minute interval slots
     const slots: string[] = [];
-    const baseDate = new Date(2000, 0, 1); // Arbitrary date for time calculations
+    const baseDate = new Date(2000, 0, 1);
     const start = parse(startTime, "HH:mm:ss", baseDate);
     const end = parse(endTime, "HH:mm:ss", baseDate);
 
@@ -86,29 +101,36 @@ export const GroomingTimeSlots = ({
     return slots;
   }, [selectedDate, selectedGroomerId, schedules, dayOfWeek]);
 
-  // Check if a time slot is already booked
-  const isSlotBooked = (timeSlot: string): boolean => {
-    const dateStr = format(selectedDate, "yyyy-MM-dd");
-    
-    // Filter reservations for this date
-    const dayReservations = existingReservations.filter(
-      (r) => r.start_date === dateStr
-    );
+  // Check if a time slot is already booked and get booking info
+  const getSlotBookingInfo = (timeSlot: string): { isBooked: boolean; reservation?: typeof dayReservations[0] } => {
+    if (dayReservations.length === 0) return { isBooked: false };
 
-    if (dayReservations.length === 0) return false;
-
-    // Check if any reservation overlaps with this time slot
-    // For simplicity, we're just checking if the start time matches
-    return dayReservations.some((r) => {
+    // Find reservation that overlaps with this time slot
+    const matchingReservation = dayReservations.find((r) => {
       if (!r.start_time) return false;
       
       // If groomer is specified, only check that groomer's bookings
       if (selectedGroomerId && r.groomer_id !== selectedGroomerId) return false;
       
-      // Parse the reservation time and check for overlap
-      const resTime = format(parse(r.start_time, "HH:mm:ss", new Date()), "h:mm a");
-      return resTime === timeSlot;
+      // Parse reservation times
+      const baseDate = new Date(2000, 0, 1);
+      const resStart = parse(r.start_time, "HH:mm:ss", baseDate);
+      const resEnd = r.end_time 
+        ? parse(r.end_time, "HH:mm:ss", baseDate)
+        : addMinutes(resStart, slotDurationMinutes);
+      
+      // Parse slot time
+      const slotTime = parse(timeSlot, "h:mm a", baseDate);
+      const slotEnd = addMinutes(slotTime, 15); // 15-minute slot
+
+      // Check for overlap
+      return slotTime < resEnd && slotEnd > resStart;
     });
+
+    return { 
+      isBooked: !!matchingReservation, 
+      reservation: matchingReservation 
+    };
   };
 
   if (timeSlots.length === 0) {
@@ -133,20 +155,42 @@ export const GroomingTimeSlots = ({
       <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
         {timeSlots.map((time) => {
           const isSelected = selectedTime === time;
-          const isBooked = isSlotBooked(time);
+          const { isBooked, reservation } = getSlotBookingInfo(time);
+
+          if (isBooked && reservation) {
+            return (
+              <Tooltip key={time}>
+                <TooltipTrigger asChild>
+                  <div
+                    className="py-3 px-4 rounded-xl border-2 font-medium flex items-center justify-center gap-2 
+                      border-border bg-muted/50 text-muted-foreground cursor-not-allowed opacity-70"
+                    style={{ borderLeftColor: reservation.groomerColor, borderLeftWidth: '4px' }}
+                  >
+                    <User className="w-3 h-3" />
+                    <span className="text-sm">{time}</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs">
+                  <div className="text-sm">
+                    <p className="font-medium">{reservation.pet_name || "Appointment"}</p>
+                    <p className="text-muted-foreground">
+                      {reservation.groomerName} • {reservation.client_name || "Booked"}
+                    </p>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            );
+          }
 
           return (
             <button
               key={time}
-              onClick={() => !isBooked && onSelectTime(time)}
-              disabled={isBooked}
+              onClick={() => onSelectTime(time)}
               className={`
                 py-3 px-4 rounded-xl border-2 font-medium transition-all flex items-center justify-center gap-2
                 ${isSelected 
                   ? "border-primary bg-primary text-primary-foreground" 
-                  : isBooked
-                    ? "border-border bg-muted text-muted-foreground cursor-not-allowed opacity-50"
-                    : "border-border hover:border-primary/50 text-foreground bg-card"
+                  : "border-border hover:border-primary/50 text-foreground bg-card"
                 }
               `}
             >
@@ -156,6 +200,13 @@ export const GroomingTimeSlots = ({
           );
         })}
       </div>
+
+      {dayReservations.length > 0 && (
+        <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <User className="w-3 h-3" />
+          Slots with a colored border are already booked
+        </p>
+      )}
     </div>
   );
 };
