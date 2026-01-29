@@ -48,11 +48,17 @@ interface GroomerSchedule {
   is_available: boolean;
 }
 
+interface GroomingVariant {
+  id: string;
+  title: string;
+  price: string;
+}
+
 interface GroomingService {
   id: string;
   shopify_product_id: string;
   shopify_product_title: string;
-  price?: string;
+  variants: GroomingVariant[];
 }
 
 interface BookingData {
@@ -64,6 +70,7 @@ interface BookingData {
   endTime: string;
   selectedGroomerId: string | null;
   selectedGroomingService: GroomingService | null;
+  selectedGroomingVariant: GroomingVariant | null;
   groomingDate: Date | null;
   groomingTime: string | null;
   groomingEndTime: string | null;
@@ -120,6 +127,7 @@ const BookingPage = () => {
     endTime: "",
     selectedGroomerId: null,
     selectedGroomingService: null,
+    selectedGroomingVariant: null,
     groomingDate: null,
     groomingTime: null,
     groomingEndTime: null,
@@ -247,7 +255,7 @@ const BookingPage = () => {
 
       setLoadingGroomingServices(true);
       try {
-        // Query products with product_type:Groom (same as GroomerDurationsDialog)
+        // Query products with product_type:Groom including variants (same as GroomerDurationsDialog)
         const GROOM_PRODUCTS_QUERY = `
           query GetGroomProducts {
             products(first: 100, query: "product_type:Groom") {
@@ -256,10 +264,16 @@ const BookingPage = () => {
                   id
                   title
                   productType
-                  priceRange {
-                    minVariantPrice {
-                      amount
-                      currencyCode
+                  variants(first: 50) {
+                    edges {
+                      node {
+                        id
+                        title
+                        price {
+                          amount
+                          currencyCode
+                        }
+                      }
                     }
                   }
                 }
@@ -283,11 +297,24 @@ const BookingPage = () => {
             const productIdMatch = product.id.match(/Product\/(\d+)/);
             const numericId = productIdMatch ? productIdMatch[1] : product.id;
             
+            // Map variants
+            const variants: GroomingVariant[] = product.variants.edges.map((variantEdge: any) => {
+              const variant = variantEdge.node;
+              const variantIdMatch = variant.id.match(/ProductVariant\/(\d+)/);
+              const variantNumericId = variantIdMatch ? variantIdMatch[1] : variant.id;
+              
+              return {
+                id: variantNumericId,
+                title: variant.title,
+                price: variant.price?.amount || '0',
+              };
+            });
+            
             return {
               id: numericId,
               shopify_product_id: numericId,
               shopify_product_title: product.title,
-              price: product.priceRange?.minVariantPrice?.amount,
+              variants,
             };
           });
 
@@ -501,8 +528,8 @@ const BookingPage = () => {
         return !!bookingData.date && !!bookingData.time;
       case 4:
         if (isGrooming) {
-          // Grooming service selection step - must select a service
-          return !!bookingData.selectedGroomingService;
+          // Grooming service selection step - must select a service AND a variant
+          return !!bookingData.selectedGroomingService && !!bookingData.selectedGroomingVariant;
         }
         if (needsCreditsStep) {
           return hasEnoughCredits;
@@ -570,6 +597,7 @@ const BookingPage = () => {
         endTime: "",
         selectedGroomerId: null,
         selectedGroomingService: null,
+        selectedGroomingVariant: null,
         groomingDate: null,
         groomingTime: null,
         groomingEndTime: null,
@@ -914,14 +942,17 @@ const BookingPage = () => {
               >
                 <h2 className="font-display text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
                   <Scissors className="w-5 h-5 text-primary" />
-                  Select Grooming Service
+                  {bookingData.selectedGroomingService ? "Select Size/Option" : "Select Grooming Service"}
                 </h2>
                 <p className="text-muted-foreground">
-                  Choose the grooming service you'd like for {bookingData.selectedPets[0]?.name}.
+                  {bookingData.selectedGroomingService 
+                    ? `Choose an option for ${bookingData.selectedGroomingService.shopify_product_title}`
+                    : `Choose the grooming service you'd like for ${bookingData.selectedPets[0]?.name}.`
+                  }
                 </p>
                 
-                {/* Show recommended service if pet has one */}
-                {bookingData.selectedPets[0]?.grooming_product_title && (
+                {/* Show recommended service if pet has one and no service selected yet */}
+                {!bookingData.selectedGroomingService && bookingData.selectedPets[0]?.grooming_product_title && (
                   <div className="bg-primary/10 border border-primary/20 rounded-xl p-4">
                     <p className="text-sm text-primary font-medium flex items-center gap-2">
                       <Scissors className="w-4 h-4" />
@@ -940,27 +971,36 @@ const BookingPage = () => {
                     <p>No grooming services available</p>
                     <p className="text-sm">Please contact us to book a grooming appointment.</p>
                   </div>
-                ) : (
+                ) : !bookingData.selectedGroomingService ? (
+                  /* Step 1: Select Product */
                   <div className="grid gap-3">
                     {groomingServices.map((service) => {
-                      const isSelected = bookingData.selectedGroomingService?.id === service.id;
                       const isRecommended = service.shopify_product_id === bookingData.selectedPets[0]?.grooming_product_id;
                       
                       return (
                         <button
                           key={service.id}
-                          onClick={() => setBookingData({ ...bookingData, selectedGroomingService: service })}
-                          className={`relative w-full p-4 rounded-xl border-2 transition-all text-left ${
-                            isSelected 
-                              ? "border-primary bg-primary/5 ring-2 ring-primary/20" 
-                              : "border-border hover:border-primary/50 hover:bg-muted/50"
-                          }`}
+                          onClick={() => {
+                            // If only one variant, auto-select it
+                            if (service.variants.length === 1) {
+                              setBookingData({ 
+                                ...bookingData, 
+                                selectedGroomingService: service,
+                                selectedGroomingVariant: service.variants[0]
+                              });
+                            } else {
+                              setBookingData({ 
+                                ...bookingData, 
+                                selectedGroomingService: service,
+                                selectedGroomingVariant: null
+                              });
+                            }
+                          }}
+                          className="relative w-full p-4 rounded-xl border-2 border-border hover:border-primary/50 hover:bg-muted/50 transition-all text-left"
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                                isSelected ? "bg-primary text-primary-foreground" : "bg-muted"
-                              }`}>
+                              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
                                 <Scissors className="w-5 h-5" />
                               </div>
                               <div>
@@ -972,20 +1012,75 @@ const BookingPage = () => {
                                     </span>
                                   )}
                                 </div>
-                                {service.price && (
+                                {service.variants.length > 1 && (
                                   <span className="text-sm text-muted-foreground">
-                                    ${parseFloat(service.price).toFixed(2)}
+                                    {service.variants.length} options available
                                   </span>
                                 )}
                               </div>
                             </div>
-                            {isSelected && (
-                              <Check className="w-5 h-5 text-primary" />
-                            )}
+                            <ArrowRight className="w-5 h-5 text-muted-foreground" />
                           </div>
                         </button>
                       );
                     })}
+                  </div>
+                ) : (
+                  /* Step 2: Select Variant */
+                  <div className="space-y-4">
+                    {/* Back button to change product */}
+                    <button
+                      onClick={() => setBookingData({ 
+                        ...bookingData, 
+                        selectedGroomingService: null,
+                        selectedGroomingVariant: null
+                      })}
+                      className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <ArrowLeft className="w-4 h-4" />
+                      Change service
+                    </button>
+                    
+                    <div className="grid gap-3">
+                      {bookingData.selectedGroomingService.variants.map((variant) => {
+                        const isSelected = bookingData.selectedGroomingVariant?.id === variant.id;
+                        
+                        return (
+                          <button
+                            key={variant.id}
+                            onClick={() => setBookingData({ ...bookingData, selectedGroomingVariant: variant })}
+                            className={`relative w-full p-4 rounded-xl border-2 transition-all text-left ${
+                              isSelected 
+                                ? "border-primary bg-primary/5 ring-2 ring-primary/20" 
+                                : "border-border hover:border-primary/50 hover:bg-muted/50"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                  isSelected ? "bg-primary text-primary-foreground" : "bg-muted"
+                                }`}>
+                                  <Scissors className="w-5 h-5" />
+                                </div>
+                                <div>
+                                  <span className="font-medium text-foreground">
+                                    {variant.title === "Default Title" 
+                                      ? bookingData.selectedGroomingService.shopify_product_title 
+                                      : variant.title}
+                                  </span>
+                                  <p className="text-sm text-muted-foreground">
+                                    ${parseFloat(variant.price).toFixed(2)}
+                                  </p>
+                                </div>
+                              </div>
+                              {isSelected && (
+                                <Check className="w-5 h-5 text-primary" />
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </motion.div>
@@ -1083,14 +1178,24 @@ const BookingPage = () => {
                     </div>
                   </div>
 
-                  {/* Selected Grooming Service */}
+                  {/* Selected Grooming Service & Variant */}
                   {bookingData.selectedGroomingService && (
                     <div className="flex justify-between items-center pb-4 border-b border-border">
                       <span className="text-muted-foreground">Service</span>
-                      <span className="font-semibold text-foreground flex items-center gap-1">
-                        <Scissors className="w-4 h-4" />
-                        {bookingData.selectedGroomingService.shopify_product_title}
-                      </span>
+                      <div className="text-right">
+                        <span className="font-semibold text-foreground flex items-center gap-1 justify-end">
+                          <Scissors className="w-4 h-4" />
+                          {bookingData.selectedGroomingService.shopify_product_title}
+                        </span>
+                        {bookingData.selectedGroomingVariant && (
+                          <span className="text-sm text-muted-foreground">
+                            {bookingData.selectedGroomingVariant.title !== "Default Title" && (
+                              <span>{bookingData.selectedGroomingVariant.title} • </span>
+                            )}
+                            ${parseFloat(bookingData.selectedGroomingVariant.price).toFixed(2)}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   )}
 
