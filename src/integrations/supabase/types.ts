@@ -598,8 +598,12 @@ export type Database = {
           date_of_birth: string | null
           feeding_instructions: string | null
           gender: string | null
+          grooming_frequency: string | null
+          grooming_product_id: string | null
+          grooming_product_title: string | null
           id: string
           is_active: boolean | null
+          last_grooming_date: string | null
           name: string
           photo_url: string | null
           spayed_neutered: boolean | null
@@ -622,8 +626,12 @@ export type Database = {
           date_of_birth?: string | null
           feeding_instructions?: string | null
           gender?: string | null
+          grooming_frequency?: string | null
+          grooming_product_id?: string | null
+          grooming_product_title?: string | null
           id?: string
           is_active?: boolean | null
+          last_grooming_date?: string | null
           name: string
           photo_url?: string | null
           spayed_neutered?: boolean | null
@@ -646,8 +654,12 @@ export type Database = {
           date_of_birth?: string | null
           feeding_instructions?: string | null
           gender?: string | null
+          grooming_frequency?: string | null
+          grooming_product_id?: string | null
+          grooming_product_title?: string | null
           id?: string
           is_active?: boolean | null
+          last_grooming_date?: string | null
           name?: string
           photo_url?: string | null
           spayed_neutered?: boolean | null
