@@ -546,10 +546,10 @@ export function ControlCenterTable({
                   </TableCell>
 
                   {/* Services Column */}
-                  <TableCell>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {/* Display linked services */}
-                      {reservation.linked_services && reservation.linked_services.length > 0 ? (
+                  <TableCell className="align-top py-2">
+                    <div className="flex flex-col gap-1.5">
+                      {/* Display linked services stacked vertically */}
+                      {reservation.linked_services && reservation.linked_services.length > 0 && (
                         reservation.linked_services.map((service) => {
                           // Parse service name from notes (e.g., "Service: Full Groom | Groom Type: Large Dog")
                           const serviceMatch = service.notes?.match(/Groom Type:\s*([^|]+)/i);
@@ -559,7 +559,7 @@ export function ControlCenterTable({
                             <Badge 
                               key={service.id}
                               variant="secondary"
-                              className="bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200 text-xs flex items-center gap-1"
+                              className="bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200 text-xs flex items-center gap-1 w-fit"
                               title={`${serviceName} - ${service.start_time ? service.start_time.slice(0, 5) : 'TBD'}${service.groomer_name ? ` with ${service.groomer_name}` : ''}`}
                             >
                               <Scissors className="h-3 w-3" />
@@ -572,7 +572,7 @@ export function ControlCenterTable({
                             </Badge>
                           );
                         })
-                      ) : null}
+                      )}
                       {/* Add Service Button */}
                       <Button
                         size="icon"
