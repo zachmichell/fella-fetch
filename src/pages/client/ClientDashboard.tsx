@@ -4,7 +4,7 @@ import { useClientAuth } from '@/contexts/ClientAuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, CalendarDays, Plus, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Calendar, Clock, CalendarDays, Plus, AlertTriangle, ExternalLink, Dog, PawPrint } from 'lucide-react';
 import { ClientPortalLayout } from '@/components/client/ClientPortalLayout';
 import AIAssistantChat from '@/components/client/AIAssistantChat';
 import { format, parseISO, isFuture, isToday } from 'date-fns';
@@ -58,9 +58,13 @@ const ClientDashboard = () => {
     }).format(parseFloat(amount));
   };
 
+  // Current visits (checked in but not checked out)
+  const currentVisits = reservations.filter(r => r.status === 'checked_in');
+
+  // Upcoming reservations (future or today, not cancelled or completed)
   const upcomingReservations = reservations.filter(r =>
     (isFuture(parseISO(r.start_date)) || isToday(parseISO(r.start_date))) &&
-    r.status !== 'cancelled' && r.status !== 'checked_out'
+    r.status !== 'cancelled' && r.status !== 'checked_out' && r.status !== 'checked_in'
   );
 
   return (
@@ -95,6 +99,56 @@ const ClientDashboard = () => {
                     <ExternalLink className="h-4 w-4" />
                     Pay Now
                   </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Current Visit */}
+        {currentVisits.length > 0 && (
+          <Card className="border-primary/50 bg-primary/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2 text-primary">
+                <PawPrint className="h-5 w-5" />
+                Currently Here
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {currentVisits.map((visit) => (
+                <div
+                  key={visit.id}
+                  className="p-4 rounded-lg bg-background border flex items-center gap-4"
+                >
+                  {visit.pets.photo_url ? (
+                    <img 
+                      src={visit.pets.photo_url} 
+                      alt={visit.pets.name}
+                      className="w-12 h-12 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                      <Dog className="w-6 h-6 text-muted-foreground" />
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <p className="font-medium">{visit.pets.name}</p>
+                    <p className="text-sm text-muted-foreground capitalize">
+                      {visit.service_type}
+                    </p>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {format(parseISO(visit.start_date), 'MMM d')}
+                        {visit.end_date && visit.end_date !== visit.start_date && (
+                          <> – {format(parseISO(visit.end_date), 'MMM d')}</>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <Badge className="bg-primary/20 text-primary border-primary/30">
+                    Checked In
+                  </Badge>
                 </div>
               ))}
             </CardContent>
