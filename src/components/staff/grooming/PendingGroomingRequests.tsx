@@ -2,14 +2,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format, parseISO } from 'date-fns';
-import { CheckCircle, XCircle, Scissors, Clock, Calendar, User } from 'lucide-react';
+import { CheckCircle, XCircle, Scissors, Clock, Calendar, UserPlus, ChevronDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { DeclineReservationDialog } from '@/components/staff/DeclineReservationDialog';
-
 interface PendingRequest {
   id: string;
   pet_id: string;
@@ -50,6 +49,36 @@ export const PendingGroomingRequests = ({ groomers }: PendingGroomingRequestsPro
   const { toast } = useToast();
   const [declineDialogOpen, setDeclineDialogOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<PendingRequest | null>(null);
+  const [groomerPopoverOpen, setGroomerPopoverOpen] = useState<string | null>(null);
+
+  const handleGroomerChange = async (requestId: string, groomerId: string | null) => {
+    try {
+      const { error } = await supabase
+        .from('reservations')
+        .update({ groomer_id: groomerId })
+        .eq('id', requestId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Groomer updated',
+        description: groomerId 
+          ? `Assigned to ${groomers?.find(g => g.id === groomerId)?.name}`
+          : 'Groomer assignment removed',
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['pending-grooming-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['grooming-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['grooming-appointments-week'] });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to update groomer',
+        variant: 'destructive',
+      });
+    }
+    setGroomerPopoverOpen(null);
+  };
 
   const { data: pendingRequests, isLoading } = useQuery({
     queryKey: ['pending-grooming-requests'],
@@ -249,17 +278,70 @@ export const PendingGroomingRequests = ({ groomers }: PendingGroomingRequestsPro
                         </div>
                       </td>
                       <td className="p-3">
-                        {groomerInfo ? (
-                          <div className="flex items-center gap-2">
-                            <div 
-                              className="w-3 h-3 rounded-full flex-shrink-0" 
-                              style={{ backgroundColor: groomerInfo.color || '#3b82f6' }}
-                            />
-                            <span className="text-sm font-medium">{groomerInfo.name}</span>
-                          </div>
-                        ) : (
-                          <span className="text-sm text-muted-foreground italic">No preference</span>
-                        )}
+                        <Popover 
+                          open={groomerPopoverOpen === request.id} 
+                          onOpenChange={(open) => setGroomerPopoverOpen(open ? request.id : null)}
+                        >
+                          <PopoverTrigger asChild>
+                            {groomerInfo ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-auto p-1.5 -ml-1.5 hover:bg-muted"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <div 
+                                    className="w-3 h-3 rounded-full flex-shrink-0" 
+                                    style={{ backgroundColor: groomerInfo.color || '#3b82f6' }}
+                                  />
+                                  <span className="text-sm font-medium">{groomerInfo.name}</span>
+                                  <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                                </div>
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-primary border-primary/30 hover:bg-primary/10"
+                              >
+                                <UserPlus className="h-3 w-3 mr-1" />
+                                Select groomer
+                              </Button>
+                            )}
+                          </PopoverTrigger>
+                          <PopoverContent className="w-48 p-1" align="start">
+                            <div className="space-y-0.5">
+                              {groomers?.map((groomer) => (
+                                <Button
+                                  key={groomer.id}
+                                  variant={groomer.id === request.groomer_id ? "secondary" : "ghost"}
+                                  size="sm"
+                                  className="w-full justify-start"
+                                  onClick={() => handleGroomerChange(request.id, groomer.id)}
+                                >
+                                  <div 
+                                    className="w-3 h-3 rounded-full mr-2 flex-shrink-0" 
+                                    style={{ backgroundColor: groomer.color || '#3b82f6' }}
+                                  />
+                                  {groomer.name}
+                                </Button>
+                              ))}
+                              {request.groomer_id && (
+                                <>
+                                  <div className="border-t my-1" />
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="w-full justify-start text-muted-foreground"
+                                    onClick={() => handleGroomerChange(request.id, null)}
+                                  >
+                                    Remove assignment
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                       </td>
                       <td className="p-3">
                         {(request.groomService || request.groomType) ? (
