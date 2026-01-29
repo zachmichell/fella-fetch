@@ -681,9 +681,17 @@ const BookingPage = () => {
         payment_pending: bookingData.payInStore,
       }));
 
-      const { error } = await supabase.from("reservations").insert(reservations);
+      // Use edge function to create reservations (bypasses RLS for Shopify-authenticated clients)
+      const shopifyToken = localStorage.getItem("shopify_customer_token");
+      const { data, error } = await supabase.functions.invoke("shopify-customer-auth", {
+        body: {
+          action: "createReservations",
+          accessToken: shopifyToken,
+          reservations,
+        },
+      });
 
-      if (error) throw error;
+      if (error || data?.error) throw new Error(data?.error || error?.message);
 
       toast.success(
         bookingData.payInStore 
