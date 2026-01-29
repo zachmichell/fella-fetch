@@ -194,11 +194,37 @@ export function ControlCenterTable({
   const checkedInCount = reservations.filter(r => r.status === 'checked_in').length;
   const requestedCount = reservations.filter(r => r.status === 'pending').length;
 
+  // Parse drop-off and pick-up times from notes (e.g., "Full Day | Drop-off: 7:00 AM, Pick-up: 5:00 PM")
+  const parseTimesFromNotes = (notes: string | null): { dropOff: string | null; pickUp: string | null } => {
+    if (!notes) return { dropOff: null, pickUp: null };
+    
+    const dropOffMatch = notes.match(/Drop-off:\s*(\d{1,2}:\d{2}\s*(?:AM|PM)?)/i);
+    const pickUpMatch = notes.match(/Pick-up:\s*(\d{1,2}:\d{2}\s*(?:AM|PM)?)/i);
+    
+    return {
+      dropOff: dropOffMatch ? dropOffMatch[1].trim() : null,
+      pickUp: pickUpMatch ? pickUpMatch[1].trim() : null,
+    };
+  };
+
   const formatDateTime = (date: string, time: string | null) => {
     const d = new Date(date);
     const dateStr = format(d, 'EEE, MM/dd');
     const timeStr = time ? time.slice(0, 5) : '';
     return timeStr ? `${dateStr}, ${timeStr}` : dateStr;
+  };
+
+  const formatDateTimeWithNotes = (date: string, time: string | null, noteTime: string | null) => {
+    const d = new Date(date);
+    const dateStr = format(d, 'EEE, MM/dd');
+    // Use database time if available, otherwise use parsed note time
+    if (time) {
+      return `${dateStr}, ${time.slice(0, 5)}`;
+    }
+    if (noteTime) {
+      return `${dateStr}, ${noteTime}`;
+    }
+    return dateStr;
   };
 
   const handleCancelClick = (reservation: ControlCenterReservation) => {
@@ -503,21 +529,27 @@ export function ControlCenterTable({
 
                   {/* Start Column */}
                   <TableCell>
-                    <span className="text-sm">
-                      {formatDateTime(reservation.start_date, reservation.start_time)}
-                    </span>
+                    {(() => {
+                      const parsedTimes = parseTimesFromNotes(reservation.notes);
+                      return (
+                        <span className="text-sm">
+                          {formatDateTimeWithNotes(reservation.start_date, reservation.start_time, parsedTimes.dropOff)}
+                        </span>
+                      );
+                    })()}
                   </TableCell>
 
                   {/* End Column */}
                   <TableCell>
-                    <span className="text-sm">
-                      {reservation.end_date 
-                        ? formatDateTime(reservation.end_date, reservation.end_time)
-                        : reservation.end_time 
-                          ? formatDateTime(reservation.start_date, reservation.end_time)
-                          : '—'
-                      }
-                    </span>
+                    {(() => {
+                      const parsedTimes = parseTimesFromNotes(reservation.notes);
+                      const endDate = reservation.end_date || reservation.start_date;
+                      return (
+                        <span className="text-sm">
+                          {formatDateTimeWithNotes(endDate, reservation.end_time, parsedTimes.pickUp)}
+                        </span>
+                      );
+                    })()}
                   </TableCell>
                 </TableRow>
               ))}
