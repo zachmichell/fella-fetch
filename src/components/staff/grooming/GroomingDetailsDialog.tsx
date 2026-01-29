@@ -3,6 +3,7 @@ import { format, parseISO } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { GroomingAppointment } from '@/pages/staff/StaffGroomingCalendar';
+import { storefrontApiRequest } from '@/lib/shopify';
 import {
   Dialog,
   DialogContent,
@@ -20,10 +21,22 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Scissors, User, Clock, Calendar, FileText, UserCircle, ChevronDown, ChevronUp } from 'lucide-react';
-import { useState } from 'react';
+import { Scissors, User, Clock, Calendar, FileText, UserCircle, ChevronDown, ChevronUp, Tag, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { PetGroomingPreferencesEditor } from './PetGroomingPreferencesEditor';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+
+interface GroomingVariant {
+  id: string;
+  title: string;
+  price: string;
+}
+
+interface GroomingProduct {
+  id: string;
+  title: string;
+  variants: GroomingVariant[];
+}
 
 interface GroomingDetailsDialogProps {
   open: boolean;
@@ -39,7 +52,23 @@ export const GroomingDetailsDialog = ({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedGroomerId, setSelectedGroomerId] = useState<string | null>(null);
+  const [selectedVariantTitle, setSelectedVariantTitle] = useState<string | null>(null);
   const [prefsOpen, setPrefsOpen] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  // Parse groom type from notes
+  const parseGroomType = (notes: string | null): string | null => {
+    if (!notes) return null;
+    const match = notes.match(/Groom Type:\s*([^|]+)/i);
+    return match ? match[1].trim() : null;
+  };
+
+  // Parse service name from notes
+  const parseServiceName = (notes: string | null): string | null => {
+    if (!notes) return null;
+    const match = notes.match(/Service:\s*([^|]+)/i);
+    return match ? match[1].trim() : null;
+  };
 
   // Fetch groomers
   const { data: groomers } = useQuery({
@@ -55,26 +84,128 @@ export const GroomingDetailsDialog = ({
     },
   });
 
-  // Sync selected groomer when dialog opens
-  if (open && appointment && selectedGroomerId === null) {
-    setSelectedGroomerId(appointment.groomer_id);
-  }
+  // Fetch grooming products from Shopify (via service mappings)
+  const { data: groomingProducts, isLoading: productsLoading } = useQuery({
+    queryKey: ['grooming-products-for-staff'],
+    queryFn: async () => {
+      // Get grooming service mappings
+      const { data: mappings, error } = await supabase
+        .from('shopify_service_mappings')
+        .select('shopify_product_id, shopify_product_title')
+        .eq('service_type', 'grooming');
+      
+      if (error) throw error;
+      if (!mappings || mappings.length === 0) return [];
 
-  const handleAssignGroomer = async () => {
-    if (!appointment || selectedGroomerId === appointment.groomer_id) return;
+      // Fetch product variants from Shopify
+      const productIds = mappings.map(m => `gid://shopify/Product/${m.shopify_product_id}`);
+      const query = `
+        query getProducts($ids: [ID!]!) {
+          nodes(ids: $ids) {
+            ... on Product {
+              id
+              title
+              variants(first: 50) {
+                edges {
+                  node {
+                    id
+                    title
+                    price {
+                      amount
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      `;
 
+      const response = await storefrontApiRequest(query, { ids: productIds });
+      
+      const products: GroomingProduct[] = response.data.nodes
+        .filter((node: any) => node !== null)
+        .map((product: any) => ({
+          id: product.id,
+          title: product.title,
+          variants: product.variants.edges.map((edge: any) => ({
+            id: edge.node.id,
+            title: edge.node.title,
+            price: edge.node.price.amount,
+          })),
+        }));
+
+      return products;
+    },
+    enabled: open,
+  });
+
+  // Get all variants flattened
+  const allVariants = groomingProducts?.flatMap(p => 
+    p.variants.map(v => ({ ...v, productTitle: p.title }))
+  ) || [];
+
+  // Sync state when dialog opens
+  useEffect(() => {
+    if (open && appointment) {
+      setSelectedGroomerId(appointment.groomer_id);
+      setSelectedVariantTitle(parseGroomType(appointment.notes));
+    }
+  }, [open, appointment]);
+
+  const handleUpdate = async () => {
+    if (!appointment) return;
+
+    const hasGroomerChange = selectedGroomerId !== appointment.groomer_id;
+    const currentGroomType = parseGroomType(appointment.notes);
+    const hasVariantChange = selectedVariantTitle !== currentGroomType;
+
+    if (!hasGroomerChange && !hasVariantChange) return;
+
+    setIsUpdating(true);
     try {
+      const updates: Record<string, any> = {};
+
+      if (hasGroomerChange) {
+        updates.groomer_id = selectedGroomerId;
+      }
+
+      if (hasVariantChange) {
+        // Update the notes with the new groom type
+        let newNotes = appointment.notes || '';
+        
+        if (currentGroomType) {
+          // Replace existing groom type
+          newNotes = newNotes.replace(/Groom Type:\s*[^|]+\s*\|?/i, '').trim();
+        }
+        
+        // Add new groom type at the beginning
+        if (selectedVariantTitle) {
+          newNotes = `Groom Type: ${selectedVariantTitle}${newNotes ? ' | ' + newNotes : ''}`;
+        }
+        
+        updates.notes = newNotes.replace(/\|\s*$/, '').trim();
+      }
+
       const { error } = await supabase
         .from('reservations')
-        .update({ groomer_id: selectedGroomerId })
+        .update(updates)
         .eq('id', appointment.id);
 
       if (error) throw error;
 
-      const groomerName = groomers?.find(g => g.id === selectedGroomerId)?.name || 'Unassigned';
+      const messages: string[] = [];
+      if (hasGroomerChange) {
+        const groomerName = groomers?.find(g => g.id === selectedGroomerId)?.name || 'Unassigned';
+        messages.push(`Groomer: ${groomerName}`);
+      }
+      if (hasVariantChange) {
+        messages.push(`Groom type: ${selectedVariantTitle || 'Removed'}`);
+      }
+
       toast({
-        title: 'Groomer assigned',
-        description: `${appointment.pet_name} assigned to ${groomerName}`,
+        title: 'Appointment updated',
+        description: messages.join(', '),
       });
 
       queryClient.invalidateQueries({ queryKey: ['grooming-appointments'] });
@@ -82,14 +213,17 @@ export const GroomingDetailsDialog = ({
     } catch (error) {
       toast({
         title: 'Error',
-        description: 'Failed to assign groomer',
+        description: 'Failed to update appointment',
         variant: 'destructive',
       });
+    } finally {
+      setIsUpdating(false);
     }
   };
 
   const handleClose = () => {
     setSelectedGroomerId(null);
+    setSelectedVariantTitle(null);
     onOpenChange(false);
   };
 
@@ -187,18 +321,76 @@ export const GroomingDetailsDialog = ({
             </div>
           </div>
 
-          {/* Notes */}
+          {/* Requested Groom Type */}
+          <div className="flex items-center gap-2">
+            <Tag className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <div className="text-xs text-muted-foreground">Requested Groom Type</div>
+              <div className="font-medium">
+                {parseGroomType(appointment.notes) || (
+                  <span className="text-muted-foreground italic">Not specified</span>
+                )}
+              </div>
+              {parseServiceName(appointment.notes) && (
+                <div className="text-xs text-muted-foreground">
+                  {parseServiceName(appointment.notes)}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Notes (without groom type since it's shown separately) */}
           {appointment.notes && (
             <div className="flex items-start gap-2">
               <FileText className="h-4 w-4 text-muted-foreground mt-0.5" />
               <div>
-                <div className="text-xs text-muted-foreground">Notes / Add-ons</div>
-                <div className="text-sm">{appointment.notes}</div>
+                <div className="text-xs text-muted-foreground">Notes</div>
+                <div className="text-sm">
+                  {appointment.notes
+                    .replace(/Groom Type:\s*[^|]+\s*\|?/i, '')
+                    .replace(/Service:\s*[^|]+\s*\|?/i, '')
+                    .replace(/\|\s*$/, '')
+                    .trim() || 'No additional notes'}
+                </div>
               </div>
             </div>
           )}
 
           <Separator />
+
+          {/* Change Groom Type */}
+          <div className="space-y-2">
+            <Label>Change Groom Type</Label>
+            {productsLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading options...
+              </div>
+            ) : (
+              <Select 
+                value={selectedVariantTitle || ''} 
+                onValueChange={(v) => setSelectedVariantTitle(v || null)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select groom type..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {groomingProducts?.map((product) => (
+                    <div key={product.id}>
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                        {product.title}
+                      </div>
+                      {product.variants.map((variant) => (
+                        <SelectItem key={variant.id} value={variant.title}>
+                          {variant.title}
+                        </SelectItem>
+                      ))}
+                    </div>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
 
           {/* Assign/Reassign Groomer */}
           <div className="space-y-2">
@@ -256,9 +448,11 @@ export const GroomingDetailsDialog = ({
           <Button variant="outline" onClick={handleClose}>
             Close
           </Button>
-          {selectedGroomerId !== appointment.groomer_id && (
-            <Button onClick={handleAssignGroomer}>
-              Update Groomer
+          {(selectedGroomerId !== appointment.groomer_id || 
+            selectedVariantTitle !== parseGroomType(appointment.notes)) && (
+            <Button onClick={handleUpdate} disabled={isUpdating}>
+              {isUpdating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Update
             </Button>
           )}
         </div>
