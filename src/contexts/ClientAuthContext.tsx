@@ -121,6 +121,8 @@ interface Reservation {
   end_time: string | null;
   status: string;
   notes: string | null;
+  checked_in_at: string | null;
+  checked_out_at: string | null;
   pets: {
     id: string;
     name: string;
