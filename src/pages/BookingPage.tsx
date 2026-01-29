@@ -682,7 +682,8 @@ const BookingPage = () => {
       }));
 
       // Use edge function to create reservations (bypasses RLS for Shopify-authenticated clients)
-      const shopifyToken = localStorage.getItem("shopify_customer_token");
+      const storedSession = localStorage.getItem("shopify_customer_session");
+      const shopifyToken = storedSession ? JSON.parse(storedSession).accessToken : null;
       const { data, error } = await supabase.functions.invoke("shopify-customer-auth", {
         body: {
           action: "createReservations",
