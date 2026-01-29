@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { StaffLayout } from '@/components/staff/StaffLayout';
 import { LodgingCalendarHeader } from '@/components/staff/lodging/LodgingCalendarHeader';
 import { LodgingWeeklyView } from '@/components/staff/lodging/LodgingWeeklyView';
@@ -6,7 +7,7 @@ import { LodgingMonthlyView } from '@/components/staff/lodging/LodgingMonthlyVie
 import { LodgingPetDetailsDialog } from '@/components/staff/lodging/LodgingPetDetailsDialog';
 import { LodgingAssignSuiteDialog } from '@/components/staff/lodging/LodgingAssignSuiteDialog';
 import { CreateBoardingDialog } from '@/components/staff/lodging/CreateBoardingDialog';
-import { startOfWeek, startOfMonth } from 'date-fns';
+import { startOfWeek, startOfMonth, parseISO } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -28,6 +29,7 @@ export interface BoardingReservation {
 }
 
 const StaffLodgingCalendar = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState<ViewMode>('weekly');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedReservation, setSelectedReservation] = useState<BoardingReservation | null>(null);
@@ -39,6 +41,83 @@ const StaffLodgingCalendar = () => {
   const [createBookingOpen, setCreateBookingOpen] = useState(false);
   const [createBookingSuiteId, setCreateBookingSuiteId] = useState<string | null>(null);
   const [createBookingDate, setCreateBookingDate] = useState<Date | null>(null);
+
+  // Get reservation ID from URL params (for direct navigation from Control Center)
+  const reservationIdFromUrl = searchParams.get('reservationId');
+  const startDateFromUrl = searchParams.get('startDate');
+
+  // Fetch reservation from URL param to open assign dialog
+  const { data: urlReservation } = useQuery({
+    queryKey: ['reservation-for-assignment', reservationIdFromUrl],
+    queryFn: async () => {
+      if (!reservationIdFromUrl) return null;
+      
+      const { data, error } = await supabase
+        .from('reservations')
+        .select(`
+          id,
+          pet_id,
+          start_date,
+          end_date,
+          status,
+          suite_id,
+          notes,
+          checked_in_at,
+          checked_out_at,
+          pets!inner (
+            name,
+            breed,
+            clients!inner (
+              first_name,
+              last_name
+            )
+          )
+        `)
+        .eq('id', reservationIdFromUrl)
+        .single();
+
+      if (error) throw error;
+      
+      return {
+        id: data.id,
+        pet_id: data.pet_id,
+        pet_name: data.pets.name,
+        pet_breed: data.pets.breed,
+        client_name: `${data.pets.clients.first_name} ${data.pets.clients.last_name}`,
+        start_date: data.start_date,
+        end_date: data.end_date,
+        status: data.status,
+        suite_id: data.suite_id,
+        notes: data.notes,
+        checked_in_at: data.checked_in_at,
+        checked_out_at: data.checked_out_at,
+      } as BoardingReservation;
+    },
+    enabled: !!reservationIdFromUrl,
+  });
+
+  // Open assign suite dialog when URL has reservation ID and reservation is loaded
+  useEffect(() => {
+    if (urlReservation && reservationIdFromUrl) {
+      setReservationToAssign(urlReservation);
+      setAssignSuiteOpen(true);
+      
+      // Navigate calendar to the reservation's start date
+      if (startDateFromUrl) {
+        setCurrentDate(parseISO(startDateFromUrl));
+      }
+    }
+  }, [urlReservation, reservationIdFromUrl, startDateFromUrl]);
+
+  // Clear URL params when assign dialog closes
+  const handleAssignDialogClose = (open: boolean) => {
+    setAssignSuiteOpen(open);
+    if (!open && reservationIdFromUrl) {
+      // Clear URL params after closing
+      setSearchParams({});
+      setReservationToAssign(null);
+    }
+  };
 
   // Fetch suites for name lookup
   const { data: suites } = useQuery({
@@ -108,7 +187,7 @@ const StaffLodgingCalendar = () => {
 
         <LodgingAssignSuiteDialog
           open={assignSuiteOpen}
-          onOpenChange={setAssignSuiteOpen}
+          onOpenChange={handleAssignDialogClose}
           reservation={reservationToAssign}
         />
 
