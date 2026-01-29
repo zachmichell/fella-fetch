@@ -9,6 +9,7 @@ import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useClientAuth } from "@/contexts/ClientAuthContext";
 import { storefrontApiRequest, SHOPIFY_STORE_PERMANENT_DOMAIN } from "@/lib/shopify";
 import { supabase } from "@/integrations/supabase/client";
@@ -91,6 +92,17 @@ const serviceOptions = [
 const groomingTrainingTimeSlots = [
   "9:00 AM", "10:00 AM", "11:00 AM",
   "12:00 PM", "1:00 PM", "2:00 PM", "3:00 PM", "4:00 PM"
+];
+
+// Drop-off and pick-up time options for daycare/boarding
+const dropOffTimeSlots = [
+  "6:00 AM", "6:30 AM", "7:00 AM", "7:30 AM", "8:00 AM", "8:30 AM", "9:00 AM", "9:30 AM", 
+  "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM", "12:00 PM"
+];
+
+const pickUpTimeSlots = [
+  "12:00 PM", "12:30 PM", "1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM", "3:00 PM", "3:30 PM",
+  "4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM", "6:00 PM", "6:30 PM", "7:00 PM"
 ];
 
 // Shopify Cart mutations
@@ -1485,13 +1497,21 @@ const BookingPage = () => {
                           <Clock className="w-5 h-5 text-primary" />
                           Drop-off Time
                         </h2>
-                        <Input
-                          type="text"
+                        <Select
                           value={bookingData.time}
-                          onChange={(e) => setBookingData({ ...bookingData, time: e.target.value })}
-                          placeholder="e.g., 8:30 AM"
-                          className="w-full p-4 h-14 rounded-xl border border-border bg-card text-foreground text-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                        />
+                          onValueChange={(value) => setBookingData({ ...bookingData, time: value })}
+                        >
+                          <SelectTrigger className="w-full h-14 rounded-xl border border-border bg-card text-foreground text-lg">
+                            <SelectValue placeholder="Select time" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {dropOffTimeSlots.map((time) => (
+                              <SelectItem key={time} value={time}>
+                                {time}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
 
@@ -1515,13 +1535,21 @@ const BookingPage = () => {
                           <Clock className="w-5 h-5 text-primary" />
                           Pick-up Time
                         </h2>
-                        <Input
-                          type="text"
+                        <Select
                           value={bookingData.endTime}
-                          onChange={(e) => setBookingData({ ...bookingData, endTime: e.target.value })}
-                          placeholder="e.g., 5:00 PM"
-                          className="w-full p-4 h-14 rounded-xl border border-border bg-card text-foreground text-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                        />
+                          onValueChange={(value) => setBookingData({ ...bookingData, endTime: value })}
+                        >
+                          <SelectTrigger className="w-full h-14 rounded-xl border border-border bg-card text-foreground text-lg">
+                            <SelectValue placeholder="Select time" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {pickUpTimeSlots.map((time) => (
+                              <SelectItem key={time} value={time}>
+                                {time}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   </>
@@ -1596,13 +1624,21 @@ const BookingPage = () => {
                       <Clock className="w-5 h-5 text-primary" />
                       Drop-off Time
                     </h2>
-                    <Input
-                      type="text"
+                    <Select
                       value={bookingData.time}
-                      onChange={(e) => setBookingData({ ...bookingData, time: e.target.value })}
-                      placeholder="e.g., 8:30 AM"
-                      className="w-full p-4 h-14 rounded-xl border border-border bg-card text-foreground text-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
+                      onValueChange={(value) => setBookingData({ ...bookingData, time: value })}
+                    >
+                      <SelectTrigger className="w-full h-14 rounded-xl border border-border bg-card text-foreground text-lg">
+                        <SelectValue placeholder="Select time" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {dropOffTimeSlots.map((time) => (
+                          <SelectItem key={time} value={time}>
+                            {time}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
@@ -1626,13 +1662,21 @@ const BookingPage = () => {
                       <Clock className="w-5 h-5 text-primary" />
                       Pick-up Time
                     </h2>
-                    <Input
-                      type="text"
+                    <Select
                       value={bookingData.endTime}
-                      onChange={(e) => setBookingData({ ...bookingData, endTime: e.target.value })}
-                      placeholder="e.g., 5:00 PM"
-                      className="w-full p-4 h-14 rounded-xl border border-border bg-card text-foreground text-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
+                      onValueChange={(value) => setBookingData({ ...bookingData, endTime: value })}
+                    >
+                      <SelectTrigger className="w-full h-14 rounded-xl border border-border bg-card text-foreground text-lg">
+                        <SelectValue placeholder="Select time" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {pickUpTimeSlots.map((time) => (
+                          <SelectItem key={time} value={time}>
+                            {time}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
