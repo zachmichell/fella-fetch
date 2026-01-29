@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Calendar, Clock, Dog, ArrowRight, ArrowLeft, Check, LogIn, CreditCard, AlertTriangle, ShoppingCart, Loader2, Scissors, User, CalendarClock } from "lucide-react";
 import { Link } from "react-router-dom";
-import { differenceInDays, format, parse, addMinutes } from "date-fns";
+import { differenceInDays, format, parse, addMinutes, parseISO } from "date-fns";
 import { calculateNextGroomingDate, getGroomingDueStatus } from "@/lib/groomingUtils";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -454,26 +454,38 @@ const BookingPage = () => {
   const creditsNeeded = hasEnoughCredits ? 0 : Math.abs(creditsAfterBooking);
 
   // Generate time slots based on business hours and selected date
+  // For DAYCARE: restricted times (drop-off before noon, pick-up after noon)
+  // For BOARDING: full business hours for both drop-off and pick-up
   const getDropOffTimeSlots = useMemo(() => {
     if (!bookingData.date) {
       // Return default weekday slots when no date selected
-      return generateTimeSlots(businessHours.weekday.open, '12:00 PM');
+      return bookingData.service === "boarding"
+        ? generateTimeSlots(businessHours.weekday.open, businessHours.weekday.close)
+        : generateTimeSlots(businessHours.weekday.open, '12:00 PM');
     }
     const isWeekend = isWeekendDate(bookingData.date);
     const hours = isWeekend ? businessHours.weekend : businessHours.weekday;
-    return generateTimeSlots(hours.open, '12:00 PM');
-  }, [bookingData.date, businessHours]);
+    // Boarding: full business hours, Daycare: open to noon
+    return bookingData.service === "boarding"
+      ? generateTimeSlots(hours.open, hours.close)
+      : generateTimeSlots(hours.open, '12:00 PM');
+  }, [bookingData.date, businessHours, bookingData.service]);
 
   const getPickUpTimeSlots = useMemo(() => {
     if (!bookingData.date && !bookingData.endDate) {
       // Return default weekday slots when no date selected
-      return generateTimeSlots('12:00 PM', businessHours.weekday.close);
+      return bookingData.service === "boarding"
+        ? generateTimeSlots(businessHours.weekday.open, businessHours.weekday.close)
+        : generateTimeSlots('12:00 PM', businessHours.weekday.close);
     }
     const dateToCheck = bookingData.endDate || bookingData.date;
     const isWeekend = isWeekendDate(dateToCheck);
     const hours = isWeekend ? businessHours.weekend : businessHours.weekday;
-    return generateTimeSlots('12:00 PM', hours.close);
-  }, [bookingData.date, bookingData.endDate, businessHours]);
+    // Boarding: full business hours, Daycare: noon to close
+    return bookingData.service === "boarding"
+      ? generateTimeSlots(hours.open, hours.close)
+      : generateTimeSlots('12:00 PM', hours.close);
+  }, [bookingData.date, bookingData.endDate, businessHours, bookingData.service]);
 
   // Generate time slots for half day daycare
   const getHalfDayDropOffTimeSlots = useMemo(() => {
@@ -531,13 +543,14 @@ const BookingPage = () => {
         selectedGroomingService: null, // Reset service when pet changes
       });
     } else {
-      // For grooming, only allow one pet at a time
+      // For grooming, only allow one pet at a time and auto-advance
       if (isGrooming) {
         setBookingData({
           ...bookingData,
           selectedPets: [pet],
           selectedGroomingService: null, // Reset service when pet changes
         });
+        setStep(3); // Auto-advance to groomer selection
       } else {
         setBookingData({
           ...bookingData,
@@ -555,6 +568,7 @@ const BookingPage = () => {
       groomingTime: null,
       groomingEndTime: null,
     });
+    setStep(4); // Auto-advance to service selection
   };
 
   const handleGroomingDateSelect = (date: Date) => {
@@ -563,6 +577,7 @@ const BookingPage = () => {
       groomingDate: date,
       groomingTime: null, // Reset time when date changes
     });
+    setStep(6); // Auto-advance to time selection
   };
 
   const handleGroomingTimeSelect = (time: string) => {
@@ -577,6 +592,7 @@ const BookingPage = () => {
       groomingTime: time,
       groomingEndTime: endTimeStr,
     });
+    setStep(7); // Auto-advance to confirmation
   };
 
   const nextStep = () => {
@@ -1197,13 +1213,14 @@ const BookingPage = () => {
                         <button
                           key={service.id}
                           onClick={() => {
-                            // If only one variant, auto-select it
+                            // If only one variant, auto-select it and advance
                             if (service.variants.length === 1) {
                               setBookingData({ 
                                 ...bookingData, 
                                 selectedGroomingService: service,
                                 selectedGroomingVariant: service.variants[0]
                               });
+                              setStep(5); // Auto-advance to date selection
                             } else {
                               setBookingData({ 
                                 ...bookingData, 
@@ -1264,7 +1281,10 @@ const BookingPage = () => {
                         return (
                           <button
                             key={variant.id}
-                            onClick={() => setBookingData({ ...bookingData, selectedGroomingVariant: variant })}
+                            onClick={() => {
+                              setBookingData({ ...bookingData, selectedGroomingVariant: variant });
+                              setStep(5); // Auto-advance to date selection
+                            }}
                             className={`relative w-full p-4 rounded-xl border-2 transition-all text-left ${
                               isSelected 
                                 ? "border-primary bg-primary/5 ring-2 ring-primary/20" 
@@ -1284,9 +1304,6 @@ const BookingPage = () => {
                                       ? bookingData.selectedGroomingService.shopify_product_title 
                                       : variant.title}
                                   </span>
-                                  <p className="text-sm text-muted-foreground">
-                                    ${parseFloat(variant.price).toFixed(2)}
-                                  </p>
                                 </div>
                               </div>
                               {isSelected && (
@@ -2027,13 +2044,13 @@ const BookingPage = () => {
                           <div className="flex justify-between items-center pb-4 border-b border-border">
                             <span className="text-muted-foreground">Drop-off</span>
                             <span className="font-semibold text-foreground">
-                              {bookingData.date ? new Date(bookingData.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : ''} at {bookingData.time}
+                              {bookingData.date ? format(parseISO(bookingData.date), 'EEE, MMM d') : ''} at {bookingData.time}
                             </span>
                           </div>
                           <div className="flex justify-between items-center">
                             <span className="text-muted-foreground">Pick-up</span>
                             <span className="font-semibold text-foreground">
-                              {bookingData.endDate ? new Date(bookingData.endDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : ''} at {bookingData.endTime}
+                              {bookingData.endDate ? format(parseISO(bookingData.endDate), 'EEE, MMM d') : ''} at {bookingData.endTime}
                             </span>
                           </div>
                         </>
@@ -2042,7 +2059,7 @@ const BookingPage = () => {
                           <div className="flex justify-between items-center pb-4 border-b border-border">
                             <span className="text-muted-foreground">Date</span>
                             <span className="font-semibold text-foreground">
-                              {bookingData.date ? new Date(bookingData.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : ''}
+                              {bookingData.date ? format(parseISO(bookingData.date), 'EEEE, MMMM d') : ''}
                             </span>
                           </div>
                           <div className="flex justify-between items-center">

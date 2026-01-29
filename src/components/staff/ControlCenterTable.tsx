@@ -32,7 +32,7 @@ import {
   Tags,
   DollarSign
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { PetTraitBadges, type PetTrait } from './PetTraitBadges';
 import { ManagePetTraitsDialog } from './ManagePetTraitsDialog';
 import { CancelReservationDialog } from './CancelReservationDialog';
@@ -208,14 +208,14 @@ export function ControlCenterTable({
   };
 
   const formatDateTime = (date: string, time: string | null) => {
-    const d = new Date(date);
+    const d = parseISO(date);
     const dateStr = format(d, 'EEE, MM/dd');
     const timeStr = time ? time.slice(0, 5) : '';
     return timeStr ? `${dateStr}, ${timeStr}` : dateStr;
   };
 
   const formatDateTimeWithNotes = (date: string, time: string | null, noteTime: string | null) => {
-    const d = new Date(date);
+    const d = parseISO(date);
     const dateStr = format(d, 'EEE, MM/dd');
     // Use database time if available, otherwise use parsed note time
     if (time) {
