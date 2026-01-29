@@ -220,13 +220,16 @@ const StaffDashboard = () => {
 
       if (error) throw error;
 
-      // If daycare, deduct 1 credit atomically on check-in
+      // If daycare, deduct appropriate credit atomically on check-in
       if (reservation.service_type === 'daycare' && reservation.client_id) {
+        const isHalfDay = reservation.notes?.toLowerCase().includes('half day');
+        const rpcFunction = isHalfDay ? 'deduct_half_daycare_credit' : 'deduct_daycare_credit';
+        
         const { data: newCredits, error: creditError } = await supabase
-          .rpc('deduct_daycare_credit', { p_client_id: reservation.client_id });
+          .rpc(rpcFunction, { p_client_id: reservation.client_id });
         
         if (creditError) {
-          console.error('Error deducting daycare credit:', creditError);
+          console.error(`Error deducting ${isHalfDay ? 'half ' : ''}daycare credit:`, creditError);
         }
       }
 
@@ -269,11 +272,14 @@ const StaffDashboard = () => {
 
       // If daycare, restore the credit that was deducted on check-in
       if (reservation.service_type === 'daycare' && reservation.client_id) {
+        const isHalfDay = reservation.notes?.toLowerCase().includes('half day');
+        const rpcFunction = isHalfDay ? 'restore_half_daycare_credit' : 'restore_daycare_credit';
+        
         const { error: creditError } = await supabase
-          .rpc('restore_daycare_credit', { p_client_id: reservation.client_id });
+          .rpc(rpcFunction, { p_client_id: reservation.client_id });
         
         if (creditError) {
-          console.error('Error restoring daycare credit:', creditError);
+          console.error(`Error restoring ${isHalfDay ? 'half ' : ''}daycare credit:`, creditError);
         }
       }
 
@@ -390,11 +396,14 @@ const StaffDashboard = () => {
       // If useCredit is true, deduct the appropriate credit
       if (useCredit && reservation.client_id) {
         if (reservation.service_type === 'daycare') {
+          const isHalfDay = reservation.notes?.toLowerCase().includes('half day');
+          const rpcFunction = isHalfDay ? 'deduct_half_daycare_credit' : 'deduct_daycare_credit';
+          
           const { error: creditError } = await supabase
-            .rpc('deduct_daycare_credit', { p_client_id: reservation.client_id });
+            .rpc(rpcFunction, { p_client_id: reservation.client_id });
           
           if (creditError) {
-            console.error('Error deducting daycare credit:', creditError);
+            console.error(`Error deducting ${isHalfDay ? 'half ' : ''}daycare credit:`, creditError);
             toast({ 
               title: 'Reservation cancelled', 
               description: 'But failed to deduct credit',
