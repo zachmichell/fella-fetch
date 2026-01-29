@@ -5,7 +5,13 @@ import { toast } from "sonner";
 export const SHOPIFY_API_VERSION = '2025-07';
 export const SHOPIFY_STORE_PERMANENT_DOMAIN = 'fella-fetch.myshopify.com';
 export const SHOPIFY_STOREFRONT_URL = `https://${SHOPIFY_STORE_PERMANENT_DOMAIN}/api/${SHOPIFY_API_VERSION}/graphql.json`;
-export const SHOPIFY_STOREFRONT_TOKEN = import.meta.env.VITE_SHOPIFY_STOREFRONT_TOKEN || 'a04512bd10f188f5e1fe71bf8bb4517f';
+
+// Storefront token must be set in environment - no hardcoded fallback for security
+const storefrontToken = import.meta.env.VITE_SHOPIFY_STOREFRONT_TOKEN;
+if (!storefrontToken) {
+  console.warn('VITE_SHOPIFY_STOREFRONT_TOKEN is not configured. Shopify features will be unavailable.');
+}
+export const SHOPIFY_STOREFRONT_TOKEN = storefrontToken || '';
 
 export interface ShopifyProduct {
   node: {

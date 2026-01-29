@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dog, Camera, Loader2, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { usePetPhotoUrl, clearPhotoCache } from '@/hooks/usePetPhotoUrl';
 
 interface PetPhotoUploadProps {
   petId: string;
@@ -25,6 +26,9 @@ export const PetPhotoUpload = ({
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showActions, setShowActions] = useState(false);
+  
+  // Use signed URL for private bucket
+  const { signedUrl, loading: urlLoading } = usePetPhotoUrl(photoUrl, petId);
 
   const sizeClasses = {
     sm: 'h-10 w-10',
@@ -84,20 +88,21 @@ export const PetPhotoUpload = ({
 
       if (uploadError) throw uploadError;
 
-      // Get public URL for the uploaded file
-      const { data: urlData } = supabase.storage
-        .from('pet-photos')
-        .getPublicUrl(filePath);
-
-      if (!urlData?.publicUrl) throw new Error('Failed to get file URL');
-
-      // Update pet record with photo URL
+      // Store the file path in the database (not the full URL since bucket is now private)
+      const storagePath = `pet-photos/${filePath}`;
+      
+      // Update pet record with the storage path
       const { error: updateError } = await supabase
         .from('pets')
-        .update({ photo_url: urlData.publicUrl })
+        .update({ photo_url: storagePath })
         .eq('id', petId);
 
       if (updateError) throw updateError;
+
+      // Clear the cache for the old URL if it exists
+      if (photoUrl) {
+        clearPhotoCache(photoUrl);
+      }
 
       toast({
         title: 'Photo Uploaded',
@@ -139,6 +144,9 @@ export const PetPhotoUpload = ({
         .eq('id', petId);
 
       if (error) throw error;
+
+      // Clear the cache
+      clearPhotoCache(photoUrl);
 
       toast({
         title: 'Photo Removed',
@@ -189,12 +197,16 @@ export const PetPhotoUpload = ({
 
       <Avatar className={`${sizeClasses[size]} cursor-pointer`}>
         <AvatarImage 
-          src={photoUrl || undefined} 
+          src={signedUrl || undefined} 
           alt={petName}
           className="object-cover"
         />
         <AvatarFallback className="bg-primary/10">
-          <Dog className={`${iconSizes[size]} text-primary`} />
+          {urlLoading ? (
+            <Loader2 className={`${iconSizes[size]} text-primary animate-spin`} />
+          ) : (
+            <Dog className={`${iconSizes[size]} text-primary`} />
+          )}
         </AvatarFallback>
       </Avatar>
 
