@@ -244,6 +244,27 @@ const StaffDashboard = () => {
     fetchDashboardData();
   }, [isStaffOrAdmin]);
 
+  // Real-time subscription for auto-refresh
+  useEffect(() => {
+    const channel = supabase
+      .channel('control-center-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'reservations' },
+        () => fetchDashboardData()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'pet_traits' },
+        () => fetchDashboardData()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   // Check for alert traits before proceeding with an action
   const checkForAlertTraits = (reservation: ControlCenterReservation): AlertTrait[] => {
     const alertTraits = (reservation.pet_traits || []).filter(t => t.is_alert) as AlertTrait[];

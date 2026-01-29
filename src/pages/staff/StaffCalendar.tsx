@@ -142,6 +142,22 @@ const StaffCalendar = () => {
     fetchData();
   }, [currentDate, viewMode, isStaffOrAdmin]);
 
+  // Real-time subscription for auto-refresh
+  useEffect(() => {
+    const channel = supabase
+      .channel('calendar-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'reservations' },
+        () => fetchData()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentDate, viewMode]);
+
   const getServiceCountsForDay = (date: Date): ServiceCount[] => {
     const dateStr = format(date, 'yyyy-MM-dd');
     const dayReservations = reservations.filter(r => r.start_date === dateStr);
