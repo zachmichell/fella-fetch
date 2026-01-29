@@ -97,6 +97,9 @@ interface Pet {
   vaccination_rabies: string | null;
   vaccination_distemper: string | null;
   vaccination_bordetella: string | null;
+  vaccination_rabies_doc_url: string | null;
+  vaccination_bordetella_doc_url: string | null;
+  vaccination_distemper_doc_url: string | null;
   special_needs: string | null;
   feeding_instructions: string | null;
   behavior_notes: string | null;
