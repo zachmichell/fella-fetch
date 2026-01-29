@@ -10,8 +10,9 @@ import {
   Trash2, 
   Loader2, 
   AlertCircle,
-  ExternalLink,
-  CheckCircle2
+  CheckCircle2,
+  Pencil,
+  X
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -40,6 +41,7 @@ export const VaccinationUpload = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const isExpired = !vaccinationDate || new Date(vaccinationDate) < new Date();
   const label = vaccinationLabels[vaccinationType];
@@ -110,6 +112,7 @@ export const VaccinationUpload = ({
       });
 
       onUploadComplete();
+      setIsEditing(false);
     } catch (error) {
       console.error('Upload error:', error);
       toast({
@@ -152,6 +155,7 @@ export const VaccinationUpload = ({
       });
 
       onUploadComplete();
+      setIsEditing(false);
     } catch (error) {
       console.error('Delete error:', error);
       toast({
@@ -202,6 +206,20 @@ export const VaccinationUpload = ({
             )}
           </Badge>
         </div>
+        
+        {/* Edit toggle button */}
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setIsEditing(!isEditing)}
+          className="h-7 w-7 p-0"
+        >
+          {isEditing ? (
+            <X className="h-4 w-4" />
+          ) : (
+            <Pencil className="h-4 w-4" />
+          )}
+        </Button>
       </div>
 
       {/* Expiration Date Display */}
@@ -220,9 +238,11 @@ export const VaccinationUpload = ({
         )}
       </div>
 
-      <div className="flex items-center gap-2 mt-2">
+      {/* Document status and actions */}
+      <div className="flex items-center gap-2">
         {documentUrl ? (
           <>
+            {/* Clickable document link - always visible */}
             <Button
               size="sm"
               variant="outline"
@@ -231,58 +251,73 @@ export const VaccinationUpload = ({
             >
               <FileText className="h-4 w-4" />
               View Document
-              <ExternalLink className="h-3 w-3 ml-1" />
             </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={handleDelete}
-              disabled={deleting}
-              className="text-destructive hover:text-destructive"
-            >
-              {deleting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Trash2 className="h-4 w-4" />
-              )}
-            </Button>
+            
+            {/* Delete button - only in edit mode */}
+            {isEditing && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="text-destructive hover:text-destructive"
+              >
+                {deleting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+              </Button>
+            )}
           </>
         ) : (
-          <div className="flex-1">
-            <Input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png,.webp"
-              onChange={handleUpload}
-              disabled={uploading}
-              className="hidden"
-              id={`upload-${petId}-${vaccinationType}`}
-            />
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="gap-1 w-full"
-            >
-              {uploading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <Upload className="h-4 w-4" />
-                  Upload Record
-                </>
-              )}
-            </Button>
-          </div>
+          <>
+            {/* Upload prompt - only in edit mode */}
+            {isEditing ? (
+              <div className="flex-1">
+                <Input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.webp"
+                  onChange={handleUpload}
+                  disabled={uploading}
+                  className="hidden"
+                  id={`upload-${petId}-${vaccinationType}`}
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="gap-1 w-full"
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4" />
+                      Upload Record
+                    </>
+                  )}
+                </Button>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">
+                No document uploaded — tap edit to add one.
+              </p>
+            )}
+          </>
         )}
       </div>
-      <p className="text-xs text-muted-foreground mt-2">
-        PDF or image files up to 5MB
-      </p>
+      
+      {isEditing && (
+        <p className="text-xs text-muted-foreground mt-2">
+          PDF or image files up to 5MB
+        </p>
+      )}
     </div>
   );
 };
