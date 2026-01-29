@@ -23,11 +23,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Dog, Syringe, Plus, Pencil, Loader2 } from 'lucide-react';
+import { Dog, Syringe, Plus, Pencil, Loader2, Pill, UtensilsCrossed } from 'lucide-react';
 import { ClientPortalLayout } from '@/components/client/ClientPortalLayout';
 import { useToast } from '@/hooks/use-toast';
 import { VaccinationUpload } from '@/components/client/VaccinationUpload';
 import { PetPhotoUpload } from '@/components/client/PetPhotoUpload';
+import { PetMedicationsManager } from '@/components/client/PetMedicationsManager';
+import { PetFeedingManager } from '@/components/client/PetFeedingManager';
 
 interface Pet {
   id: string;
@@ -350,6 +352,22 @@ const ClientPets = () => {
                           onUploadComplete={fetchClientData}
                         />
                       </div>
+                    </div>
+
+                    <Separator className="my-3" />
+
+                    {/* Medications & Feeding Section */}
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <PetMedicationsManager
+                        petId={pet.id}
+                        petName={pet.name}
+                        onUpdate={fetchClientData}
+                      />
+                      <PetFeedingManager
+                        petId={pet.id}
+                        petName={pet.name}
+                        onUpdate={fetchClientData}
+                      />
                     </div>
                   </div>
                 ))}
