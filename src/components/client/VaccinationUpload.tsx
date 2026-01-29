@@ -170,6 +170,14 @@ export const VaccinationUpload = ({
     }
   };
 
+  const formatExpirationDate = (date: string) => {
+    return new Date(date).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
   return (
     <div className="p-3 rounded-lg border bg-card">
       <div className="flex items-center justify-between mb-2">
@@ -189,11 +197,27 @@ export const VaccinationUpload = ({
             ) : (
               <>
                 <CheckCircle2 className="h-3 w-3 mr-1" />
-                Valid until {new Date(vaccinationDate!).toLocaleDateString()}
+                Valid
               </>
             )}
           </Badge>
         </div>
+      </div>
+
+      {/* Expiration Date Display */}
+      <div className="mb-3 text-sm">
+        {vaccinationDate ? (
+          <p className={isExpired ? 'text-destructive' : 'text-muted-foreground'}>
+            <span className="font-medium">
+              {isExpired ? 'Expired on: ' : 'Expires: '}
+            </span>
+            {formatExpirationDate(vaccinationDate)}
+          </p>
+        ) : (
+          <p className="text-muted-foreground italic">
+            No expiration date on file — staff will update after reviewing your document.
+          </p>
+        )}
       </div>
 
       <div className="flex items-center gap-2 mt-2">
