@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { StaffLayout } from '@/components/staff/StaffLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,7 +43,7 @@ const StaffDashboard = () => {
   const [traitAlertPetName, setTraitAlertPetName] = useState('');
   const [pendingTraitAction, setPendingTraitAction] = useState<{ type: 'checkin' | 'checkout'; reservation: ControlCenterReservation } | null>(null);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     if (!isStaffOrAdmin) {
       setLoading(false);
       return;
@@ -238,11 +238,11 @@ const StaffDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [isStaffOrAdmin]);
 
   useEffect(() => {
     fetchDashboardData();
-  }, [isStaffOrAdmin]);
+  }, [fetchDashboardData]);
 
   // Real-time subscription for auto-refresh
   useEffect(() => {
@@ -263,7 +263,7 @@ const StaffDashboard = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [fetchDashboardData]);
 
   // Check for alert traits before proceeding with an action
   const checkForAlertTraits = (reservation: ControlCenterReservation): AlertTrait[] => {
