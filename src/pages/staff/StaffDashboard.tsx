@@ -244,7 +244,7 @@ const StaffDashboard = () => {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
-  // Real-time subscription for auto-refresh
+  // Real-time subscription + 30-second polling for auto-refresh
   useEffect(() => {
     const channel = supabase
       .channel('control-center-changes')
@@ -260,8 +260,14 @@ const StaffDashboard = () => {
       )
       .subscribe();
 
+    // Polling fallback every 30 seconds
+    const pollInterval = setInterval(() => {
+      fetchDashboardData();
+    }, 30000);
+
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(pollInterval);
     };
   }, [fetchDashboardData]);
 
