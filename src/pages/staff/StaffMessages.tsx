@@ -9,8 +9,11 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
-import { MessageCircle, Send, Loader2, User, Users, Clock, Search } from 'lucide-react';
+import { MessageCircle, Send, Loader2, User, Users, Clock, Search, Calendar, Plus } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
+import { ChatCalendarDrawer } from '@/components/staff/messages/ChatCalendarDrawer';
+import { SendReservationProposal, type ReservationProposalData } from '@/components/staff/messages/SendReservationProposal';
+import { ReservationProposalCard, type ReservationProposalDisplayData } from '@/components/staff/messages/ReservationProposalCard';
 
 interface Client {
   id: string;
@@ -35,6 +38,20 @@ interface ConversationSummary {
   unreadCount: number;
 }
 
+// Helper to check if content contains a reservation proposal
+const parseProposalFromContent = (content: string): ReservationProposalDisplayData | null => {
+  try {
+    // Check if there's a JSON proposal marker
+    const markerMatch = content.match(/\[PROPOSAL:(.+?)\]/);
+    if (markerMatch) {
+      return JSON.parse(markerMatch[1]);
+    }
+  } catch {
+    // Not a proposal message
+  }
+  return null;
+};
+
 const StaffMessages = () => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -46,6 +63,8 @@ const StaffMessages = () => {
   const [isFetchingConversations, setIsFetchingConversations] = useState(true);
   const [isFetchingMessages, setIsFetchingMessages] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [calendarDrawerOpen, setCalendarDrawerOpen] = useState(false);
+  const [proposalDialogOpen, setProposalDialogOpen] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -308,6 +327,30 @@ const StaffMessages = () => {
     }
   };
 
+  // Handler to send a reservation proposal
+  const handleSendProposal = async (content: string, proposalData: ReservationProposalData) => {
+    if (!selectedClient || !user) return;
+    
+    // Encode proposal data into the message content
+    const contentWithData = `${content}\n\n[PROPOSAL:${JSON.stringify(proposalData)}]`;
+    
+    const { error } = await supabase
+      .from('chat_messages')
+      .insert({
+        client_id: selectedClient.id,
+        role: 'assistant',
+        content: contentWithData,
+        staff_id: user.id,
+      });
+
+    if (error) throw error;
+    
+    toast({
+      title: 'Proposal sent',
+      description: 'The client will be notified to accept or decline.',
+    });
+  };
+
   const filteredConversations = conversations.filter((conv) => {
     if (!searchQuery) return true;
     const fullName = `${conv.client.first_name} ${conv.client.last_name}`.toLowerCase();
@@ -417,6 +460,16 @@ const StaffMessages = () => {
                       {selectedClient.email && (
                         <p className="text-sm text-muted-foreground">{selectedClient.email}</p>
                       )}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setCalendarDrawerOpen(true)}>
+                        <Calendar className="h-4 w-4 mr-1" />
+                        View Calendar
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => setProposalDialogOpen(true)}>
+                        <Plus className="h-4 w-4 mr-1" />
+                        Send Proposal
+                      </Button>
                     </div>
                   </div>
                 </CardHeader>
@@ -528,6 +581,20 @@ const StaffMessages = () => {
           </Card>
         </div>
       </div>
+
+      {/* Calendar Drawer */}
+      <ChatCalendarDrawer open={calendarDrawerOpen} onOpenChange={setCalendarDrawerOpen} />
+
+      {/* Send Proposal Dialog */}
+      {selectedClient && (
+        <SendReservationProposal
+          open={proposalDialogOpen}
+          onOpenChange={setProposalDialogOpen}
+          clientId={selectedClient.id}
+          clientName={`${selectedClient.first_name} ${selectedClient.last_name}`}
+          onSend={handleSendProposal}
+        />
+      )}
     </StaffLayout>
   );
 };
