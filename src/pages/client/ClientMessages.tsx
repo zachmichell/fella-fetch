@@ -319,6 +319,15 @@ const ClientMessages = () => {
     }
   };
 
+  // Helper to replace proposal marker in content
+  const replaceProposalInContent = (content: string, newProposal: ReservationProposalDisplayData): string => {
+    const jsonStr = extractJsonFromMarker(content, 'PROPOSAL');
+    if (jsonStr) {
+      return content.replace(`[PROPOSAL:${jsonStr}]`, `[PROPOSAL:${JSON.stringify(newProposal)}]`);
+    }
+    return content;
+  };
+
   // Handle accepting a proposal
   const handleAcceptProposal = async (message: ChatMessage, proposal: ReservationProposalDisplayData) => {
     setProcessingProposalId(message.id);
@@ -351,17 +360,16 @@ const ClientMessages = () => {
 
       // Update the proposal status in the message
       const updatedProposal = { ...proposal, status: 'accepted' as const };
-      const updatedContent = message.content.replace(
-        /\[PROPOSAL:.+?\]/,
-        `[PROPOSAL:${JSON.stringify(updatedProposal)}]`
-      );
+      const updatedContent = replaceProposalInContent(message.content, updatedProposal);
 
-      await supabase
+      const { error: updateError } = await supabase
         .from('chat_messages')
         .update({ content: updatedContent })
         .eq('id', message.id);
 
-      // Update local state
+      if (updateError) throw updateError;
+
+      // Update local state immediately
       setMessages(prev => prev.map(m => 
         m.id === message.id ? { ...m, content: updatedContent } : m
       ));
@@ -388,15 +396,14 @@ const ClientMessages = () => {
     try {
       // Update the proposal status in the message
       const updatedProposal = { ...proposal, status: 'declined' as const };
-      const updatedContent = message.content.replace(
-        /\[PROPOSAL:.+?\]/,
-        `[PROPOSAL:${JSON.stringify(updatedProposal)}]`
-      );
+      const updatedContent = replaceProposalInContent(message.content, updatedProposal);
 
-      await supabase
+      const { error: updateError } = await supabase
         .from('chat_messages')
         .update({ content: updatedContent })
         .eq('id', message.id);
+
+      if (updateError) throw updateError;
 
       // Update local state
       setMessages(prev => prev.map(m => 
