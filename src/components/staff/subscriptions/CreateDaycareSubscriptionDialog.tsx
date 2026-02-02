@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { format } from 'date-fns';
 import {
   Dialog,
   DialogContent,
@@ -14,8 +15,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, Dog, Calendar, Clock, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Loader2, Dog, Calendar, Clock, ChevronLeft, ChevronRight, Check, CalendarIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import {
   Command,
@@ -25,11 +29,6 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 
 interface CreateDaycareSubscriptionDialogProps {
   open: boolean;
@@ -54,7 +53,7 @@ interface Pet {
 
 type DayType = 'full' | 'half';
 type HalfDayPeriod = 'morning' | 'afternoon';
-type Step = 'client' | 'pet' | 'dayType' | 'days' | 'confirm';
+type Step = 'client' | 'pet' | 'dayType' | 'days' | 'endDate' | 'confirm';
 
 const DAYS_OF_WEEK = [
   { value: 0, label: 'Sunday', short: 'Sun' },
@@ -80,6 +79,7 @@ export function CreateDaycareSubscriptionDialog({
   const [dayType, setDayType] = useState<DayType>('full');
   const [halfDayPeriod, setHalfDayPeriod] = useState<HalfDayPeriod>('morning');
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [notes, setNotes] = useState('');
   const [clientSearchOpen, setClientSearchOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -93,6 +93,7 @@ export function CreateDaycareSubscriptionDialog({
       setDayType('full');
       setHalfDayPeriod('morning');
       setSelectedDays([]);
+      setEndDate(undefined);
       setNotes('');
     }
   }, [open, preselectedClientId, preselectedPetId]);
@@ -157,6 +158,7 @@ export function CreateDaycareSubscriptionDialog({
           day_type: dayType,
           half_day_period: dayType === 'half' ? halfDayPeriod : null,
           days_of_week: selectedDays,
+          end_date: endDate ? format(endDate, 'yyyy-MM-dd') : null,
           notes: notes || null,
           is_active: true,
           is_approved: false,
@@ -182,13 +184,14 @@ export function CreateDaycareSubscriptionDialog({
       case 'pet': return !!selectedPetId;
       case 'dayType': return true;
       case 'days': return selectedDays.length > 0;
+      case 'endDate': return true; // End date is optional
       case 'confirm': return true;
       default: return false;
     }
   };
 
   const goNext = () => {
-    const steps: Step[] = ['client', 'pet', 'dayType', 'days', 'confirm'];
+    const steps: Step[] = ['client', 'pet', 'dayType', 'days', 'endDate', 'confirm'];
     const currentIndex = steps.indexOf(step);
     if (currentIndex < steps.length - 1) {
       setStep(steps[currentIndex + 1]);
@@ -196,7 +199,7 @@ export function CreateDaycareSubscriptionDialog({
   };
 
   const goBack = () => {
-    const steps: Step[] = ['client', 'pet', 'dayType', 'days', 'confirm'];
+    const steps: Step[] = ['client', 'pet', 'dayType', 'days', 'endDate', 'confirm'];
     const currentIndex = steps.indexOf(step);
     if (currentIndex > 0) {
       setStep(steps[currentIndex - 1]);
@@ -204,7 +207,7 @@ export function CreateDaycareSubscriptionDialog({
   };
 
   const getStepNumber = () => {
-    const steps: Step[] = ['client', 'pet', 'dayType', 'days', 'confirm'];
+    const steps: Step[] = ['client', 'pet', 'dayType', 'days', 'endDate', 'confirm'];
     return steps.indexOf(step) + 1;
   };
 
@@ -214,7 +217,7 @@ export function CreateDaycareSubscriptionDialog({
         <DialogHeader>
           <DialogTitle>Create Recurring Daycare</DialogTitle>
           <DialogDescription>
-            Step {getStepNumber()} of 5 — Set up a weekly recurring daycare schedule
+            Step {getStepNumber()} of 6 — Set up a weekly recurring daycare schedule
           </DialogDescription>
         </DialogHeader>
 
@@ -414,7 +417,53 @@ export function CreateDaycareSubscriptionDialog({
             </div>
           )}
 
-          {/* Step 5: Confirm */}
+          {/* Step 5: End Date */}
+          {step === 'endDate' && (
+            <div className="space-y-4">
+              <Label>Subscription End Date (Optional)</Label>
+              <p className="text-sm text-muted-foreground">
+                Set an end date for this subscription, or leave empty to continue indefinitely.
+              </p>
+              
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !endDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {endDate ? format(endDate, "PPP") : "No end date (ongoing)"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={endDate}
+                    onSelect={setEndDate}
+                    disabled={(date) => date < new Date()}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+
+              {endDate && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setEndDate(undefined)}
+                  className="text-muted-foreground"
+                >
+                  Clear end date
+                </Button>
+              )}
+            </div>
+          )}
+
+          {/* Step 6: Confirm */}
           {step === 'confirm' && (
             <div className="space-y-4">
               <Label>Confirm Subscription Details</Label>
@@ -446,6 +495,12 @@ export function CreateDaycareSubscriptionDialog({
                       );
                     })}
                   </div>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">End Date:</span>
+                  <span className="font-medium">
+                    {endDate ? format(endDate, "PPP") : "No end date (ongoing)"}
+                  </span>
                 </div>
                 {notes && (
                   <div className="pt-2 border-t">

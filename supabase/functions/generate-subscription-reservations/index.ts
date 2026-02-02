@@ -12,6 +12,7 @@ interface DaycareSubscription {
   day_type: 'full' | 'half';
   half_day_period: 'morning' | 'afternoon' | null;
   days_of_week: number[];
+  end_date: string | null;
   is_active: boolean;
   is_approved: boolean;
   notes: string | null;
@@ -96,11 +97,23 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Generate reservations for the next 8 weeks
+    // Generate reservations up to end_date or 8 weeks ahead (whichever is sooner)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const endDate = new Date(today);
-    endDate.setDate(endDate.getDate() + 56); // 8 weeks
+    
+    // Calculate default end (8 weeks from now)
+    const defaultEnd = new Date(today);
+    defaultEnd.setDate(defaultEnd.getDate() + 56); // 8 weeks
+    
+    // Use subscription end_date if set, otherwise use 8 weeks
+    let generationEndDate: Date;
+    if (sub.end_date) {
+      const subEndDate = new Date(sub.end_date + 'T00:00:00');
+      // Use the earlier of subscription end date or 8 weeks
+      generationEndDate = subEndDate < defaultEnd ? subEndDate : defaultEnd;
+    } else {
+      generationEndDate = defaultEnd;
+    }
 
     // Get existing reservations for this subscription to avoid duplicates
     const { data: existingReservations } = await supabase
@@ -129,7 +142,7 @@ Deno.serve(async (req) => {
     const reservationsToCreate: any[] = [];
     const currentDate = new Date(today);
 
-    while (currentDate <= endDate) {
+    while (currentDate <= generationEndDate) {
       const dayOfWeek = currentDate.getDay();
       
       if (sub.days_of_week.includes(dayOfWeek)) {

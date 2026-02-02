@@ -252,6 +252,7 @@ export type Database = {
           created_at: string
           day_type: string
           days_of_week: number[]
+          end_date: string | null
           half_day_period: string | null
           id: string
           is_active: boolean
@@ -269,6 +270,7 @@ export type Database = {
           created_at?: string
           day_type: string
           days_of_week: number[]
+          end_date?: string | null
           half_day_period?: string | null
           id?: string
           is_active?: boolean
@@ -286,6 +288,7 @@ export type Database = {
           created_at?: string
           day_type?: string
           days_of_week?: number[]
+          end_date?: string | null
           half_day_period?: string | null
           id?: string
           is_active?: boolean
