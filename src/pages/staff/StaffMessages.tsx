@@ -41,13 +41,56 @@ interface ConversationSummary {
   unreadCount: number;
 }
 
+// Helper to extract JSON between markers with balanced bracket matching
+const extractJsonFromMarker = (content: string, marker: string): string | null => {
+  const startMarker = `[${marker}:`;
+  const startIdx = content.indexOf(startMarker);
+  if (startIdx === -1) return null;
+  
+  const jsonStart = startIdx + startMarker.length;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  
+  for (let i = jsonStart; i < content.length; i++) {
+    const char = content[i];
+    
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    
+    if (char === '\\' && inString) {
+      escape = true;
+      continue;
+    }
+    
+    if (char === '"' && !escape) {
+      inString = !inString;
+      continue;
+    }
+    
+    if (!inString) {
+      if (char === '{' || char === '[') {
+        depth++;
+      } else if (char === '}' || char === ']') {
+        if (depth === 0 && char === ']') {
+          // End of marker
+          return content.slice(jsonStart, i);
+        }
+        depth--;
+      }
+    }
+  }
+  return null;
+};
+
 // Helper to check if content contains a reservation proposal
 const parseProposalFromContent = (content: string): ReservationProposalDisplayData | null => {
   try {
-    // Check if there's a JSON proposal marker
-    const markerMatch = content.match(/\[PROPOSAL:(.+?)\]/);
-    if (markerMatch) {
-      return JSON.parse(markerMatch[1]);
+    const jsonStr = extractJsonFromMarker(content, 'PROPOSAL');
+    if (jsonStr) {
+      return JSON.parse(jsonStr);
     }
   } catch {
     // Not a proposal message
@@ -58,14 +101,28 @@ const parseProposalFromContent = (content: string): ReservationProposalDisplayDa
 // Helper to check if content contains a credit purchase card
 const parseCreditPurchaseFromContent = (content: string): CreditPurchaseData | null => {
   try {
-    const markerMatch = content.match(/\[CREDIT_PURCHASE:(.+?)\]/);
-    if (markerMatch) {
-      return JSON.parse(markerMatch[1]);
+    const jsonStr = extractJsonFromMarker(content, 'CREDIT_PURCHASE');
+    if (jsonStr) {
+      return JSON.parse(jsonStr);
     }
   } catch {
     // Not a credit purchase message
   }
   return null;
+};
+
+// Helper to get clean display content (removing markers)
+const getDisplayContent = (content: string): string => {
+  let result = content;
+  const proposalJson = extractJsonFromMarker(result, 'PROPOSAL');
+  if (proposalJson) {
+    result = result.replace(`[PROPOSAL:${proposalJson}]`, '');
+  }
+  const creditJson = extractJsonFromMarker(result, 'CREDIT_PURCHASE');
+  if (creditJson) {
+    result = result.replace(`[CREDIT_PURCHASE:${creditJson}]`, '');
+  }
+  return result.trim();
 };
 
 // Helper to get clean preview text for conversation list
@@ -76,13 +133,15 @@ const getPreviewText = (content: string): string => {
     const serviceLabel = proposal.serviceType === 'daycare' 
       ? (proposal.daycareType === 'half' ? 'Half Day Daycare' : 'Full Day Daycare')
       : proposal.serviceType === 'boarding' ? 'Boarding' : 'Grooming';
-    return `📋 ${serviceLabel} Proposal for ${proposal.petName}`;
+    const statusEmoji = proposal.status === 'accepted' ? '✅' : proposal.status === 'declined' ? '❌' : '📋';
+    return `${statusEmoji} ${serviceLabel} Proposal for ${proposal.petName}`;
   }
   
   const creditPurchase = parseCreditPurchaseFromContent(content);
   if (creditPurchase) {
     const productCount = creditPurchase.products.length;
-    return `🛒 Credit Purchase (${productCount} package${productCount !== 1 ? 's' : ''})`;
+    const statusEmoji = creditPurchase.status === 'purchased' ? '✅' : '🛒';
+    return `${statusEmoji} Credit Purchase (${productCount} package${productCount !== 1 ? 's' : ''})`;
   }
   
   return content;
@@ -267,7 +326,7 @@ const StaffMessages = () => {
     fetchStaffProfiles();
   }, [fetchConversations, fetchStaffProfiles]);
 
-  // Real-time subscription for new messages
+  // Real-time subscription for new and updated messages
   useEffect(() => {
     const channel = supabase
       .channel('staff-chat-messages')
@@ -303,6 +362,31 @@ const StaffMessages = () => {
           }
 
           // Always refresh conversation list
+          fetchConversations();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'chat_messages',
+        },
+        (payload) => {
+          const updatedMessage = payload.new as ChatMessage;
+          
+          // If viewing this conversation, update the message (for proposal status changes)
+          if (selectedClient && updatedMessage.client_id === selectedClient.id) {
+            setMessages((prev) =>
+              prev.map(m =>
+                m.id === updatedMessage.id
+                  ? { ...updatedMessage, role: updatedMessage.role as 'user' | 'assistant' }
+                  : m
+              )
+            );
+          }
+
+          // Refresh conversation list to update previews
           fetchConversations();
         }
       )
@@ -595,10 +679,7 @@ const StaffMessages = () => {
                         {messages.map((message) => {
                           const proposal = parseProposalFromContent(message.content);
                           const creditPurchase = parseCreditPurchaseFromContent(message.content);
-                          const displayContent = message.content
-                            .replace(/\[PROPOSAL:.+?\]/, '')
-                            .replace(/\[CREDIT_PURCHASE:.+?\]/, '')
-                            .trim();
+                          const displayContent = getDisplayContent(message.content);
                           const isCardOnly = (proposal || creditPurchase) && !displayContent;
                           const staffName = message.role === 'assistant' ? getStaffName(message.staff_id) : null;
 

@@ -8,18 +8,16 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, ShoppingCart, Sun, BedDouble } from 'lucide-react';
-import { 
-  SHOPIFY_STOREFRONT_URL, 
-  SHOPIFY_STOREFRONT_TOKEN,
-  storefrontApiRequest 
-} from '@/lib/shopify';
+import { Loader2, ShoppingCart, Sun, BedDouble, Plus, Minus } from 'lucide-react';
+import { storefrontApiRequest } from '@/lib/shopify';
 
 interface SendCreditPurchaseProps {
   open: boolean;
@@ -45,6 +43,7 @@ export interface CreditProduct {
   currencyCode: string;
   creditType: 'daycare' | 'half_daycare' | 'boarding';
   creditValue: number;
+  quantity: number;
 }
 
 interface ShopifyVariant {
@@ -67,6 +66,11 @@ interface ServiceMapping {
   credit_value: number | null;
 }
 
+interface SelectedProduct {
+  variantId: string;
+  quantity: number;
+}
+
 export function SendCreditPurchase({ 
   open, 
   onOpenChange, 
@@ -75,7 +79,7 @@ export function SendCreditPurchase({
   onSend 
 }: SendCreditPurchaseProps) {
   const { toast } = useToast();
-  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
+  const [selectedProducts, setSelectedProducts] = useState<Map<string, number>>(new Map());
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -134,7 +138,7 @@ export function SendCreditPurchase({
   });
 
   // Build list of available credit products
-  const creditProducts: CreditProduct[] = [];
+  const creditProducts: Omit<CreditProduct, 'quantity'>[] = [];
   
   serviceMappings.forEach(mapping => {
     const product = shopifyProducts.find(p => {
@@ -169,12 +173,26 @@ export function SendCreditPurchase({
   });
 
   const toggleProduct = (variantId: string) => {
-    const newSelected = new Set(selectedProducts);
+    const newSelected = new Map(selectedProducts);
     if (newSelected.has(variantId)) {
       newSelected.delete(variantId);
     } else {
-      newSelected.add(variantId);
+      newSelected.set(variantId, 1);
     }
+    setSelectedProducts(newSelected);
+  };
+
+  const updateQuantity = (variantId: string, delta: number) => {
+    const newSelected = new Map(selectedProducts);
+    const currentQty = newSelected.get(variantId) || 1;
+    const newQty = Math.max(1, currentQty + delta);
+    newSelected.set(variantId, newQty);
+    setSelectedProducts(newSelected);
+  };
+
+  const setQuantity = (variantId: string, quantity: number) => {
+    const newSelected = new Map(selectedProducts);
+    newSelected.set(variantId, Math.max(1, quantity));
     setSelectedProducts(newSelected);
   };
 
@@ -191,7 +209,12 @@ export function SendCreditPurchase({
     setIsSubmitting(true);
 
     try {
-      const products = creditProducts.filter(p => selectedProducts.has(p.shopifyVariantId));
+      const products: CreditProduct[] = creditProducts
+        .filter(p => selectedProducts.has(p.shopifyVariantId))
+        .map(p => ({
+          ...p,
+          quantity: selectedProducts.get(p.shopifyVariantId) || 1,
+        }));
       
       const purchaseData: CreditPurchaseData = {
         type: 'credit_purchase',
@@ -204,7 +227,7 @@ export function SendCreditPurchase({
       onOpenChange(false);
       
       // Reset form
-      setSelectedProducts(new Set());
+      setSelectedProducts(new Map());
       setMessage('');
 
       toast({
@@ -245,6 +268,15 @@ export function SendCreditPurchase({
 
   const isLoading = isMappingsLoading || isProductsLoading;
 
+  // Calculate total
+  const totalPrice = creditProducts
+    .filter(p => selectedProducts.has(p.shopifyVariantId))
+    .reduce((sum, p) => sum + parseFloat(p.price) * (selectedProducts.get(p.shopifyVariantId) || 1), 0);
+
+  const totalCredits = creditProducts
+    .filter(p => selectedProducts.has(p.shopifyVariantId))
+    .reduce((sum, p) => sum + p.creditValue * (selectedProducts.get(p.shopifyVariantId) || 1), 0);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
@@ -253,6 +285,9 @@ export function SendCreditPurchase({
             <ShoppingCart className="h-5 w-5" />
             Send Credit Purchase to {clientName}
           </DialogTitle>
+          <DialogDescription>
+            Select credit packages and set quantities for the client to purchase.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 min-h-0 space-y-4">
@@ -272,49 +307,118 @@ export function SendCreditPurchase({
               <div className="space-y-2">
                 <Label>Select Credit Packages</Label>
                 <p className="text-sm text-muted-foreground">
-                  Choose which credit packages to offer. The client will be able to purchase directly from the chat.
+                  Choose packages and specify quantities. The client will be able to purchase directly from the chat.
                 </p>
               </div>
 
-              <ScrollArea className="h-[250px] border rounded-lg p-3">
+              <ScrollArea className="h-[280px] border rounded-lg p-3">
                 <div className="space-y-2">
-                  {creditProducts.map((product) => (
-                    <div
-                      key={product.shopifyVariantId}
-                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                        selectedProducts.has(product.shopifyVariantId)
-                          ? 'border-primary bg-primary/5'
-                          : 'border-border hover:border-primary/50'
-                      }`}
-                      onClick={() => toggleProduct(product.shopifyVariantId)}
-                    >
-                      <Checkbox
-                        checked={selectedProducts.has(product.shopifyVariantId)}
-                        onCheckedChange={() => toggleProduct(product.shopifyVariantId)}
-                      />
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <div className={`p-1.5 rounded-full ${
-                          product.creditType === 'boarding' ? 'bg-purple-100 text-purple-600' : 'bg-amber-100 text-amber-600'
-                        }`}>
-                          {getCreditTypeIcon(product.creditType)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">
-                            {product.shopifyProductTitle}
-                            {product.shopifyVariantTitle !== 'Default Title' && ` - ${product.shopifyVariantTitle}`}
+                  {creditProducts.map((product) => {
+                    const isSelected = selectedProducts.has(product.shopifyVariantId);
+                    const quantity = selectedProducts.get(product.shopifyVariantId) || 1;
+                    
+                    return (
+                      <div
+                        key={product.shopifyVariantId}
+                        className={`p-3 rounded-lg border transition-colors ${
+                          isSelected
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border hover:border-primary/50'
+                        }`}
+                      >
+                        <div 
+                          className="flex items-center gap-3 cursor-pointer"
+                          onClick={() => toggleProduct(product.shopifyVariantId)}
+                        >
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleProduct(product.shopifyVariantId)}
+                          />
+                          <div className={`p-1.5 rounded-full ${
+                            product.creditType === 'boarding' ? 'bg-purple-100 text-purple-600' : 'bg-amber-100 text-amber-600'
+                          }`}>
+                            {getCreditTypeIcon(product.creditType)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">
+                              {product.shopifyProductTitle}
+                              {product.shopifyVariantTitle !== 'Default Title' && ` - ${product.shopifyVariantTitle}`}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {getCreditTypeLabel(product.creditType)} • {product.creditValue} credit{product.creditValue !== 1 ? 's' : ''} each
+                            </p>
+                          </div>
+                          <p className="font-semibold text-sm">
+                            ${parseFloat(product.price).toFixed(2)}
                           </p>
-                          <p className="text-xs text-muted-foreground">
-                            {getCreditTypeLabel(product.creditType)} • {product.creditValue} credit{product.creditValue !== 1 ? 's' : ''}
-                          </p>
                         </div>
+                        
+                        {/* Quantity selector - only shown when selected */}
+                        {isSelected && (
+                          <div className="mt-3 pt-3 border-t flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">Quantity:</span>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateQuantity(product.shopifyVariantId, -1);
+                                }}
+                                disabled={quantity <= 1}
+                              >
+                                <Minus className="h-3 w-3" />
+                              </Button>
+                              <Input
+                                type="number"
+                                min={1}
+                                value={quantity}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  setQuantity(product.shopifyVariantId, parseInt(e.target.value) || 1);
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-16 h-8 text-center"
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateQuantity(product.shopifyVariantId, 1);
+                                }}
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                              <span className="text-sm font-medium ml-2">
+                                = ${(parseFloat(product.price) * quantity).toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <p className="font-semibold text-sm">
-                        ${parseFloat(product.price).toFixed(2)}
-                      </p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </ScrollArea>
+
+              {/* Summary */}
+              {selectedProducts.size > 0 && (
+                <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Total Credits:</span>
+                    <span className="font-medium">{totalCredits} credit{totalCredits !== 1 ? 's' : ''}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Total Price:</span>
+                    <span className="font-semibold">${totalPrice.toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label>Message (optional)</Label>

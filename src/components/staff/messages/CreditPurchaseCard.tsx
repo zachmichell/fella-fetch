@@ -85,7 +85,7 @@ export function CreditPurchaseCard({
     setIsCheckingOut(true);
     try {
       const lines = selectedItems.map(product => ({
-        quantity: 1,
+        quantity: product.quantity || 1,
         merchandiseId: product.shopifyVariantId,
       }));
 
@@ -112,7 +112,11 @@ export function CreditPurchaseCard({
 
   const selectedTotal = data.products
     .filter(p => selectedProducts.has(p.shopifyVariantId))
-    .reduce((sum, p) => sum + parseFloat(p.price), 0);
+    .reduce((sum, p) => sum + parseFloat(p.price) * (p.quantity || 1), 0);
+
+  const selectedCredits = data.products
+    .filter(p => selectedProducts.has(p.shopifyVariantId))
+    .reduce((sum, p) => sum + p.creditValue * (p.quantity || 1), 0);
 
   return (
     <Card className={`border-2 ${
@@ -180,13 +184,21 @@ export function CreditPurchaseCard({
                     {product.shopifyVariantTitle !== 'Default Title' && ` - ${product.shopifyVariantTitle}`}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {getCreditTypeLabel(product.creditType)} • {product.creditValue} credit{product.creditValue !== 1 ? 's' : ''}
+                    {getCreditTypeLabel(product.creditType)} • {product.creditValue * (product.quantity || 1)} credit{(product.creditValue * (product.quantity || 1)) !== 1 ? 's' : ''}
+                    {(product.quantity || 1) > 1 && ` (${product.quantity} × ${product.creditValue})`}
                   </p>
                 </div>
                 
-                <p className="font-semibold text-sm">
-                  ${parseFloat(product.price).toFixed(2)}
-                </p>
+                <div className="text-right">
+                  {(product.quantity || 1) > 1 && (
+                    <p className="text-xs text-muted-foreground">
+                      {product.quantity} × ${parseFloat(product.price).toFixed(2)}
+                    </p>
+                  )}
+                  <p className="font-semibold text-sm">
+                    ${(parseFloat(product.price) * (product.quantity || 1)).toFixed(2)}
+                  </p>
+                </div>
               </div>
             );
           })}
@@ -197,7 +209,7 @@ export function CreditPurchaseCard({
           <div className="pt-3 border-t space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">
-                {selectedProducts.size} item{selectedProducts.size !== 1 ? 's' : ''} selected
+                {selectedProducts.size} item{selectedProducts.size !== 1 ? 's' : ''} • {selectedCredits} credit{selectedCredits !== 1 ? 's' : ''}
               </span>
               <span className="font-semibold">
                 Total: ${selectedTotal.toFixed(2)}
