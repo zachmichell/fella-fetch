@@ -17,6 +17,7 @@ import { SendReservationProposal, type ReservationProposalData } from '@/compone
 import { ReservationProposalCard, type ReservationProposalDisplayData } from '@/components/staff/messages/ReservationProposalCard';
 import { SendCreditPurchase, type CreditPurchaseData } from '@/components/staff/messages/SendCreditPurchase';
 import { CreditPurchaseCard } from '@/components/staff/messages/CreditPurchaseCard';
+import { ConversationDetailsPanel } from '@/components/staff/messages/ConversationDetailsPanel';
 
 interface Client {
   id: string;
@@ -39,6 +40,7 @@ interface ConversationSummary {
   client: Client;
   lastMessage: ChatMessage | null;
   unreadCount: number;
+  petNames: string[];
 }
 
 // Helper to extract JSON between markers with balanced bracket matching
@@ -248,6 +250,24 @@ const StaffMessages = () => {
 
       if (clientsError) throw clientsError;
 
+      // Fetch pets for all these clients
+      const { data: petsData, error: petsError } = await supabase
+        .from('pets')
+        .select('id, name, client_id')
+        .in('client_id', clientIds)
+        .eq('is_active', true);
+
+      if (petsError) throw petsError;
+
+      // Build pet names map by client_id
+      const petNamesMap: Record<string, string[]> = {};
+      (petsData || []).forEach(pet => {
+        if (!petNamesMap[pet.client_id]) {
+          petNamesMap[pet.client_id] = [];
+        }
+        petNamesMap[pet.client_id].push(pet.name);
+      });
+
       // Build conversation summaries
       const summaries: ConversationSummary[] = (clientsData || []).map((client) => {
         const clientMessages = messagesData?.filter(m => m.client_id === client.id) || [];
@@ -258,6 +278,7 @@ const StaffMessages = () => {
           client,
           lastMessage: lastMessage ? { ...lastMessage, role: lastMessage.role as 'user' | 'assistant', staff_id: null } : null,
           unreadCount,
+          petNames: petNamesMap[client.id] || [],
         };
       });
 
@@ -635,9 +656,12 @@ const StaffMessages = () => {
 
   const filteredConversations = conversations.filter((conv) => {
     if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
     const fullName = `${conv.client.first_name} ${conv.client.last_name}`.toLowerCase();
-    return fullName.includes(searchQuery.toLowerCase()) ||
-           conv.client.email?.toLowerCase().includes(searchQuery.toLowerCase());
+    const petNamesStr = conv.petNames.join(' ').toLowerCase();
+    return fullName.includes(query) ||
+           conv.client.email?.toLowerCase().includes(query) ||
+           petNamesStr.includes(query);
   });
 
   const totalUnread = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
@@ -648,13 +672,15 @@ const StaffMessages = () => {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-2xl font-bold">Messages</h1>
-            <p className="text-muted-foreground">
-              {totalUnread > 0 ? `${totalUnread} unread message${totalUnread > 1 ? 's' : ''}` : 'All caught up!'}
-            </p>
+            {totalUnread > 0 && (
+              <p className="text-muted-foreground">
+                {totalUnread} unread message{totalUnread > 1 ? 's' : ''}
+              </p>
+            )}
           </div>
         </div>
 
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 min-h-0">
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 min-h-0">
           {/* Conversations List */}
           <Card className="md:col-span-1 flex flex-col min-h-0">
             <CardHeader className="pb-3 flex-shrink-0">
@@ -665,7 +691,7 @@ const StaffMessages = () => {
               <div className="relative mt-2">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search clients..."
+                  placeholder="Search clients or pets..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9"
@@ -727,7 +753,7 @@ const StaffMessages = () => {
           </Card>
 
           {/* Chat Area */}
-          <Card className="md:col-span-2 flex flex-col min-h-0">
+          <Card className="md:col-span-2 lg:col-span-2 flex flex-col min-h-0">
             {selectedClient ? (
               <>
                 <CardHeader className="pb-3 border-b flex-shrink-0">
@@ -914,6 +940,16 @@ const StaffMessages = () => {
               </div>
             )}
           </Card>
+
+          {/* Details Panel */}
+          {selectedClient && (
+            <div className="hidden lg:block min-h-0">
+              <ConversationDetailsPanel 
+                clientId={selectedClient.id}
+                clientName={`${selectedClient.first_name} ${selectedClient.last_name}`}
+              />
+            </div>
+          )}
         </div>
       </div>
 

@@ -11,7 +11,7 @@ import { QuickCheckInDialog } from '@/components/staff/QuickCheckInDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePetActivityLog } from '@/hooks/usePetActivityLog';
-import { UserCheck, BedDouble } from 'lucide-react';
+import { UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -638,10 +638,6 @@ const StaffDashboard = () => {
             <Button variant="outline" className="gap-2" onClick={() => setQuickCheckInOpen(true)}>
               <UserCheck className="h-4 w-4" />
               Quick Check In
-            </Button>
-            <Button variant="outline" className="gap-2" onClick={() => navigate('/staff/lodging')}>
-              <BedDouble className="h-4 w-4" />
-              Lodging Calendar
             </Button>
           </div>
         </div>

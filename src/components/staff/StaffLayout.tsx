@@ -40,7 +40,7 @@ export function StaffLayout({ children }: StaffLayoutProps) {
   }
 
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen flex w-full bg-background">
         <StaffSidebar />
         <main className="flex-1 flex flex-col">
