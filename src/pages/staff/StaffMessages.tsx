@@ -160,6 +160,7 @@ const StaffMessages = () => {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [staffProfiles, setStaffProfiles] = useState<Record<string, StaffProfile>>({});
+  const [reservationStatuses, setReservationStatuses] = useState<Record<string, string>>({});
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingConversations, setIsFetchingConversations] = useState(true);
@@ -291,7 +292,30 @@ const StaffMessages = () => {
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      setMessages((data || []).map(m => ({ ...m, role: m.role as 'user' | 'assistant' })));
+      const msgs = (data || []).map(m => ({ ...m, role: m.role as 'user' | 'assistant' }));
+      setMessages(msgs);
+
+      // Extract reservation IDs from proposals to fetch their statuses
+      const reservationIds: string[] = [];
+      msgs.forEach(m => {
+        const proposal = parseProposalFromContent(m.content);
+        if (proposal?.reservationId) {
+          reservationIds.push(proposal.reservationId);
+        }
+      });
+      
+      if (reservationIds.length > 0) {
+        const { data: reservations } = await supabase
+          .from('reservations')
+          .select('id, status')
+          .in('id', reservationIds);
+        
+        if (reservations) {
+          const statusMap: Record<string, string> = {};
+          reservations.forEach(r => { statusMap[r.id] = r.status; });
+          setReservationStatuses(prev => ({ ...prev, ...statusMap }));
+        }
+      }
 
       // Mark unread messages as read
       const unreadIds = data?.filter(m => m.role === 'user' && !m.read_at).map(m => m.id) || [];
@@ -396,6 +420,46 @@ const StaffMessages = () => {
       supabase.removeChannel(channel);
     };
   }, [selectedClient, fetchConversations, playSound]);
+
+  // Real-time subscription for reservation status changes
+  useEffect(() => {
+    const channel = supabase
+      .channel('staff-reservation-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'reservations',
+        },
+        (payload) => {
+          const updatedReservation = payload.new as { id: string; status: string };
+          // Update our local cache of reservation statuses
+          setReservationStatuses(prev => ({
+            ...prev,
+            [updatedReservation.id]: updatedReservation.status
+          }));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Helper to get proposal status from reservation status (source of truth)
+  const getProposalStatus = useCallback((proposal: ReservationProposalDisplayData): 'pending_client_approval' | 'accepted' | 'declined' => {
+    if (!proposal.reservationId) return proposal.status;
+    const reservationStatus = reservationStatuses[proposal.reservationId];
+    if (reservationStatus === 'confirmed' || reservationStatus === 'checked_in' || reservationStatus === 'checked_out') {
+      return 'accepted';
+    }
+    if (reservationStatus === 'cancelled') {
+      return 'declined';
+    }
+    return 'pending_client_approval';
+  }, [reservationStatuses]);
 
   // Scroll to bottom when messages change or typing indicator updates
   useEffect(() => {
@@ -716,6 +780,11 @@ const StaffMessages = () => {
                           const displayContent = getDisplayContent(message.content);
                           const isCardOnly = (proposal || creditPurchase) && !displayContent;
                           const staffName = message.role === 'assistant' ? getStaffName(message.staff_id) : null;
+                          
+                          // Get the derived status from reservation (source of truth)
+                          const proposalWithDerivedStatus = proposal 
+                            ? { ...proposal, status: getProposalStatus(proposal) } 
+                            : null;
 
                           return (
                             <div
@@ -736,8 +805,8 @@ const StaffMessages = () => {
                                 )}
                                 
                                 {/* Show proposal card if present */}
-                                {proposal && (
-                                  <ReservationProposalCard proposal={proposal} isClientView={false} />
+                                {proposalWithDerivedStatus && (
+                                  <ReservationProposalCard proposal={proposalWithDerivedStatus} isClientView={false} />
                                 )}
                                 
                                 {/* Show credit purchase card if present */}
