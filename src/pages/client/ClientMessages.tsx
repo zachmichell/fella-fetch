@@ -328,33 +328,19 @@ const ClientMessages = () => {
     return content;
   };
 
-  // Handle accepting a proposal
+  // Handle accepting a proposal - updates the existing pending reservation to confirmed
   const handleAcceptProposal = async (message: ChatMessage, proposal: ReservationProposalDisplayData) => {
     setProcessingProposalId(message.id);
     try {
-      // Create the reservation with confirmed status
-      const reservationData: any = {
-        pet_id: proposal.petId,
-        service_type: proposal.serviceType,
-        start_date: proposal.startDate,
-        end_date: proposal.endDate || null,
-        start_time: proposal.startTime || null,
-        end_time: proposal.endTime || null,
-        groomer_id: proposal.groomerId || null,
-        suite_id: proposal.suiteId || null,
-        notes: proposal.notes || null,
-        price: proposal.price ? parseFloat(proposal.price) : null,
-        status: 'confirmed', // Bypass pending status
-      };
-
-      // Add daycare type to notes if applicable
-      if (proposal.serviceType === 'daycare' && proposal.daycareType) {
-        reservationData.notes = `Day Type: ${proposal.daycareType === 'full' ? 'Full Day' : 'Half Day'}${proposal.notes ? ` | ${proposal.notes}` : ''}`;
+      if (!proposal.reservationId) {
+        throw new Error('No reservation ID found in proposal');
       }
 
+      // Update the existing reservation to confirmed status
       const { error: reservationError } = await supabase
         .from('reservations')
-        .insert(reservationData);
+        .update({ status: 'confirmed' })
+        .eq('id', proposal.reservationId);
 
       if (reservationError) throw reservationError;
 
@@ -390,10 +376,20 @@ const ClientMessages = () => {
     }
   };
 
-  // Handle declining a proposal
+  // Handle declining a proposal - updates the existing pending reservation to cancelled
   const handleDeclineProposal = async (message: ChatMessage, proposal: ReservationProposalDisplayData) => {
     setProcessingProposalId(message.id);
     try {
+      if (proposal.reservationId) {
+        // Update the existing reservation to cancelled status
+        const { error: reservationError } = await supabase
+          .from('reservations')
+          .update({ status: 'cancelled' })
+          .eq('id', proposal.reservationId);
+
+        if (reservationError) throw reservationError;
+      }
+
       // Update the proposal status in the message
       const updatedProposal = { ...proposal, status: 'declined' as const };
       const updatedContent = replaceProposalInContent(message.content, updatedProposal);
@@ -412,7 +408,7 @@ const ClientMessages = () => {
 
       toast({
         title: 'Proposal Declined',
-        description: 'The reservation proposal has been declined.',
+        description: 'The reservation request has been cancelled.',
       });
     } catch (error) {
       console.error('Error declining proposal:', error);

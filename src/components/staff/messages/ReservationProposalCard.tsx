@@ -28,6 +28,7 @@ export interface ReservationProposalDisplayData {
   shopifyVariantId?: string;
   shopifyVariantTitle?: string;
   price?: string;
+  reservationId?: string; // Links to the pending reservation created when proposal is sent
   status: 'pending_client_approval' | 'accepted' | 'declined';
 }
 
@@ -88,15 +89,23 @@ export function ReservationProposalCard({
           <div className="flex items-center gap-2">
             {getServiceIcon()}
             <span className="font-semibold">
-              {getServiceLabel()} Proposal
+              {getServiceLabel()} {isClientView ? 'Proposal' : 'Request'}
             </span>
           </div>
-          <Badge 
-            variant={isAccepted ? 'default' : isDeclined ? 'destructive' : 'secondary'}
-            className={isAccepted ? 'bg-green-500' : ''}
-          >
-            {isAccepted ? 'Accepted' : isDeclined ? 'Declined' : 'Pending'}
-          </Badge>
+          {/* Only show status badge for client view when pending, or for both when accepted/declined */}
+          {(isAccepted || isDeclined) && (
+            <Badge 
+              variant={isAccepted ? 'default' : 'destructive'}
+              className={isAccepted ? 'bg-green-500' : ''}
+            >
+              {isAccepted ? 'Accepted' : 'Declined'}
+            </Badge>
+          )}
+          {isPending && isClientView && (
+            <Badge variant="secondary">
+              Awaiting Response
+            </Badge>
+          )}
         </div>
 
         {/* Details */}
