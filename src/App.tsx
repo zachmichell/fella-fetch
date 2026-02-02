@@ -40,6 +40,7 @@ import StaffSettings from "./pages/staff/StaffSettings";
 import StaffSuites from "./pages/staff/StaffSuites";
 import StaffGroomers from "./pages/staff/StaffGroomers";
 import StaffPetCare from "./pages/staff/StaffPetCare";
+import StaffMessages from "./pages/staff/StaffMessages";
 
 const queryClient = new QueryClient();
 
@@ -70,6 +71,7 @@ const App = () => (
               {/* Staff Portal Routes */}
               <Route path="/staff/login" element={<StaffLogin />} />
               <Route path="/staff" element={<StaffDashboard />} />
+              <Route path="/staff/messages" element={<StaffMessages />} />
               <Route path="/staff/calendar" element={<StaffCalendar />} />
               <Route path="/staff/lodging" element={<StaffLodgingCalendar />} />
               <Route path="/staff/grooming" element={<StaffGroomingCalendar />} />

@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, CalendarDays, Plus, AlertTriangle, ExternalLink, Dog, PawPrint } from 'lucide-react';
 import { ClientPortalLayout } from '@/components/client/ClientPortalLayout';
-import AIAssistantChat from '@/components/client/AIAssistantChat';
+import ClientChat from '@/components/client/ClientChat';
 import { Progress } from '@/components/ui/progress';
 import { VisitCareLogList } from '@/components/client/VisitCareLogList';
 import { useVisitCareLogs } from '@/hooks/useVisitCareLogs';
@@ -288,13 +288,11 @@ const ClientDashboard = () => {
         </Card>
       </div>
 
-      {/* AI Assistant */}
+      {/* Client Chat */}
       {clientData && (
-        <AIAssistantChat
+        <ClientChat
           clientId={clientData.id}
-          clientName={`${clientData.first_name} ${clientData.last_name}`}
-          threadId={null}
-          onThreadIdUpdate={() => fetchClientData()}
+          clientName={clientData.first_name}
         />
       )}
     </ClientPortalLayout>
