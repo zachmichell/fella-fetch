@@ -109,6 +109,21 @@ export function SubscriptionsList() {
 
   const cancelMutation = useMutation({
     mutationFn: async (subscriptionId: string) => {
+      // First, delete all future reservations created by this subscription
+      const today = new Date().toISOString().split('T')[0];
+      const { error: deleteError } = await supabase
+        .from('reservations')
+        .delete()
+        .eq('subscription_id', subscriptionId)
+        .gte('start_date', today)
+        .in('status', ['pending', 'confirmed']);
+
+      if (deleteError) {
+        console.error('Error deleting subscription reservations:', deleteError);
+        throw deleteError;
+      }
+
+      // Then cancel the subscription
       const { error } = await supabase
         .from('daycare_subscriptions' as any)
         .update({
@@ -121,8 +136,9 @@ export function SubscriptionsList() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success('Subscription cancelled');
+      toast.success('Subscription cancelled and future reservations deleted');
       queryClient.invalidateQueries({ queryKey: ['daycare-subscriptions'] });
+      queryClient.invalidateQueries({ queryKey: ['reservations'] });
     },
     onError: (error) => {
       console.error('Error cancelling subscription:', error);
