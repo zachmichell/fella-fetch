@@ -66,12 +66,19 @@ const getPreviewText = (content: string): string => {
   return content;
 };
 
+interface StaffProfile {
+  user_id: string;
+  first_name: string | null;
+  last_name: string | null;
+}
+
 const StaffMessages = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [staffProfiles, setStaffProfiles] = useState<Record<string, StaffProfile>>({});
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingConversations, setIsFetchingConversations] = useState(true);
@@ -102,7 +109,35 @@ const StaffMessages = () => {
   // Sound notification
   const { playSound, enableSound } = useMessageNotificationSound();
 
-  // Fetch all conversations
+  // Fetch staff profiles for attribution
+  const fetchStaffProfiles = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id, first_name, last_name');
+      
+      if (error) throw error;
+      
+      const profilesMap: Record<string, StaffProfile> = {};
+      (data || []).forEach(profile => {
+        profilesMap[profile.user_id] = profile;
+      });
+      setStaffProfiles(profilesMap);
+    } catch (error) {
+      console.error('Error fetching staff profiles:', error);
+    }
+  }, []);
+
+  // Helper to get staff name
+  const getStaffName = useCallback((staffId: string | null): string | null => {
+    if (!staffId) return null;
+    const profile = staffProfiles[staffId];
+    if (!profile) return null;
+    if (profile.first_name || profile.last_name) {
+      return `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
+    }
+    return null;
+  }, [staffProfiles]);
   const fetchConversations = useCallback(async () => {
     try {
       // Get all clients that have chat messages
@@ -206,7 +241,8 @@ const StaffMessages = () => {
   // Initial fetch
   useEffect(() => {
     fetchConversations();
-  }, [fetchConversations]);
+    fetchStaffProfiles();
+  }, [fetchConversations, fetchStaffProfiles]);
 
   // Real-time subscription for new messages
   useEffect(() => {
@@ -516,6 +552,7 @@ const StaffMessages = () => {
                             ? message.content.replace(/\[PROPOSAL:.+?\]/, '').trim() 
                             : message.content;
                           const isProposalOnly = proposal && !displayContent;
+                          const staffName = message.role === 'assistant' ? getStaffName(message.staff_id) : null;
 
                           return (
                             <div
@@ -527,7 +564,14 @@ const StaffMessages = () => {
                                   <User className="h-4 w-4 text-secondary-foreground" />
                                 </div>
                               )}
-                              <div className={`max-w-[80%] space-y-2 ${message.role === 'assistant' ? 'flex flex-col items-end' : ''}`}>
+                              <div className={`max-w-[80%] space-y-1 ${message.role === 'assistant' ? 'flex flex-col items-end' : ''}`}>
+                                {/* Show staff name for staff messages */}
+                                {message.role === 'assistant' && staffName && (
+                                  <p className="text-[10px] text-muted-foreground font-medium mr-1">
+                                    {staffName}
+                                  </p>
+                                )}
+                                
                                 {/* Show proposal card if present */}
                                 {proposal && (
                                   <ReservationProposalCard proposal={proposal} isClientView={false} />
