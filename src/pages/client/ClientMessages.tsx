@@ -516,7 +516,6 @@ const ClientMessages = () => {
               ) : messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full min-h-[200px] text-center text-muted-foreground">
                   <Headphones className="h-12 w-12 mb-3 opacity-50" />
-                  <p className="text-sm font-medium">Hi {clientName}! 👋</p>
                   <p className="text-xs mt-1">
                     Send us a message and our team will get back to you soon.
                   </p>
