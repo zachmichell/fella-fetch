@@ -156,12 +156,11 @@ const BookingPage = () => {
       
       setLoadingGroomers(true);
       try {
-        // Fetch active groomers
+        // Fetch active groomers from public view (excludes email/phone for privacy)
         const { data: groomersData, error: groomersError } = await supabase
-          .from("groomers")
+          .from("groomers_public" as any)
           .select("id, name, color")
-          .eq("is_active", true)
-          .order("sort_order");
+          .order("sort_order") as { data: Groomer[] | null; error: any };
 
         if (groomersError) throw groomersError;
         setGroomers(groomersData || []);
