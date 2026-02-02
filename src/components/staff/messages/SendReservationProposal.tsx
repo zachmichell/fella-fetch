@@ -323,37 +323,8 @@ export function SendReservationProposal({
         status: 'pending_client_approval',
       };
 
-      // Create a human-readable message
-      let messageContent = `📋 **Reservation Proposal**\n\n`;
-      const serviceLabel = serviceType === 'boarding' ? 'Boarding' : serviceType === 'grooming' ? 'Grooming' : `${daycareType === 'full' ? 'Full Day' : 'Half Day'} Daycare`;
-      messageContent += `**Service:** ${serviceLabel}\n`;
-      messageContent += `**Pet:** ${selectedPet?.name}\n`;
-      messageContent += `**Date:** ${format(checkInDate, 'EEEE, MMMM d, yyyy')}`;
-      if (checkOutDate) {
-        messageContent += ` - ${format(checkOutDate, 'EEEE, MMMM d, yyyy')}`;
-      }
-      if (serviceType === 'daycare' && startTime && endTime) {
-        messageContent += `\n**Drop-off:** ${format(parse(startTime, 'HH:mm', new Date()), 'h:mm a')}`;
-        messageContent += `\n**Pick-up:** ${format(parse(endTime, 'HH:mm', new Date()), 'h:mm a')}`;
-      } else if (startTime) {
-        messageContent += `\n**Time:** ${format(parse(startTime, 'HH:mm', new Date()), 'h:mm a')}`;
-      }
-      if (selectedGroomer) {
-        messageContent += `\n**Groomer:** ${selectedGroomer.name}`;
-      }
-      if (selectedSuite) {
-        messageContent += `\n**Suite:** ${selectedSuite.name}`;
-      }
-      if (selectedProduct && selectedVariant) {
-        messageContent += `\n**Service:** ${selectedProduct.title} - ${selectedVariant.title}`;
-        messageContent += `\n**Price:** $${parseFloat(selectedVariant.price.amount).toFixed(2)}`;
-      }
-      if (notes) {
-        messageContent += `\n**Notes:** ${notes}`;
-      }
-      messageContent += `\n\n_Please click Accept below to confirm this reservation._`;
-
-      await onSend(messageContent, proposalData);
+      // Send only the proposal marker - the card will display all the details
+      await onSend('', proposalData);
       onOpenChange(false);
       
       // Reset form

@@ -52,6 +52,19 @@ const parseProposalFromContent = (content: string): ReservationProposalDisplayDa
   return null;
 };
 
+// Helper to get clean preview text for conversation list
+const getPreviewText = (content: string): string => {
+  const proposal = parseProposalFromContent(content);
+  if (proposal) {
+    // Show a friendly preview instead of raw content
+    const serviceLabel = proposal.serviceType === 'daycare' 
+      ? (proposal.daycareType === 'half' ? 'Half Day Daycare' : 'Full Day Daycare')
+      : proposal.serviceType === 'boarding' ? 'Boarding' : 'Grooming';
+    return `📋 ${serviceLabel} Proposal for ${proposal.petName}`;
+  }
+  return content;
+};
+
 const StaffMessages = () => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -331,8 +344,8 @@ const StaffMessages = () => {
   const handleSendProposal = async (content: string, proposalData: ReservationProposalData) => {
     if (!selectedClient || !user) return;
     
-    // Encode proposal data into the message content
-    const contentWithData = `${content}\n\n[PROPOSAL:${JSON.stringify(proposalData)}]`;
+    // Encode proposal data into the message content (no additional text needed - card displays all info)
+    const contentWithData = `[PROPOSAL:${JSON.stringify(proposalData)}]`;
     
     const { error } = await supabase
       .from('chat_messages')
@@ -426,7 +439,7 @@ const StaffMessages = () => {
                             {conv.lastMessage && (
                               <p className="text-sm text-muted-foreground truncate mt-1">
                                 {conv.lastMessage.role === 'assistant' && 'You: '}
-                                {conv.lastMessage.content}
+                                {getPreviewText(conv.lastMessage.content)}
                               </p>
                             )}
                           </div>
