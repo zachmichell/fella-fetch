@@ -278,6 +278,13 @@ export type Database = {
             referencedRelation: "groomers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "groomer_schedules_groomer_id_fkey"
+            columns: ["groomer_id"]
+            isOneToOne: false
+            referencedRelation: "groomers_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       groomer_service_durations: {
@@ -314,6 +321,13 @@ export type Database = {
             columns: ["groomer_id"]
             isOneToOne: false
             referencedRelation: "groomers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "groomer_service_durations_groomer_id_fkey"
+            columns: ["groomer_id"]
+            isOneToOne: false
+            referencedRelation: "groomers_public"
             referencedColumns: ["id"]
           },
         ]
@@ -902,6 +916,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "reservations_groomer_id_fkey"
+            columns: ["groomer_id"]
+            isOneToOne: false
+            referencedRelation: "groomers_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "reservations_parent_reservation_id_fkey"
             columns: ["parent_reservation_id"]
             isOneToOne: false
@@ -1204,7 +1225,30 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      groomers_public: {
+        Row: {
+          color: string | null
+          id: string | null
+          is_active: boolean | null
+          name: string | null
+          sort_order: number | null
+        }
+        Insert: {
+          color?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          name?: string | null
+          sort_order?: number | null
+        }
+        Update: {
+          color?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          name?: string | null
+          sort_order?: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       deduct_boarding_credits: {
