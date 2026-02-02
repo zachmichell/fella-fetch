@@ -161,6 +161,7 @@ export type Database = {
           postal_code: string | null
           province: string | null
           sms_opt_in: boolean | null
+          subscribed: boolean
           thread_id: string | null
           updated_at: string
           user_id: string | null
@@ -185,6 +186,7 @@ export type Database = {
           postal_code?: string | null
           province?: string | null
           sms_opt_in?: boolean | null
+          subscribed?: boolean
           thread_id?: string | null
           updated_at?: string
           user_id?: string | null
@@ -209,6 +211,7 @@ export type Database = {
           postal_code?: string | null
           province?: string | null
           sms_opt_in?: boolean | null
+          subscribed?: boolean
           thread_id?: string | null
           updated_at?: string
           user_id?: string | null
@@ -238,6 +241,75 @@ export type Database = {
           service_type?: Database["public"]["Enums"]["service_type"]
         }
         Relationships: []
+      }
+      daycare_subscriptions: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          client_id: string
+          created_at: string
+          day_type: string
+          days_of_week: number[]
+          half_day_period: string | null
+          id: string
+          is_active: boolean
+          is_approved: boolean
+          notes: string | null
+          pet_id: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          client_id: string
+          created_at?: string
+          day_type: string
+          days_of_week: number[]
+          half_day_period?: string | null
+          id?: string
+          is_active?: boolean
+          is_approved?: boolean
+          notes?: string | null
+          pet_id: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          client_id?: string
+          created_at?: string
+          day_type?: string
+          days_of_week?: number[]
+          half_day_period?: string | null
+          id?: string
+          is_active?: boolean
+          is_approved?: boolean
+          notes?: string | null
+          pet_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daycare_subscriptions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daycare_subscriptions_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       groomer_schedules: {
         Row: {
@@ -860,6 +932,7 @@ export type Database = {
           start_date: string
           start_time: string | null
           status: Database["public"]["Enums"]["reservation_status"]
+          subscription_id: string | null
           suite_id: string | null
           updated_at: string
         }
@@ -882,6 +955,7 @@ export type Database = {
           start_date: string
           start_time?: string | null
           status?: Database["public"]["Enums"]["reservation_status"]
+          subscription_id?: string | null
           suite_id?: string | null
           updated_at?: string
         }
@@ -904,6 +978,7 @@ export type Database = {
           start_date?: string
           start_time?: string | null
           status?: Database["public"]["Enums"]["reservation_status"]
+          subscription_id?: string | null
           suite_id?: string | null
           updated_at?: string
         }
@@ -934,6 +1009,13 @@ export type Database = {
             columns: ["pet_id"]
             isOneToOne: false
             referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservations_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "daycare_subscriptions"
             referencedColumns: ["id"]
           },
           {

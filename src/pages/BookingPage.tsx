@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Calendar, Clock, Dog, ArrowRight, ArrowLeft, Check, LogIn, CreditCard, AlertTriangle, ShoppingCart, Loader2, Scissors, User, CalendarClock } from "lucide-react";
+import { Calendar, Clock, Dog, ArrowRight, ArrowLeft, Check, LogIn, CreditCard, AlertTriangle, ShoppingCart, Loader2, Scissors, User, CalendarClock, Repeat } from "lucide-react";
 import { Link } from "react-router-dom";
 import { differenceInDays, format, parse, addMinutes } from "date-fns";
 
@@ -24,6 +24,7 @@ import { GroomerSelector } from "@/components/booking/GroomerSelector";
 import { GroomingCalendar } from "@/components/booking/GroomingCalendar";
 import { GroomingTimeSlots } from "@/components/booking/GroomingTimeSlots";
 import { useBusinessHours, generateTimeSlots, isWeekendDate } from "@/hooks/useBusinessHours";
+import { RecurringDaycareForm } from "@/components/booking/RecurringDaycareForm";
 
 import iconStay from "@/assets/icons/icon-stay.png";
 import iconGroom from "@/assets/icons/icon-groom.png";
@@ -130,6 +131,9 @@ const BookingPage = () => {
   const [groomerServiceDurations, setGroomerServiceDurations] = useState<Map<string, number>>(new Map());
   const [groomingServices, setGroomingServices] = useState<GroomingService[]>([]);
   const [loadingGroomingServices, setLoadingGroomingServices] = useState(false);
+  
+  // Recurring daycare state
+  const [isRecurringDaycare, setIsRecurringDaycare] = useState(false);
 
   const [bookingData, setBookingData] = useState<BookingData>({
     service: null,
@@ -717,6 +721,7 @@ const BookingPage = () => {
 
       // Reset form
       setStep(1);
+      setIsRecurringDaycare(false);
       setBookingData({
         service: null,
         selectedPets: [],
@@ -1126,7 +1131,7 @@ const BookingPage = () => {
             )}
 
             {/* Step 3: Daycare Type Selection (Daycare only) */}
-            {step === 3 && isDaycare && (
+            {step === 3 && isDaycare && !isRecurringDaycare && (
               <motion.div
                 key="step3-daycare-type"
                 initial={{ opacity: 0, x: 20 }}
@@ -1177,6 +1182,88 @@ const BookingPage = () => {
                     <p className="text-sm text-muted-foreground">A shorter session, perfect for quick visits</p>
                   </button>
                 </div>
+
+                {/* Recurring Option */}
+                <div className="pt-4 border-t border-border">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Need regular daycare? Set up a recurring weekly schedule.
+                  </p>
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <button
+                      onClick={() => {
+                        setBookingData({ ...bookingData, daycareType: "full" });
+                        setIsRecurringDaycare(true);
+                      }}
+                      className="p-4 rounded-2xl border-2 border-dashed border-border hover:border-primary/50 bg-card/50 text-left transition-all"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <Repeat className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-foreground">Recurring Full Day</h3>
+                          <p className="text-xs text-muted-foreground">Weekly schedule</p>
+                        </div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setBookingData({ ...bookingData, daycareType: "half" });
+                        setIsRecurringDaycare(true);
+                      }}
+                      className="p-4 rounded-2xl border-2 border-dashed border-border hover:border-primary/50 bg-card/50 text-left transition-all"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center">
+                          <Repeat className="w-5 h-5 text-secondary-foreground" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-foreground">Recurring Half Day</h3>
+                          <p className="text-xs text-muted-foreground">Weekly schedule</p>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Step 3: Recurring Daycare Form (Daycare only) */}
+            {step === 3 && isDaycare && isRecurringDaycare && clientData && bookingData.selectedPets[0] && (
+              <motion.div
+                key="step3-recurring-daycare"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+              >
+                <RecurringDaycareForm
+                  clientId={clientData.id}
+                  petId={bookingData.selectedPets[0].id}
+                  petName={bookingData.selectedPets[0].name}
+                  daycareType={bookingData.daycareType || 'full'}
+                  onBack={() => setIsRecurringDaycare(false)}
+                  onSuccess={() => {
+                    setStep(1);
+                    setIsRecurringDaycare(false);
+                    setBookingData({
+                      service: null,
+                      selectedPets: [],
+                      daycareType: null,
+                      date: "",
+                      time: "",
+                      endDate: "",
+                      endTime: "",
+                      selectedGroomerId: null,
+                      selectedGroomingService: null,
+                      selectedGroomingVariant: null,
+                      groomingDate: null,
+                      groomingTime: null,
+                      groomingEndTime: null,
+                      groomingDurationMinutes: 60,
+                      payInStore: false,
+                    });
+                  }}
+                />
               </motion.div>
             )}
 
