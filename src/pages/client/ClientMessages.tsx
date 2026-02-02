@@ -244,11 +244,17 @@ const ClientMessages = () => {
               });
               // Play notification sound for new staff message
               playSound();
-              // Mark as read immediately
+              // Mark as read immediately (await to trigger real-time update)
               supabase
                 .from('chat_messages')
                 .update({ read_at: new Date().toISOString() })
-                .eq('id', newMessage.id);
+                .eq('id', newMessage.id)
+                .then(() => {
+                  // Update message locally to reflect read status
+                  setMessages((prev) =>
+                    prev.map(m => m.id === newMessage.id ? { ...m, read_at: new Date().toISOString() } : m)
+                  );
+                });
             }
           } else if (payload.eventType === 'UPDATE') {
             // Handle proposal status updates
