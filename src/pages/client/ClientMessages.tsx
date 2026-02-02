@@ -30,12 +30,56 @@ interface ChatMessage {
   read_at: string | null;
 }
 
+// Helper to extract JSON between markers with balanced bracket matching
+const extractJsonFromMarker = (content: string, marker: string): string | null => {
+  const startMarker = `[${marker}:`;
+  const startIdx = content.indexOf(startMarker);
+  if (startIdx === -1) return null;
+  
+  const jsonStart = startIdx + startMarker.length;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  
+  for (let i = jsonStart; i < content.length; i++) {
+    const char = content[i];
+    
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    
+    if (char === '\\' && inString) {
+      escape = true;
+      continue;
+    }
+    
+    if (char === '"' && !escape) {
+      inString = !inString;
+      continue;
+    }
+    
+    if (!inString) {
+      if (char === '{' || char === '[') {
+        depth++;
+      } else if (char === '}' || char === ']') {
+        if (depth === 0 && char === ']') {
+          // End of marker - return full marker for removal
+          return content.slice(jsonStart, i);
+        }
+        depth--;
+      }
+    }
+  }
+  return null;
+};
+
 // Parse proposal from message content
 const parseProposalFromContent = (content: string): ReservationProposalDisplayData | null => {
   try {
-    const markerMatch = content.match(/\[PROPOSAL:(.+?)\]/);
-    if (markerMatch) {
-      return JSON.parse(markerMatch[1]) as ReservationProposalDisplayData;
+    const jsonStr = extractJsonFromMarker(content, 'PROPOSAL');
+    if (jsonStr) {
+      return JSON.parse(jsonStr) as ReservationProposalDisplayData;
     }
   } catch (e) {
     console.error('Error parsing proposal:', e);
@@ -46,9 +90,9 @@ const parseProposalFromContent = (content: string): ReservationProposalDisplayDa
 // Parse credit purchase from message content
 const parseCreditPurchaseFromContent = (content: string): CreditPurchaseData | null => {
   try {
-    const markerMatch = content.match(/\[CREDIT_PURCHASE:(.+?)\]/);
-    if (markerMatch) {
-      return JSON.parse(markerMatch[1]) as CreditPurchaseData;
+    const jsonStr = extractJsonFromMarker(content, 'CREDIT_PURCHASE');
+    if (jsonStr) {
+      return JSON.parse(jsonStr) as CreditPurchaseData;
     }
   } catch (e) {
     console.error('Error parsing credit purchase:', e);
@@ -58,10 +102,17 @@ const parseCreditPurchaseFromContent = (content: string): CreditPurchaseData | n
 
 // Get display content without any markers
 const getDisplayContent = (content: string): string => {
-  return content
-    .replace(/\[PROPOSAL:.+?\]/, '')
-    .replace(/\[CREDIT_PURCHASE:.+?\]/, '')
-    .trim();
+  // Remove proposal markers
+  let result = content;
+  const proposalJson = extractJsonFromMarker(result, 'PROPOSAL');
+  if (proposalJson) {
+    result = result.replace(`[PROPOSAL:${proposalJson}]`, '');
+  }
+  const creditJson = extractJsonFromMarker(result, 'CREDIT_PURCHASE');
+  if (creditJson) {
+    result = result.replace(`[CREDIT_PURCHASE:${creditJson}]`, '');
+  }
+  return result.trim();
 };
 
 const ClientMessages = () => {
