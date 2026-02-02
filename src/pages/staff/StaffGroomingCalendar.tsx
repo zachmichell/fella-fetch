@@ -82,6 +82,18 @@ const StaffGroomingCalendar = () => {
     };
   }, [queryClient]);
 
+  // 30-second polling fallback for data consistency
+  useEffect(() => {
+    const pollInterval = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: ['grooming-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['grooming-appointments-week'] });
+      queryClient.invalidateQueries({ queryKey: ['pending-grooming'] });
+      queryClient.invalidateQueries({ queryKey: ['groomers'] });
+    }, 30000);
+
+    return () => clearInterval(pollInterval);
+  }, [queryClient]);
+
   const handleAppointmentClick = (appointment: GroomingAppointment) => {
     setSelectedAppointment(appointment);
     setDetailsOpen(true);
