@@ -143,6 +143,17 @@ const StaffLodgingCalendar = () => {
     };
   }, [queryClient]);
 
+  // 30-second polling fallback for data consistency
+  useEffect(() => {
+    const pollInterval = setInterval(() => {
+      queryClient.invalidateQueries({ queryKey: ['boarding-reservations'] });
+      queryClient.invalidateQueries({ queryKey: ['reservation-for-assignment'] });
+      queryClient.invalidateQueries({ queryKey: ['suites'] });
+    }, 30000);
+
+    return () => clearInterval(pollInterval);
+  }, [queryClient]);
+
   // Handle clicking "Assign Now" from the banner
   const handleAssignFromBanner = () => {
     if (pendingAssignment) {
