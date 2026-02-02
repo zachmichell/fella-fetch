@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { useMessageNotificationSound } from '@/hooks/useMessageNotificationSound';
+import { useClientUnreadMessages } from '@/hooks/useClientUnreadMessages';
 import { Send, Loader2, User, Headphones } from 'lucide-react';
 import { format } from 'date-fns';
 import { z } from 'zod';
@@ -129,6 +130,9 @@ const ClientMessages = () => {
   const clientId = clientData?.id || '';
   const clientName = clientData ? `${clientData.first_name} ${clientData.last_name}` : '';
 
+  // Get refetch function from unread hook to clear badge
+  const { refetch: refetchUnreadCount } = useClientUnreadMessages(clientId);
+
   // Typing indicator
   const { setTyping, isOtherTyping } = useTypingIndicator({
     channelName: clientId ? `chat-${clientId}` : '',
@@ -186,13 +190,15 @@ const ClientMessages = () => {
         }
       }
       
-      // Mark staff messages as read
+      // Mark staff messages as read and refresh unread count
       const unreadStaffIds = data?.filter(m => m.role === 'assistant' && !m.read_at).map(m => m.id) || [];
       if (unreadStaffIds.length > 0) {
         await supabase
           .from('chat_messages')
           .update({ read_at: new Date().toISOString() })
           .in('id', unreadStaffIds);
+        // Refetch unread count to clear badge in sidebar
+        refetchUnreadCount();
       }
     } catch (error) {
       console.error('Error fetching chat history:', error);
@@ -204,7 +210,7 @@ const ClientMessages = () => {
     } finally {
       setIsFetchingHistory(false);
     }
-  }, [clientId, toast]);
+  }, [clientId, toast, refetchUnreadCount]);
 
   // Initial fetch
   useEffect(() => {
@@ -244,7 +250,7 @@ const ClientMessages = () => {
               });
               // Play notification sound for new staff message
               playSound();
-              // Mark as read immediately (await to trigger real-time update)
+              // Mark as read immediately and refresh unread count
               supabase
                 .from('chat_messages')
                 .update({ read_at: new Date().toISOString() })
@@ -254,6 +260,8 @@ const ClientMessages = () => {
                   setMessages((prev) =>
                     prev.map(m => m.id === newMessage.id ? { ...m, read_at: new Date().toISOString() } : m)
                   );
+                  // Refresh unread count to clear badge
+                  refetchUnreadCount();
                 });
             }
           } else if (payload.eventType === 'UPDATE') {
