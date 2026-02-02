@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import {
   Sidebar,
   SidebarContent,
@@ -34,10 +35,11 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 
 const mainNavItems = [
   { title: 'Dashboard', url: '/staff', icon: LayoutDashboard },
-  { title: 'Messages', url: '/staff/messages', icon: MessageCircle },
+  { title: 'Messages', url: '/staff/messages', icon: MessageCircle, showUnread: true },
   { title: 'Calendar', url: '/staff/calendar', icon: Calendar },
   { title: 'Lodging', url: '/staff/lodging', icon: BedDouble },
   { title: 'Grooming', url: '/staff/grooming', icon: Scissors },
@@ -67,6 +69,7 @@ export function StaffSidebar() {
   const collapsed = state === 'collapsed';
   const location = useLocation();
   const { signOut, isAdmin, user } = useAuth();
+  const { unreadCount } = useUnreadMessages();
 
   const isActive = (path: string) => {
     if (path === '/staff') {
@@ -105,8 +108,22 @@ export function StaffSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={isActive(item.url)}>
                     <NavLink to={item.url} end={item.url === '/staff'}>
-                      <item.icon className="h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
+                      <div className="relative">
+                        <item.icon className="h-4 w-4" />
+                        {item.showUnread && unreadCount > 0 && collapsed && (
+                          <span className="absolute -top-1 -right-1 w-2 h-2 bg-destructive rounded-full" />
+                        )}
+                      </div>
+                      {!collapsed && (
+                        <span className="flex items-center gap-2">
+                          {item.title}
+                          {item.showUnread && unreadCount > 0 && (
+                            <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs">
+                              {unreadCount > 99 ? '99+' : unreadCount}
+                            </Badge>
+                          )}
+                        </span>
+                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

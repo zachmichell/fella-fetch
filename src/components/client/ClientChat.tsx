@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { MessageCircle, Send, Loader2, User, X, Minimize2, Maximize2, Headphones } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
@@ -42,10 +43,41 @@ const ClientChat = ({ clientId, clientName }: ClientChatProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Typing indicator
+  const { setTyping, isOtherTyping, typingUserNames } = useTypingIndicator({
+    channelName: `chat-${clientId}`,
+    userId: clientId,
+    userName: clientName,
+  });
+
+  // Fetch initial unread count
+  const fetchUnreadCount = useCallback(async () => {
+    if (!clientId) return;
+    try {
+      const { count, error } = await supabase
+        .from('chat_messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('client_id', clientId)
+        .eq('role', 'assistant')
+        .is('read_at', null);
+
+      if (error) throw error;
+      setUnreadCount(count || 0);
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+    }
+  }, [clientId]);
+
+  // Fetch unread on mount
+  useEffect(() => {
+    fetchUnreadCount();
+  }, [fetchUnreadCount]);
+
   // Fetch chat history when chat opens
   useEffect(() => {
     if (isOpen && clientId) {
       fetchChatHistory();
+      markMessagesAsRead();
     }
   }, [isOpen, clientId]);
 
@@ -75,6 +107,14 @@ const ClientChat = ({ clientId, clientName }: ClientChatProps) => {
             // Update unread count if chat is closed
             if (!isOpen) {
               setUnreadCount((prev) => prev + 1);
+              // Show toast notification
+              toast({
+                title: 'New message from staff',
+                description: newMessage.content.slice(0, 50) + (newMessage.content.length > 50 ? '...' : ''),
+              });
+            } else {
+              // Mark as read immediately if chat is open
+              markMessageAsRead(newMessage.id);
             }
           }
         }
@@ -84,14 +124,14 @@ const ClientChat = ({ clientId, clientName }: ClientChatProps) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [clientId, isOpen]);
+  }, [clientId, isOpen, toast]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, isOtherTyping]);
 
   // Focus input when chat opens
   useEffect(() => {
@@ -104,8 +144,34 @@ const ClientChat = ({ clientId, clientName }: ClientChatProps) => {
   useEffect(() => {
     if (isOpen) {
       setUnreadCount(0);
+      markMessagesAsRead();
     }
   }, [isOpen]);
+
+  const markMessageAsRead = async (messageId: string) => {
+    try {
+      await supabase
+        .from('chat_messages')
+        .update({ read_at: new Date().toISOString() })
+        .eq('id', messageId);
+    } catch (error) {
+      console.error('Error marking message as read:', error);
+    }
+  };
+
+  const markMessagesAsRead = async () => {
+    if (!clientId) return;
+    try {
+      await supabase
+        .from('chat_messages')
+        .update({ read_at: new Date().toISOString() })
+        .eq('client_id', clientId)
+        .eq('role', 'assistant')
+        .is('read_at', null);
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+    }
+  };
 
   const fetchChatHistory = async () => {
     setIsFetchingHistory(true);
@@ -130,6 +196,17 @@ const ClientChat = ({ clientId, clientName }: ClientChatProps) => {
     }
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.slice(0, MAX_MESSAGE_LENGTH);
+    setInput(value);
+    // Trigger typing indicator
+    if (value.length > 0) {
+      setTyping(true);
+    } else {
+      setTyping(false);
+    }
+  };
+
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return;
 
@@ -146,6 +223,7 @@ const ClientChat = ({ clientId, clientName }: ClientChatProps) => {
 
     const userMessage = validationResult.data;
     setInput('');
+    setTyping(false);
     setIsLoading(true);
 
     // Optimistically add user message
@@ -302,6 +380,22 @@ const ClientChat = ({ clientId, clientName }: ClientChatProps) => {
                         )}
                       </div>
                     ))}
+                    
+                    {/* Typing Indicator */}
+                    {isOtherTyping && (
+                      <div className="flex gap-2 justify-start">
+                        <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <Headphones className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="bg-muted rounded-lg px-3 py-2">
+                          <div className="flex gap-1">
+                            <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                            <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                            <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </ScrollArea>
@@ -312,7 +406,7 @@ const ClientChat = ({ clientId, clientName }: ClientChatProps) => {
                   <Input
                     ref={inputRef}
                     value={input}
-                    onChange={(e) => setInput(e.target.value.slice(0, MAX_MESSAGE_LENGTH))}
+                    onChange={handleInputChange}
                     onKeyDown={handleKeyDown}
                     placeholder="Type your message..."
                     disabled={isLoading}

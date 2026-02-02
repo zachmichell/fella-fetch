@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { MessageCircle, Send, Loader2, User, Users, Clock, Search } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 
@@ -47,6 +48,13 @@ const StaffMessages = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Typing indicator - only active when a client is selected
+  const { setTyping, isOtherTyping, typingUserNames } = useTypingIndicator({
+    channelName: selectedClient ? `chat-${selectedClient.id}` : '',
+    userId: user?.id || '',
+    userName: 'Staff',
+  });
 
   // Fetch all conversations
   const fetchConversations = useCallback(async () => {
@@ -195,12 +203,12 @@ const StaffMessages = () => {
     };
   }, [selectedClient, fetchConversations]);
 
-  // Scroll to bottom when messages change
+  // Scroll to bottom when messages change or typing indicator updates
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, isOtherTyping]);
 
   // Focus input when client selected
   useEffect(() => {
@@ -223,6 +231,7 @@ const StaffMessages = () => {
 
     const messageContent = input.trim();
     setInput('');
+    setTyping(false);
     setIsLoading(true);
 
     // Optimistically add message
@@ -268,6 +277,17 @@ const StaffMessages = () => {
       setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setInput(value);
+    // Trigger typing indicator
+    if (value.length > 0) {
+      setTyping(true);
+    } else {
+      setTyping(false);
     }
   };
 
@@ -437,6 +457,27 @@ const StaffMessages = () => {
                             )}
                           </div>
                         ))}
+                        
+                        {/* Typing Indicator */}
+                        {isOtherTyping && (
+                          <div className="flex gap-2 justify-start">
+                            <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
+                              <User className="h-4 w-4 text-secondary-foreground" />
+                            </div>
+                            <div className="bg-muted rounded-lg px-3 py-2">
+                              <div className="flex items-center gap-2">
+                                <div className="flex gap-1">
+                                  <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                                  <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                  <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                </div>
+                                <span className="text-xs text-muted-foreground">
+                                  {typingUserNames.length > 0 ? typingUserNames[0] : 'Client'} is typing...
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </ScrollArea>
@@ -447,7 +488,7 @@ const StaffMessages = () => {
                       <Input
                         ref={inputRef}
                         value={input}
-                        onChange={(e) => setInput(e.target.value)}
+                        onChange={handleInputChange}
                         onKeyDown={handleKeyDown}
                         placeholder="Type your reply..."
                         disabled={isLoading}
