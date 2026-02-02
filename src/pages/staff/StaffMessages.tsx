@@ -46,8 +46,18 @@ const StaffMessages = () => {
   const [isFetchingConversations, setIsFetchingConversations] = useState(true);
   const [isFetchingMessages, setIsFetchingMessages] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Scroll to bottom helper
+  const scrollToBottom = useCallback(() => {
+    if (scrollAreaRef.current) {
+      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      }
+    }
+  }, []);
 
   // Typing indicator - only active when a client is selected
   const { setTyping, isOtherTyping, typingUserNames } = useTypingIndicator({
@@ -205,10 +215,10 @@ const StaffMessages = () => {
 
   // Scroll to bottom when messages change or typing indicator updates
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages, isOtherTyping]);
+    // Small delay to ensure content is rendered
+    const timer = setTimeout(scrollToBottom, 100);
+    return () => clearTimeout(timer);
+  }, [messages, isOtherTyping, isFetchingMessages, scrollToBottom]);
 
   // Focus input when client selected
   useEffect(() => {
@@ -412,7 +422,7 @@ const StaffMessages = () => {
                 </CardHeader>
                 <CardContent className="flex-1 p-0 flex flex-col min-h-0 overflow-hidden">
                   {/* Messages */}
-                  <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+                  <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
                     {isFetchingMessages ? (
                       <div className="flex items-center justify-center h-full">
                         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
