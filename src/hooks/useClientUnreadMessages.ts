@@ -25,6 +25,27 @@ export function useClientUnreadMessages(clientId: string | undefined) {
     }
   }, [clientId]);
 
+  // Mark all staff messages as read and reset count to zero immediately
+  const markAllAsRead = useCallback(async () => {
+    if (!clientId) return;
+
+    // Immediately set count to zero for instant UI feedback
+    setUnreadCount(0);
+
+    try {
+      await supabase
+        .from('chat_messages')
+        .update({ read_at: new Date().toISOString() })
+        .eq('client_id', clientId)
+        .eq('role', 'assistant')
+        .is('read_at', null);
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+      // Refetch to get accurate count if update failed
+      fetchUnreadCount();
+    }
+  }, [clientId, fetchUnreadCount]);
+
   useEffect(() => {
     fetchUnreadCount();
   }, [fetchUnreadCount]);
@@ -38,13 +59,17 @@ export function useClientUnreadMessages(clientId: string | undefined) {
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'chat_messages',
           filter: `client_id=eq.${clientId}`,
         },
-        () => {
-          fetchUnreadCount();
+        (payload) => {
+          // Only increment count for new staff messages
+          const newMessage = payload.new as { role: string };
+          if (newMessage.role === 'assistant') {
+            fetchUnreadCount();
+          }
         }
       )
       .subscribe();
@@ -54,5 +79,5 @@ export function useClientUnreadMessages(clientId: string | undefined) {
     };
   }, [clientId, fetchUnreadCount]);
 
-  return { unreadCount, refetch: fetchUnreadCount };
+  return { unreadCount, refetch: fetchUnreadCount, markAllAsRead };
 }
