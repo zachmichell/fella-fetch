@@ -64,7 +64,7 @@ export function ClientSidebar() {
                           {item.title}
                           {item.title === 'Messages' && (
                             unreadCount > 0 
-                              ? <Mail className="h-4 w-4 text-primary" />
+                              ? <Mail className="h-4 w-4 text-destructive" />
                               : <MailOpen className="h-4 w-4 text-muted-foreground" />
                           )}
                         </span>
