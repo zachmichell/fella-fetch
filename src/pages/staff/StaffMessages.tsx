@@ -492,12 +492,46 @@ const StaffMessages = () => {
     }
   };
 
-  // Handler to send a reservation proposal
+  // Handler to send a reservation proposal - creates a pending reservation immediately
   const handleSendProposal = async (content: string, proposalData: ReservationProposalData) => {
     if (!selectedClient || !user) return;
     
-    // Encode proposal data into the message content (no additional text needed - card displays all info)
-    const contentWithData = `[PROPOSAL:${JSON.stringify(proposalData)}]`;
+    // First, create the pending reservation
+    const reservationData: any = {
+      pet_id: proposalData.petId,
+      service_type: proposalData.serviceType,
+      start_date: proposalData.startDate,
+      end_date: proposalData.endDate || null,
+      start_time: proposalData.startTime || null,
+      end_time: proposalData.endTime || null,
+      groomer_id: proposalData.groomerId || null,
+      suite_id: proposalData.suiteId || null,
+      notes: proposalData.notes || null,
+      price: proposalData.price ? parseFloat(proposalData.price) : null,
+      status: 'pending', // Created as pending - shows in Control Center "Requested" tab
+    };
+
+    // Add daycare type to notes if applicable
+    if (proposalData.serviceType === 'daycare' && proposalData.daycareType) {
+      reservationData.notes = `Day Type: ${proposalData.daycareType === 'full' ? 'Full Day' : 'Half Day'}${proposalData.notes ? ` | ${proposalData.notes}` : ''}`;
+    }
+
+    const { data: reservation, error: reservationError } = await supabase
+      .from('reservations')
+      .insert(reservationData)
+      .select('id')
+      .single();
+
+    if (reservationError) throw reservationError;
+
+    // Add reservation ID to the proposal data for later updates
+    const proposalWithReservationId = {
+      ...proposalData,
+      reservationId: reservation.id,
+    };
+
+    // Encode proposal data into the message content
+    const contentWithData = `[PROPOSAL:${JSON.stringify(proposalWithReservationId)}]`;
     
     const { error } = await supabase
       .from('chat_messages')
@@ -512,7 +546,7 @@ const StaffMessages = () => {
     
     toast({
       title: 'Proposal sent',
-      description: 'The client will be notified to accept or decline.',
+      description: 'Reservation request created. The client can accept or decline.',
     });
   };
 
