@@ -13,6 +13,8 @@ import { z } from 'zod';
 import { ClientPortalLayout } from '@/components/client/ClientPortalLayout';
 import { useClientAuth } from '@/contexts/ClientAuthContext';
 import { ReservationProposalCard, ReservationProposalDisplayData } from '@/components/staff/messages/ReservationProposalCard';
+import { CreditPurchaseCard } from '@/components/staff/messages/CreditPurchaseCard';
+import { CreditPurchaseData } from '@/components/staff/messages/SendCreditPurchase';
 
 const MAX_MESSAGE_LENGTH = 2000;
 const messageSchema = z.string()
@@ -41,9 +43,25 @@ const parseProposalFromContent = (content: string): ReservationProposalDisplayDa
   return null;
 };
 
-// Get display content without the proposal marker
+// Parse credit purchase from message content
+const parseCreditPurchaseFromContent = (content: string): CreditPurchaseData | null => {
+  try {
+    const markerMatch = content.match(/\[CREDIT_PURCHASE:(.+?)\]/);
+    if (markerMatch) {
+      return JSON.parse(markerMatch[1]) as CreditPurchaseData;
+    }
+  } catch (e) {
+    console.error('Error parsing credit purchase:', e);
+  }
+  return null;
+};
+
+// Get display content without any markers
 const getDisplayContent = (content: string): string => {
-  return content.replace(/\[PROPOSAL:.+?\]/, '').trim();
+  return content
+    .replace(/\[PROPOSAL:.+?\]/, '')
+    .replace(/\[CREDIT_PURCHASE:.+?\]/, '')
+    .trim();
 };
 
 const ClientMessages = () => {
@@ -350,11 +368,11 @@ const ClientMessages = () => {
     }
   };
 
-  // Render a message with potential proposal card
+  // Render a message with potential proposal or credit purchase card
   const renderMessage = (message: ChatMessage) => {
     const proposal = parseProposalFromContent(message.content);
+    const creditPurchase = parseCreditPurchaseFromContent(message.content);
     const displayContent = getDisplayContent(message.content);
-    const isProposalOnly = proposal && !displayContent;
 
     // For proposal messages, only show the card (no text bubble)
     if (proposal) {
@@ -375,6 +393,31 @@ const ClientMessages = () => {
               onAccept={() => handleAcceptProposal(message, proposal)}
               onDecline={() => handleDeclineProposal(message, proposal)}
               isProcessing={processingProposalId === message.id}
+            />
+            <p className="text-[10px] text-muted-foreground">
+              {format(new Date(message.created_at), 'h:mm a')}
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // For credit purchase messages, show the purchase card
+    if (creditPurchase) {
+      return (
+        <div
+          key={message.id}
+          className={`flex gap-2 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+        >
+          {message.role === 'assistant' && (
+            <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <Headphones className="h-4 w-4 text-primary" />
+            </div>
+          )}
+          <div className="max-w-[85%] space-y-2">
+            <CreditPurchaseCard
+              data={creditPurchase}
+              isClientView={true}
             />
             <p className="text-[10px] text-muted-foreground">
               {format(new Date(message.created_at), 'h:mm a')}

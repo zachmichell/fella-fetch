@@ -10,11 +10,13 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { useMessageNotificationSound } from '@/hooks/useMessageNotificationSound';
-import { MessageCircle, Send, Loader2, User, Users, Clock, Search, Calendar, Plus } from 'lucide-react';
+import { MessageCircle, Send, Loader2, User, Users, Clock, Search, Calendar, Plus, ShoppingCart } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ChatCalendarDrawer } from '@/components/staff/messages/ChatCalendarDrawer';
 import { SendReservationProposal, type ReservationProposalData } from '@/components/staff/messages/SendReservationProposal';
 import { ReservationProposalCard, type ReservationProposalDisplayData } from '@/components/staff/messages/ReservationProposalCard';
+import { SendCreditPurchase, type CreditPurchaseData } from '@/components/staff/messages/SendCreditPurchase';
+import { CreditPurchaseCard } from '@/components/staff/messages/CreditPurchaseCard';
 
 interface Client {
   id: string;
@@ -53,6 +55,19 @@ const parseProposalFromContent = (content: string): ReservationProposalDisplayDa
   return null;
 };
 
+// Helper to check if content contains a credit purchase card
+const parseCreditPurchaseFromContent = (content: string): CreditPurchaseData | null => {
+  try {
+    const markerMatch = content.match(/\[CREDIT_PURCHASE:(.+?)\]/);
+    if (markerMatch) {
+      return JSON.parse(markerMatch[1]);
+    }
+  } catch {
+    // Not a credit purchase message
+  }
+  return null;
+};
+
 // Helper to get clean preview text for conversation list
 const getPreviewText = (content: string): string => {
   const proposal = parseProposalFromContent(content);
@@ -63,6 +78,13 @@ const getPreviewText = (content: string): string => {
       : proposal.serviceType === 'boarding' ? 'Boarding' : 'Grooming';
     return `📋 ${serviceLabel} Proposal for ${proposal.petName}`;
   }
+  
+  const creditPurchase = parseCreditPurchaseFromContent(content);
+  if (creditPurchase) {
+    const productCount = creditPurchase.products.length;
+    return `🛒 Credit Purchase (${productCount} package${productCount !== 1 ? 's' : ''})`;
+  }
+  
   return content;
 };
 
@@ -86,6 +108,7 @@ const StaffMessages = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [calendarDrawerOpen, setCalendarDrawerOpen] = useState(false);
   const [proposalDialogOpen, setProposalDialogOpen] = useState(false);
+  const [creditPurchaseDialogOpen, setCreditPurchaseDialogOpen] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -409,6 +432,25 @@ const StaffMessages = () => {
     });
   };
 
+  // Handler to send a credit purchase card
+  const handleSendCreditPurchase = async (content: string, purchaseData: CreditPurchaseData) => {
+    if (!selectedClient || !user) return;
+    
+    // Encode credit purchase data into the message content
+    const contentWithData = `[CREDIT_PURCHASE:${JSON.stringify(purchaseData)}]`;
+    
+    const { error } = await supabase
+      .from('chat_messages')
+      .insert({
+        client_id: selectedClient.id,
+        role: 'assistant',
+        content: contentWithData,
+        staff_id: user.id,
+      });
+
+    if (error) throw error;
+  };
+
   const filteredConversations = conversations.filter((conv) => {
     if (!searchQuery) return true;
     const fullName = `${conv.client.first_name} ${conv.client.last_name}`.toLowerCase();
@@ -519,14 +561,18 @@ const StaffMessages = () => {
                         <p className="text-sm text-muted-foreground">{selectedClient.email}</p>
                       )}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 ml-auto">
                       <Button variant="outline" size="sm" onClick={() => setCalendarDrawerOpen(true)}>
                         <Calendar className="h-4 w-4 mr-1" />
-                        View Calendar
+                        Calendar
                       </Button>
                       <Button variant="outline" size="sm" onClick={() => setProposalDialogOpen(true)}>
                         <Plus className="h-4 w-4 mr-1" />
                         Send Proposal
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => setCreditPurchaseDialogOpen(true)}>
+                        <ShoppingCart className="h-4 w-4 mr-1" />
+                        Send Credits
                       </Button>
                     </div>
                   </div>
@@ -548,10 +594,12 @@ const StaffMessages = () => {
                       <div className="space-y-4">
                         {messages.map((message) => {
                           const proposal = parseProposalFromContent(message.content);
-                          const displayContent = proposal 
-                            ? message.content.replace(/\[PROPOSAL:.+?\]/, '').trim() 
-                            : message.content;
-                          const isProposalOnly = proposal && !displayContent;
+                          const creditPurchase = parseCreditPurchaseFromContent(message.content);
+                          const displayContent = message.content
+                            .replace(/\[PROPOSAL:.+?\]/, '')
+                            .replace(/\[CREDIT_PURCHASE:.+?\]/, '')
+                            .trim();
+                          const isCardOnly = (proposal || creditPurchase) && !displayContent;
                           const staffName = message.role === 'assistant' ? getStaffName(message.staff_id) : null;
 
                           return (
@@ -577,6 +625,11 @@ const StaffMessages = () => {
                                   <ReservationProposalCard proposal={proposal} isClientView={false} />
                                 )}
                                 
+                                {/* Show credit purchase card if present */}
+                                {creditPurchase && (
+                                  <CreditPurchaseCard data={creditPurchase} isClientView={false} />
+                                )}
+                                
                                 {/* Only show text bubble if there's non-proposal content */}
                                 {displayContent && (
                                   <div
@@ -596,8 +649,8 @@ const StaffMessages = () => {
                                   </div>
                                 )}
                                 
-                                {/* Show timestamp on proposal-only messages */}
-                                {isProposalOnly && (
+                                {/* Show timestamp on card-only messages */}
+                                {isCardOnly && (
                                   <div className={`flex items-center gap-1 text-[10px] ${
                                     message.role === 'assistant' ? 'text-muted-foreground' : 'text-muted-foreground'
                                   }`}>
@@ -687,6 +740,17 @@ const StaffMessages = () => {
           clientId={selectedClient.id}
           clientName={`${selectedClient.first_name} ${selectedClient.last_name}`}
           onSend={handleSendProposal}
+        />
+      )}
+
+      {/* Send Credit Purchase Dialog */}
+      {selectedClient && (
+        <SendCreditPurchase
+          open={creditPurchaseDialogOpen}
+          onOpenChange={setCreditPurchaseDialogOpen}
+          clientId={selectedClient.id}
+          clientName={`${selectedClient.first_name} ${selectedClient.last_name}`}
+          onSend={handleSendCreditPurchase}
         />
       )}
     </StaffLayout>
