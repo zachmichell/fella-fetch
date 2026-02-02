@@ -130,8 +130,8 @@ const ClientMessages = () => {
   const clientId = clientData?.id || '';
   const clientName = clientData ? `${clientData.first_name} ${clientData.last_name}` : '';
 
-  // Get refetch function from unread hook to clear badge
-  const { refetch: refetchUnreadCount } = useClientUnreadMessages(clientId);
+  // Get markAllAsRead function from unread hook to clear badge
+  const { markAllAsRead } = useClientUnreadMessages(clientId);
 
   // Typing indicator
   const { setTyping, isOtherTyping } = useTypingIndicator({
@@ -190,16 +190,8 @@ const ClientMessages = () => {
         }
       }
       
-      // Mark staff messages as read and refresh unread count
-      const unreadStaffIds = data?.filter(m => m.role === 'assistant' && !m.read_at).map(m => m.id) || [];
-      if (unreadStaffIds.length > 0) {
-        await supabase
-          .from('chat_messages')
-          .update({ read_at: new Date().toISOString() })
-          .in('id', unreadStaffIds);
-        // Refetch unread count to clear badge in sidebar
-        refetchUnreadCount();
-      }
+      // Mark all staff messages as read immediately when opening messages
+      markAllAsRead();
     } catch (error) {
       console.error('Error fetching chat history:', error);
       toast({
@@ -210,7 +202,7 @@ const ClientMessages = () => {
     } finally {
       setIsFetchingHistory(false);
     }
-  }, [clientId, toast, refetchUnreadCount]);
+  }, [clientId, toast, markAllAsRead]);
 
   // Initial fetch
   useEffect(() => {
@@ -250,7 +242,7 @@ const ClientMessages = () => {
               });
               // Play notification sound for new staff message
               playSound();
-              // Mark as read immediately and refresh unread count
+              // Mark as read immediately and update local state
               supabase
                 .from('chat_messages')
                 .update({ read_at: new Date().toISOString() })
@@ -260,8 +252,6 @@ const ClientMessages = () => {
                   setMessages((prev) =>
                     prev.map(m => m.id === newMessage.id ? { ...m, read_at: new Date().toISOString() } : m)
                   );
-                  // Refresh unread count to clear badge
-                  refetchUnreadCount();
                 });
             }
           } else if (payload.eventType === 'UPDATE') {
