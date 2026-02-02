@@ -488,38 +488,66 @@ const StaffMessages = () => {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {messages.map((message) => (
-                          <div
-                            key={message.id}
-                            className={`flex gap-2 ${message.role === 'assistant' ? 'justify-end' : 'justify-start'}`}
-                          >
-                            {message.role === 'user' && (
-                              <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
-                                <User className="h-4 w-4 text-secondary-foreground" />
-                              </div>
-                            )}
+                        {messages.map((message) => {
+                          const proposal = parseProposalFromContent(message.content);
+                          const displayContent = proposal 
+                            ? message.content.replace(/\[PROPOSAL:.+?\]/, '').trim() 
+                            : message.content;
+                          const isProposalOnly = proposal && !displayContent;
+
+                          return (
                             <div
-                              className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
-                                message.role === 'assistant'
-                                  ? 'bg-primary text-primary-foreground'
-                                  : 'bg-muted'
-                              }`}
+                              key={message.id}
+                              className={`flex gap-2 ${message.role === 'assistant' ? 'justify-end' : 'justify-start'}`}
                             >
-                              <p className="whitespace-pre-wrap">{message.content}</p>
-                              <div className={`flex items-center gap-1 text-[10px] mt-1 ${
-                                message.role === 'assistant' ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                              }`}>
-                                <Clock className="h-3 w-3" />
-                                {format(new Date(message.created_at), 'h:mm a')}
+                              {message.role === 'user' && (
+                                <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
+                                  <User className="h-4 w-4 text-secondary-foreground" />
+                                </div>
+                              )}
+                              <div className={`max-w-[80%] space-y-2 ${message.role === 'assistant' ? 'flex flex-col items-end' : ''}`}>
+                                {/* Show proposal card if present */}
+                                {proposal && (
+                                  <ReservationProposalCard proposal={proposal} isClientView={false} />
+                                )}
+                                
+                                {/* Only show text bubble if there's non-proposal content */}
+                                {displayContent && (
+                                  <div
+                                    className={`rounded-lg px-3 py-2 text-sm ${
+                                      message.role === 'assistant'
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'bg-muted'
+                                    }`}
+                                  >
+                                    <p className="whitespace-pre-wrap">{displayContent}</p>
+                                    <div className={`flex items-center gap-1 text-[10px] mt-1 ${
+                                      message.role === 'assistant' ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                                    }`}>
+                                      <Clock className="h-3 w-3" />
+                                      {format(new Date(message.created_at), 'h:mm a')}
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {/* Show timestamp on proposal-only messages */}
+                                {isProposalOnly && (
+                                  <div className={`flex items-center gap-1 text-[10px] ${
+                                    message.role === 'assistant' ? 'text-muted-foreground' : 'text-muted-foreground'
+                                  }`}>
+                                    <Clock className="h-3 w-3" />
+                                    {format(new Date(message.created_at), 'h:mm a')}
+                                  </div>
+                                )}
                               </div>
+                              {message.role === 'assistant' && (
+                                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                  <User className="h-4 w-4 text-primary" />
+                                </div>
+                              )}
                             </div>
-                            {message.role === 'assistant' && (
-                              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                                <User className="h-4 w-4 text-primary" />
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                          );
+                        })}
                         
                         {/* Typing Indicator */}
                         {isOtherTyping && (
