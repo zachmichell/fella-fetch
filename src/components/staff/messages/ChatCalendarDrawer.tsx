@@ -2,15 +2,14 @@ import { useState, useMemo } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar, BedDouble, Scissors, ChevronLeft, ChevronRight, Dog } from 'lucide-react';
+import { Calendar, BedDouble, Scissors, ChevronLeft, ChevronRight, Dog, LayoutGrid } from 'lucide-react';
 import { format, addDays, startOfWeek, addWeeks, subWeeks, isSameDay, isWithinInterval, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { ServiceTypeIcon } from '@/components/ui/service-type-icon';
 
 interface ChatCalendarDrawerProps {
   open: boolean;
@@ -38,6 +37,7 @@ interface Reservation {
   status: string;
   suite_id: string | null;
   groomer_id: string | null;
+  service_type: string;
   pets: {
     name: string;
     breed: string | null;
@@ -45,8 +45,30 @@ interface Reservation {
   };
 }
 
+interface ServiceType {
+  id: string;
+  name: string;
+  display_name: string;
+  color: string | null;
+  icon_name: string | null;
+}
+
+// Color mapping
+const colorMap: Record<string, { bg: string; text: string }> = {
+  'blue': { bg: 'bg-blue-100', text: 'text-blue-700' },
+  'purple': { bg: 'bg-purple-100', text: 'text-purple-700' },
+  'pink': { bg: 'bg-pink-100', text: 'text-pink-700' },
+  'green': { bg: 'bg-green-100', text: 'text-green-700' },
+  'orange': { bg: 'bg-orange-100', text: 'text-orange-700' },
+  'red': { bg: 'bg-red-100', text: 'text-red-700' },
+  'yellow': { bg: 'bg-yellow-100', text: 'text-yellow-700' },
+  'teal': { bg: 'bg-teal-100', text: 'text-teal-700' },
+  'gray': { bg: 'bg-gray-100', text: 'text-gray-700' },
+  'indigo': { bg: 'bg-indigo-100', text: 'text-indigo-700' },
+};
+
 export function ChatCalendarDrawer({ open, onOpenChange }: ChatCalendarDrawerProps) {
-  const [activeTab, setActiveTab] = useState('lodging');
+  const [activeTab, setActiveTab] = useState('facility');
   const [currentDate, setCurrentDate] = useState(new Date());
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
   const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart]);
@@ -54,6 +76,41 @@ export function ChatCalendarDrawer({ open, onOpenChange }: ChatCalendarDrawerPro
   const handlePreviousWeek = () => setCurrentDate(subWeeks(currentDate, 1));
   const handleNextWeek = () => setCurrentDate(addWeeks(currentDate, 1));
   const handleToday = () => setCurrentDate(new Date());
+
+  // Fetch service types
+  const { data: serviceTypes = [] } = useQuery({
+    queryKey: ['service-types-drawer'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('service_types')
+        .select('id, name, display_name, color, icon_name')
+        .eq('is_active', true)
+        .order('sort_order');
+      if (error) throw error;
+      return data as ServiceType[];
+    },
+    enabled: open && activeTab === 'facility',
+  });
+
+  // Fetch all reservations for facility view
+  const { data: allReservations = [], isLoading: allReservationsLoading } = useQuery({
+    queryKey: ['all-reservations-drawer', format(weekStart, 'yyyy-MM-dd')],
+    queryFn: async () => {
+      const startStr = format(weekDays[0], 'yyyy-MM-dd');
+      const endStr = format(weekDays[6], 'yyyy-MM-dd');
+      
+      const { data, error } = await supabase
+        .from('reservations')
+        .select('id, service_type, start_date, status')
+        .not('status', 'eq', 'cancelled')
+        .gte('start_date', startStr)
+        .lte('start_date', endStr);
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: open && activeTab === 'facility',
+  });
 
   // Fetch suites
   const { data: suites = [], isLoading: suitesLoading } = useQuery({
@@ -95,7 +152,7 @@ export function ChatCalendarDrawer({ open, onOpenChange }: ChatCalendarDrawerPro
       const { data, error } = await supabase
         .from('reservations')
         .select(`
-          id, pet_id, start_date, end_date, status, suite_id, start_time,
+          id, pet_id, start_date, end_date, status, suite_id, start_time, service_type,
           pets:pet_id (name, breed, clients:client_id (first_name, last_name))
         `)
         .eq('service_type', 'boarding')
@@ -118,7 +175,7 @@ export function ChatCalendarDrawer({ open, onOpenChange }: ChatCalendarDrawerPro
       const { data, error } = await supabase
         .from('reservations')
         .select(`
-          id, pet_id, start_date, start_time, status, groomer_id,
+          id, pet_id, start_date, start_time, status, groomer_id, service_type,
           pets:pet_id (name, breed, clients:client_id (first_name, last_name))
         `)
         .eq('service_type', 'grooming')
@@ -147,6 +204,31 @@ export function ChatCalendarDrawer({ open, onOpenChange }: ChatCalendarDrawerPro
     );
   };
 
+  const getServiceCountsForDay = (day: Date) => {
+    const dateStr = format(day, 'yyyy-MM-dd');
+    const dayReservations = allReservations.filter(r => r.start_date === dateStr);
+    
+    const counts: Record<string, number> = {};
+    dayReservations.forEach(r => {
+      counts[r.service_type] = (counts[r.service_type] || 0) + 1;
+    });
+
+    return serviceTypes.map((st) => {
+      const colorKey = st.color || 'gray';
+      const colors = colorMap[colorKey] || colorMap['gray'];
+      
+      return {
+        id: st.id,
+        name: st.name,
+        displayName: st.display_name,
+        iconName: st.icon_name || 'calendar',
+        count: counts[st.name] || 0,
+        color: colors.text,
+        bgColor: colors.bg,
+      };
+    });
+  };
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:w-[700px] sm:max-w-[90vw] p-0 flex flex-col">
@@ -159,7 +241,11 @@ export function ChatCalendarDrawer({ open, onOpenChange }: ChatCalendarDrawerPro
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
           <div className="px-4 pt-2 border-b bg-muted/30">
-            <TabsList className="w-full grid grid-cols-2">
+            <TabsList className="w-full grid grid-cols-3">
+              <TabsTrigger value="facility" className="gap-2">
+                <LayoutGrid className="h-4 w-4" />
+                Facility
+              </TabsTrigger>
               <TabsTrigger value="lodging" className="gap-2">
                 <BedDouble className="h-4 w-4" />
                 Lodging
@@ -190,6 +276,88 @@ export function ChatCalendarDrawer({ open, onOpenChange }: ChatCalendarDrawerPro
           </div>
 
           <ScrollArea className="flex-1">
+            {/* Facility View - All Service Types */}
+            <TabsContent value="facility" className="m-0 p-4">
+              {allReservationsLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full" />)}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {/* Header Row */}
+                  <div className="grid grid-cols-8 gap-1 text-xs font-medium text-muted-foreground">
+                    <div className="p-2">Service</div>
+                    {weekDays.map(day => (
+                      <div key={day.toString()} className={cn(
+                        "p-2 text-center",
+                        isSameDay(day, new Date()) && "bg-primary/10 rounded"
+                      )}>
+                        <div>{format(day, 'EEE')}</div>
+                        <div>{format(day, 'd')}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Service Type Rows */}
+                  {serviceTypes.map(serviceType => {
+                    const colorKey = serviceType.color || 'gray';
+                    const colors = colorMap[colorKey] || colorMap['gray'];
+                    
+                    return (
+                      <div key={serviceType.id} className="grid grid-cols-8 gap-1">
+                        <div className={cn("p-2 text-sm font-medium flex items-center gap-2 rounded", colors.bg)}>
+                          <ServiceTypeIcon iconName={serviceType.icon_name} className={cn("h-4 w-4", colors.text)} />
+                          <span className={cn("truncate text-xs", colors.text)}>{serviceType.display_name}</span>
+                        </div>
+                        {weekDays.map(day => {
+                          const serviceCounts = getServiceCountsForDay(day);
+                          const serviceCount = serviceCounts.find(s => s.name === serviceType.name);
+                          const count = serviceCount?.count || 0;
+                          
+                          return (
+                            <div
+                              key={day.toString()}
+                              className={cn(
+                                "min-h-[40px] p-2 border rounded flex items-center justify-center",
+                                isSameDay(day, new Date()) && "bg-primary/5 border-primary/30",
+                                count > 0 && colors.bg
+                              )}
+                            >
+                              <span className={cn(
+                                "text-lg font-semibold",
+                                count > 0 ? colors.text : "text-muted-foreground"
+                              )}>
+                                {count}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+
+                  {/* Total Row */}
+                  <div className="grid grid-cols-8 gap-1 border-t pt-2 mt-2">
+                    <div className="p-2 text-sm font-semibold">Total</div>
+                    {weekDays.map(day => {
+                      const total = allReservations.filter(r => r.start_date === format(day, 'yyyy-MM-dd')).length;
+                      return (
+                        <div
+                          key={day.toString()}
+                          className={cn(
+                            "min-h-[40px] p-2 border rounded flex items-center justify-center font-bold",
+                            isSameDay(day, new Date()) && "bg-primary/10 border-primary/30"
+                          )}
+                        >
+                          {total}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+
             <TabsContent value="lodging" className="m-0 p-4">
               {suitesLoading || boardingLoading ? (
                 <div className="space-y-3">

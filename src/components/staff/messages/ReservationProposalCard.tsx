@@ -2,7 +2,7 @@ import { format, parseISO, parse } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { BedDouble, Scissors, Calendar, Clock, User, MapPin, Check, X, Loader2 } from 'lucide-react';
+import { BedDouble, Scissors, Calendar, Clock, User, MapPin, Check, X, Loader2, Sun, ArrowRight } from 'lucide-react';
 
 export interface ProposalStatus {
   status: 'pending_client_approval' | 'accepted' | 'declined';
@@ -10,7 +10,8 @@ export interface ProposalStatus {
 
 export interface ReservationProposalDisplayData {
   type: 'reservation_proposal';
-  serviceType: 'boarding' | 'grooming';
+  serviceType: 'boarding' | 'grooming' | 'daycare';
+  daycareType?: 'full' | 'half';
   petId: string;
   petName: string;
   startDate: string;
@@ -49,23 +50,45 @@ export function ReservationProposalCard({
   const isDeclined = proposal.status === 'declined';
   const isPending = proposal.status === 'pending_client_approval';
 
+  const getServiceIcon = () => {
+    switch (proposal.serviceType) {
+      case 'boarding':
+        return <BedDouble className="h-5 w-5 text-primary" />;
+      case 'grooming':
+        return <Scissors className="h-5 w-5 text-primary" />;
+      case 'daycare':
+        return <Sun className="h-5 w-5 text-primary" />;
+      default:
+        return <Calendar className="h-5 w-5 text-primary" />;
+    }
+  };
+
+  const getServiceLabel = () => {
+    switch (proposal.serviceType) {
+      case 'boarding':
+        return 'Boarding';
+      case 'grooming':
+        return 'Grooming';
+      case 'daycare':
+        return proposal.daycareType === 'half' ? 'Half Day Daycare' : 'Full Day Daycare';
+      default:
+        return 'Reservation';
+    }
+  };
+
   return (
     <Card className={`border-2 ${
-      isAccepted ? 'border-green-500/50 bg-green-50/50' :
-      isDeclined ? 'border-red-500/50 bg-red-50/50' :
-      'border-primary/30 bg-primary/5'
+      isAccepted ? 'border-green-500/50 bg-green-50/50 dark:bg-green-950/20' :
+      isDeclined ? 'border-red-500/50 bg-red-50/50 dark:bg-red-950/20' :
+      'border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10'
     }`}>
       <CardContent className="p-4 space-y-3">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            {proposal.serviceType === 'boarding' ? (
-              <BedDouble className="h-5 w-5 text-primary" />
-            ) : (
-              <Scissors className="h-5 w-5 text-primary" />
-            )}
+            {getServiceIcon()}
             <span className="font-semibold">
-              {proposal.serviceType === 'boarding' ? 'Boarding' : 'Grooming'} Proposal
+              {getServiceLabel()} Proposal
             </span>
           </div>
           <Badge 
@@ -91,7 +114,19 @@ export function ReservationProposalCard({
             </span>
           </div>
 
-          {proposal.startTime && (
+          {/* Time display - different for daycare vs grooming */}
+          {proposal.serviceType === 'daycare' && proposal.startTime && proposal.endTime && (
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <span className="flex items-center gap-1">
+                {format(parse(proposal.startTime, 'HH:mm', new Date()), 'h:mm a')}
+                <ArrowRight className="h-3 w-3" />
+                {format(parse(proposal.endTime, 'HH:mm', new Date()), 'h:mm a')}
+              </span>
+            </div>
+          )}
+
+          {proposal.serviceType !== 'daycare' && proposal.startTime && (
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-muted-foreground" />
               <span>
@@ -142,7 +177,7 @@ export function ReservationProposalCard({
 
         {/* Action Buttons (Client View Only) */}
         {isClientView && isPending && onAccept && onDecline && (
-          <div className="flex gap-2 pt-2 border-t">
+          <div className="flex gap-2 pt-3 border-t">
             <Button 
               variant="outline" 
               size="sm" 
