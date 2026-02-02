@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
+import { useMessageNotificationSound } from '@/hooks/useMessageNotificationSound';
 import { Send, Loader2, User, Headphones } from 'lucide-react';
 import { format } from 'date-fns';
 import { z } from 'zod';
@@ -65,6 +66,9 @@ const ClientMessages = () => {
     userId: clientId,
     userName: clientName,
   });
+
+  // Sound notification
+  const { playSound, enableSound } = useMessageNotificationSound();
 
   // Scroll to bottom helper
   const scrollToBottom = useCallback(() => {
@@ -146,6 +150,8 @@ const ClientMessages = () => {
                 if (prev.some(m => m.id === newMessage.id)) return prev;
                 return [...prev, newMessage];
               });
+              // Play notification sound for new staff message
+              playSound();
               // Mark as read immediately
               supabase
                 .from('chat_messages')
@@ -166,7 +172,7 @@ const ClientMessages = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [clientId]);
+  }, [clientId, playSound]);
 
   // Focus input on mount
   useEffect(() => {
