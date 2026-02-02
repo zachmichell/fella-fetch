@@ -553,6 +553,23 @@ export function SendReservationProposal({
                 </Popover>
               </div>
 
+              {/* Drop-off Time */}
+              <div className="space-y-2">
+                <Label>Drop-off Time</Label>
+                <Select value={startTime} onValueChange={setStartTime}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select time..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIME_OPTIONS.map((time) => (
+                      <SelectItem key={time} value={time}>
+                        {format(parse(time, 'HH:mm', new Date()), 'h:mm a')}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               {/* Check-out Date */}
               <div className="space-y-2">
                 <Label>Check-out Date</Label>
@@ -572,6 +589,23 @@ export function SendReservationProposal({
                     />
                   </PopoverContent>
                 </Popover>
+              </div>
+
+              {/* Pick-up Time */}
+              <div className="space-y-2">
+                <Label>Pick-up Time</Label>
+                <Select value={endTime} onValueChange={setEndTime}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select time..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIME_OPTIONS.map((time) => (
+                      <SelectItem key={time} value={time}>
+                        {format(parse(time, 'HH:mm', new Date()), 'h:mm a')}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Suite Selection */}
