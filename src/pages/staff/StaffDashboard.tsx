@@ -71,6 +71,7 @@ const StaffDashboard = () => {
           notes,
           payment_pending,
           parent_reservation_id,
+          subscription_id,
           pets (
             id,
             name,
@@ -113,6 +114,7 @@ const StaffDashboard = () => {
           notes,
           payment_pending,
           parent_reservation_id,
+          subscription_id,
           pets (
             id,
             name,
@@ -230,6 +232,7 @@ const StaffDashboard = () => {
         payment_pending: r.payment_pending || false,
         notes: r.notes || null,
         linked_services: linkedServicesMap[r.id] || [],
+        subscription_id: r.subscription_id || null,
       })) || [];
 
       setReservations(formattedReservations);

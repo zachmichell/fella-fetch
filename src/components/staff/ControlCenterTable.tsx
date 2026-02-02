@@ -33,7 +33,8 @@ import {
   Tags,
   DollarSign,
   Scissors,
-  Clock
+  Clock,
+  Repeat
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -87,6 +88,7 @@ export interface ControlCenterReservation {
   payment_pending: boolean;
   notes: string | null;
   linked_services?: LinkedService[];
+  subscription_id?: string | null;
 }
 
 type TabValue = 'expected' | 'going_home' | 'checked_in' | 'requested';
@@ -519,12 +521,19 @@ export function ControlCenterTable({
 
                   {/* Type Column */}
                   <TableCell>
-                    <Badge 
-                      variant="secondary"
-                      className={serviceTypeColors[reservation.service_type] || ''}
-                    >
-                      {getServiceTypeLabel(reservation.service_type, reservation.notes)}
-                    </Badge>
+                    <div className="flex items-center gap-1.5">
+                      <Badge 
+                        variant="secondary"
+                        className={serviceTypeColors[reservation.service_type] || ''}
+                      >
+                        {getServiceTypeLabel(reservation.service_type, reservation.notes)}
+                      </Badge>
+                      {reservation.subscription_id && (
+                        <span title="Recurring subscription">
+                          <Repeat className="h-4 w-4 text-primary" />
+                        </span>
+                      )}
+                    </div>
                   </TableCell>
 
                   {/* Lodging Column */}
