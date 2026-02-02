@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
-import { User, Dog, ShoppingBag, History, CalendarDays, FileText, Mail, MailOpen, LogOut } from 'lucide-react';
+import { User, Dog, ShoppingBag, History, CalendarDays, FileText, MessageCircle, Mail, MailOpen, LogOut } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -18,7 +18,7 @@ import { useClientUnreadMessages } from '@/hooks/useClientUnreadMessages';
 
 const menuItems = [
   { title: 'Dashboard', url: '/portal', icon: CalendarDays },
-  { title: 'Messages', url: '/portal/messages', icon: Mail },
+  { title: 'Messages', url: '/portal/messages', icon: MessageCircle },
   { title: 'Profile', url: '/portal/profile', icon: User },
   { title: 'Pets', url: '/portal/pets', icon: Dog },
   { title: 'Agreements', url: '/portal/agreements', icon: FileText },
@@ -39,41 +39,40 @@ export function ClientSidebar() {
     navigate('/');
   };
 
-  // Determine which icon to use for Messages based on unread count
-  const getMessageIcon = () => {
-    return unreadCount > 0 ? Mail : MailOpen;
-  };
-
   return (
     <Sidebar collapsible="icon" className="border-r">
       <SidebarContent className="pt-4">
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => {
-                // Use dynamic icon for Messages
-                const IconComponent = item.title === 'Messages' ? getMessageIcon() : item.icon;
-                
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={location.pathname === item.url}
-                      tooltip={item.title}
+              {menuItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location.pathname === item.url}
+                    tooltip={item.title}
+                  >
+                    <NavLink
+                      to={item.url}
+                      end={item.url === '/portal'}
+                      className="flex items-center gap-3"
+                      activeClassName="bg-primary/10 text-primary font-medium"
                     >
-                      <NavLink
-                        to={item.url}
-                        end={item.url === '/portal'}
-                        className="flex items-center gap-3"
-                        activeClassName="bg-primary/10 text-primary font-medium"
-                      >
-                        <IconComponent className="h-5 w-5 shrink-0" />
-                        {!collapsed && <span>{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
+                      <item.icon className="h-5 w-5 shrink-0" />
+                      {!collapsed && (
+                        <span className="flex items-center gap-2">
+                          {item.title}
+                          {item.title === 'Messages' && (
+                            unreadCount > 0 
+                              ? <Mail className="h-4 w-4 text-primary" />
+                              : <MailOpen className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </span>
+                      )}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
