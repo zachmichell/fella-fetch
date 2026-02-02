@@ -123,6 +123,7 @@ const ClientMessages = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingHistory, setIsFetchingHistory] = useState(true);
   const [processingProposalId, setProcessingProposalId] = useState<string | null>(null);
+  const [reservationStatuses, setReservationStatuses] = useState<Record<string, string>>({});
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -149,7 +150,7 @@ const ClientMessages = () => {
     }
   }, []);
 
-  // Fetch chat history
+  // Fetch chat history and reservation statuses
   const fetchChatHistory = useCallback(async () => {
     if (!clientId) return;
     setIsFetchingHistory(true);
@@ -161,7 +162,30 @@ const ClientMessages = () => {
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      setMessages((data || []).map(m => ({ ...m, role: m.role as 'user' | 'assistant' })));
+      const msgs = (data || []).map(m => ({ ...m, role: m.role as 'user' | 'assistant' }));
+      setMessages(msgs);
+      
+      // Extract reservation IDs from proposals to fetch their statuses
+      const reservationIds: string[] = [];
+      msgs.forEach(m => {
+        const proposal = parseProposalFromContent(m.content);
+        if (proposal?.reservationId) {
+          reservationIds.push(proposal.reservationId);
+        }
+      });
+      
+      if (reservationIds.length > 0) {
+        const { data: reservations } = await supabase
+          .from('reservations')
+          .select('id, status')
+          .in('id', reservationIds);
+        
+        if (reservations) {
+          const statusMap: Record<string, string> = {};
+          reservations.forEach(r => { statusMap[r.id] = r.status; });
+          setReservationStatuses(statusMap);
+        }
+      }
       
       // Mark staff messages as read
       const unreadStaffIds = data?.filter(m => m.role === 'assistant' && !m.read_at).map(m => m.id) || [];
@@ -243,6 +267,33 @@ const ClientMessages = () => {
     };
   }, [clientId, playSound]);
 
+  // Real-time subscription for reservation status changes
+  useEffect(() => {
+    const channel = supabase
+      .channel('client-reservation-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'reservations',
+        },
+        (payload) => {
+          const updatedReservation = payload.new as { id: string; status: string };
+          // Update our local cache of reservation statuses
+          setReservationStatuses(prev => ({
+            ...prev,
+            [updatedReservation.id]: updatedReservation.status
+          }));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   // Focus input on mount
   useEffect(() => {
     if (inputRef.current && !isFetchingHistory) {
@@ -319,15 +370,6 @@ const ClientMessages = () => {
     }
   };
 
-  // Helper to replace proposal marker in content
-  const replaceProposalInContent = (content: string, newProposal: ReservationProposalDisplayData): string => {
-    const jsonStr = extractJsonFromMarker(content, 'PROPOSAL');
-    if (jsonStr) {
-      return content.replace(`[PROPOSAL:${jsonStr}]`, `[PROPOSAL:${JSON.stringify(newProposal)}]`);
-    }
-    return content;
-  };
-
   // Handle accepting a proposal - updates the existing pending reservation to confirmed
   const handleAcceptProposal = async (message: ChatMessage, proposal: ReservationProposalDisplayData) => {
     setProcessingProposalId(message.id);
@@ -344,21 +386,11 @@ const ClientMessages = () => {
 
       if (reservationError) throw reservationError;
 
-      // Update the proposal status in the message
-      const updatedProposal = { ...proposal, status: 'accepted' as const };
-      const updatedContent = replaceProposalInContent(message.content, updatedProposal);
-
-      const { error: updateError } = await supabase
-        .from('chat_messages')
-        .update({ content: updatedContent })
-        .eq('id', message.id);
-
-      if (updateError) throw updateError;
-
-      // Update local state immediately
-      setMessages(prev => prev.map(m => 
-        m.id === message.id ? { ...m, content: updatedContent } : m
-      ));
+      // Update local reservation status cache
+      setReservationStatuses(prev => ({
+        ...prev,
+        [proposal.reservationId!]: 'confirmed'
+      }));
 
       toast({
         title: 'Reservation Confirmed!',
@@ -380,31 +412,23 @@ const ClientMessages = () => {
   const handleDeclineProposal = async (message: ChatMessage, proposal: ReservationProposalDisplayData) => {
     setProcessingProposalId(message.id);
     try {
-      if (proposal.reservationId) {
-        // Update the existing reservation to cancelled status
-        const { error: reservationError } = await supabase
-          .from('reservations')
-          .update({ status: 'cancelled' })
-          .eq('id', proposal.reservationId);
-
-        if (reservationError) throw reservationError;
+      if (!proposal.reservationId) {
+        throw new Error('No reservation ID found in proposal');
       }
 
-      // Update the proposal status in the message
-      const updatedProposal = { ...proposal, status: 'declined' as const };
-      const updatedContent = replaceProposalInContent(message.content, updatedProposal);
+      // Update the existing reservation to cancelled status
+      const { error: reservationError } = await supabase
+        .from('reservations')
+        .update({ status: 'cancelled' })
+        .eq('id', proposal.reservationId);
 
-      const { error: updateError } = await supabase
-        .from('chat_messages')
-        .update({ content: updatedContent })
-        .eq('id', message.id);
+      if (reservationError) throw reservationError;
 
-      if (updateError) throw updateError;
-
-      // Update local state
-      setMessages(prev => prev.map(m => 
-        m.id === message.id ? { ...m, content: updatedContent } : m
-      ));
+      // Update local reservation status cache
+      setReservationStatuses(prev => ({
+        ...prev,
+        [proposal.reservationId!]: 'cancelled'
+      }));
 
       toast({
         title: 'Proposal Declined',
@@ -422,6 +446,19 @@ const ClientMessages = () => {
     }
   };
 
+  // Helper to get proposal status from reservation status
+  const getProposalStatus = (proposal: ReservationProposalDisplayData): 'pending_client_approval' | 'accepted' | 'declined' => {
+    if (!proposal.reservationId) return proposal.status;
+    const reservationStatus = reservationStatuses[proposal.reservationId];
+    if (reservationStatus === 'confirmed' || reservationStatus === 'checked_in' || reservationStatus === 'checked_out') {
+      return 'accepted';
+    }
+    if (reservationStatus === 'cancelled') {
+      return 'declined';
+    }
+    return 'pending_client_approval';
+  };
+
   // Render a message with potential proposal or credit purchase card
   const renderMessage = (message: ChatMessage) => {
     const proposal = parseProposalFromContent(message.content);
@@ -430,6 +467,10 @@ const ClientMessages = () => {
 
     // For proposal messages, only show the card (no text bubble)
     if (proposal) {
+      // Derive the actual status from the reservation (source of truth)
+      const derivedStatus = getProposalStatus(proposal);
+      const proposalWithDerivedStatus = { ...proposal, status: derivedStatus };
+      
       return (
         <div
           key={message.id}
@@ -442,7 +483,7 @@ const ClientMessages = () => {
           )}
           <div className="max-w-[85%] space-y-2">
             <ReservationProposalCard
-              proposal={proposal}
+              proposal={proposalWithDerivedStatus}
               isClientView={true}
               onAccept={() => handleAcceptProposal(message, proposal)}
               onDecline={() => handleDeclineProposal(message, proposal)}
