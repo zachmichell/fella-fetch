@@ -1,12 +1,11 @@
 import { ReactNode } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useClientAuth } from '@/contexts/ClientAuthContext';
-import { Button } from '@/components/ui/button';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { ClientSidebar } from './ClientSidebar';
 import Header from '@/components/layout/Header';
-import { Calendar, LogOut, Loader2, Menu } from 'lucide-react';
+import { Loader2, Menu } from 'lucide-react';
 
 interface ClientPortalLayoutProps {
   children: ReactNode;
@@ -17,17 +16,12 @@ interface ClientPortalLayoutProps {
 export function ClientPortalLayout({ children, title, description }: ClientPortalLayoutProps) {
   const navigate = useNavigate();
   const {
-    signOut,
     loading: authLoading,
     isAuthenticated,
     shopifyCustomer,
     clientData: contextClientData,
   } = useClientAuth();
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
-  };
 
   if (authLoading) {
     return (
@@ -72,18 +66,6 @@ export function ClientPortalLayout({ children, title, description }: ClientPorta
                       <p className="text-muted-foreground mt-1">{description}</p>
                     )}
                   </div>
-                </div>
-                <div className="flex gap-3">
-                  <Link to="/book">
-                    <Button className="gap-2">
-                      <Calendar className="h-4 w-4" />
-                      Book Appointment
-                    </Button>
-                  </Link>
-                  <Button variant="outline" onClick={handleSignOut} className="gap-2">
-                    <LogOut className="h-4 w-4" />
-                    Sign Out
-                  </Button>
                 </div>
               </div>
 

@@ -63,11 +63,21 @@ const ClientDashboard = () => {
   // Current visits (checked in but not checked out)
   const currentVisits = reservations.filter(r => r.status === 'checked_in');
 
-  // Upcoming reservations (future or today, not cancelled or completed)
-  const upcomingReservations = reservations.filter(r =>
-    (isFuture(parseISO(r.start_date)) || isToday(parseISO(r.start_date))) &&
-    r.status !== 'cancelled' && r.status !== 'checked_out' && r.status !== 'checked_in'
-  );
+  // Pending reservations (awaiting staff confirmation)
+  const pendingReservations = reservations
+    .filter(r =>
+      (isFuture(parseISO(r.start_date)) || isToday(parseISO(r.start_date))) &&
+      r.status === 'pending'
+    )
+    .sort((a, b) => parseISO(a.start_date).getTime() - parseISO(b.start_date).getTime());
+
+  // Upcoming reservations (confirmed, future or today, not cancelled or completed)
+  const upcomingReservations = reservations
+    .filter(r =>
+      (isFuture(parseISO(r.start_date)) || isToday(parseISO(r.start_date))) &&
+      r.status === 'confirmed'
+    )
+    .sort((a, b) => parseISO(a.start_date).getTime() - parseISO(b.start_date).getTime());
 
   // Calculate visit progress
   const getVisitProgress = (visit: typeof currentVisits[0]) => {
@@ -176,7 +186,7 @@ const ClientDashboard = () => {
   };
 
   return (
-    <ClientPortalLayout description="Manage your pets and appointments">
+    <ClientPortalLayout>
       <div className="max-w-2xl space-y-6">
         {/* Unpaid Invoices Alert */}
         {unpaidOrders.length > 0 && (
@@ -226,6 +236,52 @@ const ClientDashboard = () => {
               {currentVisits.map((visit) => (
                 <CurrentVisitCard key={visit.id} visit={visit} getVisitProgress={getVisitProgress} />
               ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Pending Reservations (awaiting confirmation) */}
+        {pendingReservations.length > 0 && (
+          <Card className="border-yellow-500/50 bg-yellow-500/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2 text-yellow-700">
+                <Clock className="h-5 w-5" />
+                Awaiting Confirmation
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {pendingReservations.map((reservation) => (
+                  <div
+                    key={reservation.id}
+                    className="p-4 rounded-lg border bg-background"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <p className="font-medium">{reservation.pets.name}</p>
+                        <p className="text-sm text-muted-foreground capitalize">
+                          {reservation.service_type}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className={getStatusColor(reservation.status)}>
+                        {reservation.status.replace('_', ' ')}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {format(parseISO(reservation.start_date), 'MMM d, yyyy')}
+                      </div>
+                      {reservation.start_time && (
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {format(parseISO(`2000-01-01T${reservation.start_time}`), 'h:mm a')}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         )}

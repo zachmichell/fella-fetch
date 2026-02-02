@@ -499,10 +499,10 @@ const ClientMessages = () => {
                 <Headphones className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <CardTitle className="text-lg">Support Team</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  {isOtherTyping ? 'Typing...' : 'We typically respond within a few hours'}
-                </p>
+                <CardTitle className="text-lg">Customer Service Team</CardTitle>
+                {isOtherTyping && (
+                  <p className="text-sm text-muted-foreground">Typing...</p>
+                )}
               </div>
             </div>
           </CardHeader>
