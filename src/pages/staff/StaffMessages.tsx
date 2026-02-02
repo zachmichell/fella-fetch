@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
+import { useMessageNotificationSound } from '@/hooks/useMessageNotificationSound';
 import { MessageCircle, Send, Loader2, User, Users, Clock, Search, Calendar, Plus } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ChatCalendarDrawer } from '@/components/staff/messages/ChatCalendarDrawer';
@@ -97,6 +98,9 @@ const StaffMessages = () => {
     userId: user?.id || '',
     userName: 'Staff',
   });
+
+  // Sound notification
+  const { playSound, enableSound } = useMessageNotificationSound();
 
   // Fetch all conversations
   const fetchConversations = useCallback(async () => {
@@ -234,6 +238,11 @@ const StaffMessages = () => {
             }
           }
 
+          // Play notification sound for new client messages
+          if (newMessage.role === 'user') {
+            playSound();
+          }
+
           // Always refresh conversation list
           fetchConversations();
         }
@@ -243,7 +252,7 @@ const StaffMessages = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [selectedClient, fetchConversations]);
+  }, [selectedClient, fetchConversations, playSound]);
 
   // Scroll to bottom when messages change or typing indicator updates
   useEffect(() => {
