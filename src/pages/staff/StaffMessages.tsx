@@ -806,7 +806,11 @@ const StaffMessages = () => {
                                 
                                 {/* Show proposal card if present */}
                                 {proposalWithDerivedStatus && (
-                                  <ReservationProposalCard proposal={proposalWithDerivedStatus} isClientView={false} />
+                                  <ReservationProposalCard 
+                                    proposal={proposalWithDerivedStatus} 
+                                    isClientView={false} 
+                                    reservationStatus={proposalWithDerivedStatus.reservationId ? reservationStatuses[proposalWithDerivedStatus.reservationId] as 'pending' | 'confirmed' | 'cancelled' | 'checked_in' | 'checked_out' : undefined}
+                                  />
                                 )}
                                 
                                 {/* Show credit purchase card if present */}

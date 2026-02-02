@@ -122,7 +122,6 @@ const ClientMessages = () => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingHistory, setIsFetchingHistory] = useState(true);
-  const [processingProposalId, setProcessingProposalId] = useState<string | null>(null);
   const [reservationStatuses, setReservationStatuses] = useState<Record<string, string>>({});
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -370,81 +369,6 @@ const ClientMessages = () => {
     }
   };
 
-  // Handle accepting a proposal - updates the existing pending reservation to confirmed
-  const handleAcceptProposal = async (message: ChatMessage, proposal: ReservationProposalDisplayData) => {
-    setProcessingProposalId(message.id);
-    try {
-      if (!proposal.reservationId) {
-        throw new Error('No reservation ID found in proposal');
-      }
-
-      // Update the existing reservation to confirmed status
-      const { error: reservationError } = await supabase
-        .from('reservations')
-        .update({ status: 'confirmed' })
-        .eq('id', proposal.reservationId);
-
-      if (reservationError) throw reservationError;
-
-      // Update local reservation status cache
-      setReservationStatuses(prev => ({
-        ...prev,
-        [proposal.reservationId!]: 'confirmed'
-      }));
-
-      toast({
-        title: 'Reservation Confirmed!',
-        description: `Your ${proposal.serviceType} reservation has been booked.`,
-      });
-    } catch (error) {
-      console.error('Error accepting proposal:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to accept the proposal. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setProcessingProposalId(null);
-    }
-  };
-
-  // Handle declining a proposal - updates the existing pending reservation to cancelled
-  const handleDeclineProposal = async (message: ChatMessage, proposal: ReservationProposalDisplayData) => {
-    setProcessingProposalId(message.id);
-    try {
-      if (!proposal.reservationId) {
-        throw new Error('No reservation ID found in proposal');
-      }
-
-      // Update the existing reservation to cancelled status
-      const { error: reservationError } = await supabase
-        .from('reservations')
-        .update({ status: 'cancelled' })
-        .eq('id', proposal.reservationId);
-
-      if (reservationError) throw reservationError;
-
-      // Update local reservation status cache
-      setReservationStatuses(prev => ({
-        ...prev,
-        [proposal.reservationId!]: 'cancelled'
-      }));
-
-      toast({
-        title: 'Proposal Declined',
-        description: 'The reservation request has been cancelled.',
-      });
-    } catch (error) {
-      console.error('Error declining proposal:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to decline the proposal. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setProcessingProposalId(null);
-    }
-  };
 
   // Helper to get proposal status from reservation status
   const getProposalStatus = (proposal: ReservationProposalDisplayData): 'pending_client_approval' | 'accepted' | 'declined' => {
@@ -485,9 +409,7 @@ const ClientMessages = () => {
             <ReservationProposalCard
               proposal={proposalWithDerivedStatus}
               isClientView={true}
-              onAccept={() => handleAcceptProposal(message, proposal)}
-              onDecline={() => handleDeclineProposal(message, proposal)}
-              isProcessing={processingProposalId === message.id}
+              reservationStatus={proposal.reservationId ? reservationStatuses[proposal.reservationId] as 'pending' | 'confirmed' | 'cancelled' | 'checked_in' | 'checked_out' : undefined}
             />
             <p className="text-[10px] text-muted-foreground">
               {format(new Date(message.created_at), 'h:mm a')}

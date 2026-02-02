@@ -2,7 +2,7 @@ import { format, parseISO, parse } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { BedDouble, Scissors, Calendar, Clock, User, MapPin, Check, X, Loader2, Sun, ArrowRight } from 'lucide-react';
+import { BedDouble, Scissors, Calendar, Clock, User, MapPin, Sun, ArrowRight } from 'lucide-react';
 
 export interface ProposalStatus {
   status: 'pending_client_approval' | 'accepted' | 'declined';
@@ -35,21 +35,18 @@ export interface ReservationProposalDisplayData {
 interface ReservationProposalCardProps {
   proposal: ReservationProposalDisplayData;
   isClientView?: boolean;
-  onAccept?: () => Promise<void>;
-  onDecline?: () => Promise<void>;
-  isProcessing?: boolean;
+  reservationStatus?: 'pending' | 'confirmed' | 'cancelled' | 'checked_in' | 'checked_out';
 }
 
 export function ReservationProposalCard({
   proposal,
   isClientView = false,
-  onAccept,
-  onDecline,
-  isProcessing = false,
+  reservationStatus,
 }: ReservationProposalCardProps) {
-  const isAccepted = proposal.status === 'accepted';
-  const isDeclined = proposal.status === 'declined';
-  const isPending = proposal.status === 'pending_client_approval';
+  // Derive display status from reservation status
+  const isAccepted = reservationStatus === 'confirmed' || reservationStatus === 'checked_in' || reservationStatus === 'checked_out';
+  const isDeclined = reservationStatus === 'cancelled';
+  const isPending = reservationStatus === 'pending' || !reservationStatus;
 
   const getServiceIcon = () => {
     switch (proposal.serviceType) {
@@ -184,32 +181,12 @@ export function ReservationProposalCard({
           )}
         </div>
 
-        {/* Action Buttons (Client View Only) */}
-        {isClientView && isPending && onAccept && onDecline && (
-          <div className="flex gap-2 pt-3 border-t">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="flex-1 text-destructive border-destructive/50 hover:bg-destructive/10"
-              onClick={onDecline}
-              disabled={isProcessing}
-            >
-              {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4 mr-1" />}
-              Decline
-            </Button>
-            <Button 
-              size="sm" 
-              className="flex-1 bg-green-600 hover:bg-green-700"
-              onClick={onAccept}
-              disabled={isProcessing}
-            >
-              {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 mr-1" />}
-              Accept
-            </Button>
+        {/* Status Messages */}
+        {isClientView && isPending && (
+          <div className="text-center text-sm text-muted-foreground font-medium pt-2 border-t">
+            ⏳ Awaiting staff confirmation
           </div>
         )}
-
-        {/* Status Messages */}
         {isAccepted && (
           <div className="text-center text-sm text-green-600 font-medium pt-2 border-t">
             ✓ This reservation has been confirmed
@@ -217,7 +194,7 @@ export function ReservationProposalCard({
         )}
         {isDeclined && (
           <div className="text-center text-sm text-red-600 font-medium pt-2 border-t">
-            ✗ This proposal was declined
+            ✗ This reservation was cancelled
           </div>
         )}
       </CardContent>
