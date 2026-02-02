@@ -11,6 +11,7 @@ import { format } from 'date-fns';
 import { z } from 'zod';
 import { ClientPortalLayout } from '@/components/client/ClientPortalLayout';
 import { useClientAuth } from '@/contexts/ClientAuthContext';
+import { ReservationProposalCard, ReservationProposalDisplayData } from '@/components/staff/messages/ReservationProposalCard';
 
 const MAX_MESSAGE_LENGTH = 2000;
 const messageSchema = z.string()
@@ -26,6 +27,24 @@ interface ChatMessage {
   read_at: string | null;
 }
 
+// Parse proposal from message content
+const parseProposalFromContent = (content: string): ReservationProposalDisplayData | null => {
+  try {
+    const markerMatch = content.match(/\[PROPOSAL:(.+?)\]/);
+    if (markerMatch) {
+      return JSON.parse(markerMatch[1]) as ReservationProposalDisplayData;
+    }
+  } catch (e) {
+    console.error('Error parsing proposal:', e);
+  }
+  return null;
+};
+
+// Get display content without the proposal marker
+const getDisplayContent = (content: string): string => {
+  return content.replace(/\[PROPOSAL:.+?\]/, '').trim();
+};
+
 const ClientMessages = () => {
   const { toast } = useToast();
   const { clientData } = useClientAuth();
@@ -33,6 +52,7 @@ const ClientMessages = () => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingHistory, setIsFetchingHistory] = useState(true);
+  const [processingProposalId, setProcessingProposalId] = useState<string | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -113,23 +133,31 @@ const ClientMessages = () => {
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'chat_messages',
           filter: `client_id=eq.${clientId}`,
         },
         (payload) => {
-          const newMessage = payload.new as ChatMessage;
-          if (newMessage.role === 'assistant') {
-            setMessages((prev) => {
-              if (prev.some(m => m.id === newMessage.id)) return prev;
-              return [...prev, newMessage];
-            });
-            // Mark as read immediately
-            supabase
-              .from('chat_messages')
-              .update({ read_at: new Date().toISOString() })
-              .eq('id', newMessage.id);
+          if (payload.eventType === 'INSERT') {
+            const newMessage = payload.new as ChatMessage;
+            if (newMessage.role === 'assistant') {
+              setMessages((prev) => {
+                if (prev.some(m => m.id === newMessage.id)) return prev;
+                return [...prev, newMessage];
+              });
+              // Mark as read immediately
+              supabase
+                .from('chat_messages')
+                .update({ read_at: new Date().toISOString() })
+                .eq('id', newMessage.id);
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            // Handle proposal status updates
+            const updatedMessage = payload.new as ChatMessage;
+            setMessages((prev) => 
+              prev.map(m => m.id === updatedMessage.id ? { ...updatedMessage, role: updatedMessage.role as 'user' | 'assistant' } : m)
+            );
           }
         }
       )
@@ -216,6 +244,160 @@ const ClientMessages = () => {
     }
   };
 
+  // Handle accepting a proposal
+  const handleAcceptProposal = async (message: ChatMessage, proposal: ReservationProposalDisplayData) => {
+    setProcessingProposalId(message.id);
+    try {
+      // Create the reservation with confirmed status
+      const reservationData: any = {
+        pet_id: proposal.petId,
+        service_type: proposal.serviceType,
+        start_date: proposal.startDate,
+        end_date: proposal.endDate || null,
+        start_time: proposal.startTime || null,
+        end_time: proposal.endTime || null,
+        groomer_id: proposal.groomerId || null,
+        suite_id: proposal.suiteId || null,
+        notes: proposal.notes || null,
+        price: proposal.price ? parseFloat(proposal.price) : null,
+        status: 'confirmed', // Bypass pending status
+      };
+
+      // Add daycare type to notes if applicable
+      if (proposal.serviceType === 'daycare' && proposal.daycareType) {
+        reservationData.notes = `Day Type: ${proposal.daycareType === 'full' ? 'Full Day' : 'Half Day'}${proposal.notes ? ` | ${proposal.notes}` : ''}`;
+      }
+
+      const { error: reservationError } = await supabase
+        .from('reservations')
+        .insert(reservationData);
+
+      if (reservationError) throw reservationError;
+
+      // Update the proposal status in the message
+      const updatedProposal = { ...proposal, status: 'accepted' as const };
+      const updatedContent = message.content.replace(
+        /\[PROPOSAL:.+?\]/,
+        `[PROPOSAL:${JSON.stringify(updatedProposal)}]`
+      );
+
+      await supabase
+        .from('chat_messages')
+        .update({ content: updatedContent })
+        .eq('id', message.id);
+
+      // Update local state
+      setMessages(prev => prev.map(m => 
+        m.id === message.id ? { ...m, content: updatedContent } : m
+      ));
+
+      toast({
+        title: 'Reservation Confirmed!',
+        description: `Your ${proposal.serviceType} reservation has been booked.`,
+      });
+    } catch (error) {
+      console.error('Error accepting proposal:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to accept the proposal. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setProcessingProposalId(null);
+    }
+  };
+
+  // Handle declining a proposal
+  const handleDeclineProposal = async (message: ChatMessage, proposal: ReservationProposalDisplayData) => {
+    setProcessingProposalId(message.id);
+    try {
+      // Update the proposal status in the message
+      const updatedProposal = { ...proposal, status: 'declined' as const };
+      const updatedContent = message.content.replace(
+        /\[PROPOSAL:.+?\]/,
+        `[PROPOSAL:${JSON.stringify(updatedProposal)}]`
+      );
+
+      await supabase
+        .from('chat_messages')
+        .update({ content: updatedContent })
+        .eq('id', message.id);
+
+      // Update local state
+      setMessages(prev => prev.map(m => 
+        m.id === message.id ? { ...m, content: updatedContent } : m
+      ));
+
+      toast({
+        title: 'Proposal Declined',
+        description: 'The reservation proposal has been declined.',
+      });
+    } catch (error) {
+      console.error('Error declining proposal:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to decline the proposal. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setProcessingProposalId(null);
+    }
+  };
+
+  // Render a message with potential proposal card
+  const renderMessage = (message: ChatMessage) => {
+    const proposal = parseProposalFromContent(message.content);
+    const displayContent = getDisplayContent(message.content);
+
+    return (
+      <div
+        key={message.id}
+        className={`flex gap-2 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+      >
+        {message.role === 'assistant' && (
+          <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <Headphones className="h-4 w-4 text-primary" />
+          </div>
+        )}
+        <div className={`max-w-[85%] space-y-2 ${message.role === 'user' ? 'flex flex-col items-end' : ''}`}>
+          {/* Regular message content */}
+          {displayContent && (
+            <div
+              className={`rounded-lg px-3 py-2 text-sm ${
+                message.role === 'user'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted'
+              }`}
+            >
+              <p className="whitespace-pre-wrap">{displayContent}</p>
+              <p className={`text-[10px] mt-1 ${
+                message.role === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground'
+              }`}>
+                {format(new Date(message.created_at), 'h:mm a')}
+              </p>
+            </div>
+          )}
+          
+          {/* Proposal card */}
+          {proposal && (
+            <ReservationProposalCard
+              proposal={proposal}
+              isClientView={true}
+              onAccept={() => handleAcceptProposal(message, proposal)}
+              onDecline={() => handleDeclineProposal(message, proposal)}
+              isProcessing={processingProposalId === message.id}
+            />
+          )}
+        </div>
+        {message.role === 'user' && (
+          <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
+            <User className="h-4 w-4 text-secondary-foreground" />
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <ClientPortalLayout>
       <div className="h-[calc(100vh-8rem)] flex flex-col">
@@ -255,37 +437,7 @@ const ClientMessages = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex gap-2 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      {message.role === 'assistant' && (
-                        <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          <Headphones className="h-4 w-4 text-primary" />
-                        </div>
-                      )}
-                      <div
-                        className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
-                          message.role === 'user'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted'
-                        }`}
-                      >
-                        <p className="whitespace-pre-wrap">{message.content}</p>
-                        <p className={`text-[10px] mt-1 ${
-                          message.role === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                        }`}>
-                          {format(new Date(message.created_at), 'h:mm a')}
-                        </p>
-                      </div>
-                      {message.role === 'user' && (
-                        <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
-                          <User className="h-4 w-4 text-secondary-foreground" />
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                  {messages.map(renderMessage)}
                   
                   {isOtherTyping && (
                     <div className="flex gap-2 justify-start">

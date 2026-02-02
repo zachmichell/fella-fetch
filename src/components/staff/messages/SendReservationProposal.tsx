@@ -34,9 +34,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Check, ChevronsUpDown, CalendarIcon, BedDouble, Scissors, Send, Dog } from 'lucide-react';
+import { Check, ChevronsUpDown, CalendarIcon, BedDouble, Scissors, Send, Dog, Sun, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ServiceTypeIcon } from '@/components/ui/service-type-icon';
 import { 
   SHOPIFY_STOREFRONT_URL, 
   SHOPIFY_STOREFRONT_TOKEN 
@@ -52,7 +52,8 @@ interface SendReservationProposalProps {
 
 export interface ReservationProposalData {
   type: 'reservation_proposal';
-  serviceType: 'boarding' | 'grooming';
+  serviceType: 'boarding' | 'grooming' | 'daycare';
+  daycareType?: 'full' | 'half';
   petId: string;
   petName: string;
   startDate: string;
@@ -120,12 +121,14 @@ export function SendReservationProposal({
   onSend 
 }: SendReservationProposalProps) {
   const { toast } = useToast();
-  const [serviceType, setServiceType] = useState<'boarding' | 'grooming'>('boarding');
+  const [serviceType, setServiceType] = useState<'boarding' | 'grooming' | 'daycare'>('daycare');
+  const [daycareType, setDaycareType] = useState<'full' | 'half'>('full');
   const [selectedPetId, setSelectedPetId] = useState('');
   const [petSearchOpen, setPetSearchOpen] = useState(false);
   const [checkInDate, setCheckInDate] = useState<Date | undefined>(undefined);
   const [checkOutDate, setCheckOutDate] = useState<Date | undefined>(undefined);
   const [startTime, setStartTime] = useState<string>('');
+  const [endTime, setEndTime] = useState<string>('');
   const [selectedGroomerId, setSelectedGroomerId] = useState('');
   const [selectedSuiteId, setSelectedSuiteId] = useState('');
   const [selectedProductId, setSelectedProductId] = useState('');
@@ -252,11 +255,13 @@ export function SendReservationProposal({
     setCheckInDate(undefined);
     setCheckOutDate(undefined);
     setStartTime('');
+    setEndTime('');
     setSelectedGroomerId('');
     setSelectedSuiteId('');
     setSelectedProductId('');
     setSelectedVariantId('');
     setNotes('');
+    setDaycareType('full');
   }, [serviceType]);
 
   // Reset variant when product changes
@@ -283,17 +288,28 @@ export function SendReservationProposal({
       return;
     }
 
+    if (serviceType === 'daycare' && (!startTime || !endTime)) {
+      toast({
+        title: 'Missing information',
+        description: 'Please select drop-off and pick-up times',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       const proposalData: ReservationProposalData = {
         type: 'reservation_proposal',
         serviceType,
+        daycareType: serviceType === 'daycare' ? daycareType : undefined,
         petId: selectedPetId,
         petName: selectedPet?.name || '',
         startDate: format(checkInDate, 'yyyy-MM-dd'),
         endDate: checkOutDate ? format(checkOutDate, 'yyyy-MM-dd') : undefined,
         startTime: startTime || undefined,
+        endTime: endTime || undefined,
         groomerId: selectedGroomerId || undefined,
         groomerName: selectedGroomer?.name || undefined,
         suiteId: selectedSuiteId || undefined,
@@ -309,13 +325,17 @@ export function SendReservationProposal({
 
       // Create a human-readable message
       let messageContent = `📋 **Reservation Proposal**\n\n`;
-      messageContent += `**Service:** ${serviceType === 'boarding' ? 'Boarding' : 'Grooming'}\n`;
+      const serviceLabel = serviceType === 'boarding' ? 'Boarding' : serviceType === 'grooming' ? 'Grooming' : `${daycareType === 'full' ? 'Full Day' : 'Half Day'} Daycare`;
+      messageContent += `**Service:** ${serviceLabel}\n`;
       messageContent += `**Pet:** ${selectedPet?.name}\n`;
       messageContent += `**Date:** ${format(checkInDate, 'EEEE, MMMM d, yyyy')}`;
       if (checkOutDate) {
         messageContent += ` - ${format(checkOutDate, 'EEEE, MMMM d, yyyy')}`;
       }
-      if (startTime) {
+      if (serviceType === 'daycare' && startTime && endTime) {
+        messageContent += `\n**Drop-off:** ${format(parse(startTime, 'HH:mm', new Date()), 'h:mm a')}`;
+        messageContent += `\n**Pick-up:** ${format(parse(endTime, 'HH:mm', new Date()), 'h:mm a')}`;
+      } else if (startTime) {
         messageContent += `\n**Time:** ${format(parse(startTime, 'HH:mm', new Date()), 'h:mm a')}`;
       }
       if (selectedGroomer) {
@@ -341,11 +361,13 @@ export function SendReservationProposal({
       setCheckInDate(undefined);
       setCheckOutDate(undefined);
       setStartTime('');
+      setEndTime('');
       setSelectedGroomerId('');
       setSelectedSuiteId('');
       setSelectedProductId('');
       setSelectedVariantId('');
       setNotes('');
+      setDaycareType('full');
 
     } catch (error) {
       console.error('Error sending proposal:', error);
@@ -369,72 +391,175 @@ export function SendReservationProposal({
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs value={serviceType} onValueChange={(v) => setServiceType(v as 'boarding' | 'grooming')}>
-          <TabsList className="w-full grid grid-cols-2">
-            <TabsTrigger value="boarding" className="gap-2">
-              <BedDouble className="h-4 w-4" />
-              Boarding
-            </TabsTrigger>
-            <TabsTrigger value="grooming" className="gap-2">
-              <Scissors className="h-4 w-4" />
-              Grooming
-            </TabsTrigger>
-          </TabsList>
-
-          <div className="mt-4 space-y-4">
-            {/* Pet Selection */}
-            <div className="space-y-2">
-              <Label>Pet</Label>
-              <Popover open={petSearchOpen} onOpenChange={setPetSearchOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    className="w-full justify-between"
-                  >
-                    {selectedPet ? (
-                      <div className="flex items-center gap-2">
-                        <Dog className="h-4 w-4" />
-                        {selectedPet.name} {selectedPet.breed && `(${selectedPet.breed})`}
-                      </div>
-                    ) : (
-                      'Select pet...'
-                    )}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0">
-                  <Command>
-                    <CommandInput placeholder="Search pets..." />
-                    <CommandList>
-                      <CommandEmpty>No pets found.</CommandEmpty>
-                      <CommandGroup>
-                        {pets.map((pet) => (
-                          <CommandItem
-                            key={pet.id}
-                            value={pet.name}
-                            onSelect={() => {
-                              setSelectedPetId(pet.id);
-                              setPetSearchOpen(false);
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                'mr-2 h-4 w-4',
-                                selectedPetId === pet.id ? 'opacity-100' : 'opacity-0'
-                              )}
-                            />
-                            {pet.name} {pet.breed && `(${pet.breed})`}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+        <div className="space-y-4">
+          {/* Service Type Selection */}
+          <div className="space-y-2">
+            <Label>Service Type</Label>
+            <div className="grid grid-cols-3 gap-2">
+              <Button
+                type="button"
+                variant={serviceType === 'daycare' ? 'default' : 'outline'}
+                className="flex items-center gap-2"
+                onClick={() => setServiceType('daycare')}
+              >
+                <Sun className="h-4 w-4" />
+                Daycare
+              </Button>
+              <Button
+                type="button"
+                variant={serviceType === 'boarding' ? 'default' : 'outline'}
+                className="flex items-center gap-2"
+                onClick={() => setServiceType('boarding')}
+              >
+                <BedDouble className="h-4 w-4" />
+                Boarding
+              </Button>
+              <Button
+                type="button"
+                variant={serviceType === 'grooming' ? 'default' : 'outline'}
+                className="flex items-center gap-2"
+                onClick={() => setServiceType('grooming')}
+              >
+                <Scissors className="h-4 w-4" />
+                Grooming
+              </Button>
             </div>
+          </div>
 
-            <TabsContent value="boarding" className="mt-0 space-y-4">
+          {/* Pet Selection */}
+          <div className="space-y-2">
+            <Label>Pet</Label>
+            <Popover open={petSearchOpen} onOpenChange={setPetSearchOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  className="w-full justify-between"
+                >
+                  {selectedPet ? (
+                    <div className="flex items-center gap-2">
+                      <Dog className="h-4 w-4" />
+                      {selectedPet.name} {selectedPet.breed && `(${selectedPet.breed})`}
+                    </div>
+                  ) : (
+                    'Select pet...'
+                  )}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-full p-0">
+                <Command>
+                  <CommandInput placeholder="Search pets..." />
+                  <CommandList>
+                    <CommandEmpty>No pets found.</CommandEmpty>
+                    <CommandGroup>
+                      {pets.map((pet) => (
+                        <CommandItem
+                          key={pet.id}
+                          value={pet.name}
+                          onSelect={() => {
+                            setSelectedPetId(pet.id);
+                            setPetSearchOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              'mr-2 h-4 w-4',
+                              selectedPetId === pet.id ? 'opacity-100' : 'opacity-0'
+                            )}
+                          />
+                          {pet.name} {pet.breed && `(${pet.breed})`}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+          {serviceType === 'daycare' && (
+            <div className="space-y-4 border rounded-lg p-4 bg-muted/30">
+              {/* Day Type */}
+              <div className="space-y-2">
+                <Label>Day Type</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant={daycareType === 'full' ? 'default' : 'outline'}
+                    onClick={() => setDaycareType('full')}
+                  >
+                    Full Day
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={daycareType === 'half' ? 'default' : 'outline'}
+                    onClick={() => setDaycareType('half')}
+                  >
+                    Half Day
+                  </Button>
+                </div>
+              </div>
+
+              {/* Date */}
+              <div className="space-y-2">
+                <Label>Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {checkInDate ? format(checkInDate, 'PPP') : 'Select date...'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={checkInDate}
+                      onSelect={setCheckInDate}
+                      disabled={(date) => date < new Date()}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {/* Drop-off Time */}
+              <div className="space-y-2">
+                <Label>Drop-off Time</Label>
+                <Select value={startTime} onValueChange={setStartTime}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select time..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIME_OPTIONS.map((time) => (
+                      <SelectItem key={time} value={time}>
+                        {format(parse(time, 'HH:mm', new Date()), 'h:mm a')}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Pick-up Time */}
+              <div className="space-y-2">
+                <Label>Pick-up Time</Label>
+                <Select value={endTime} onValueChange={setEndTime}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select time..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIME_OPTIONS.map((time) => (
+                      <SelectItem key={time} value={time}>
+                        {format(parse(time, 'HH:mm', new Date()), 'h:mm a')}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
+          {/* Boarding Fields */}
+          {serviceType === 'boarding' && (
+            <div className="space-y-4 border rounded-lg p-4 bg-muted/30">
               {/* Check-in Date */}
               <div className="space-y-2">
                 <Label>Check-in Date</Label>
@@ -493,9 +618,12 @@ export function SendReservationProposal({
                   </SelectContent>
                 </Select>
               </div>
-            </TabsContent>
+            </div>
+          )}
 
-            <TabsContent value="grooming" className="mt-0 space-y-4">
+          {/* Grooming Fields */}
+          {serviceType === 'grooming' && (
+            <div className="space-y-4 border rounded-lg p-4 bg-muted/30">
               {/* Groomer Selection */}
               <div className="space-y-2">
                 <Label>Groomer</Label>
@@ -586,20 +714,20 @@ export function SendReservationProposal({
                   </Select>
                 </div>
               )}
-            </TabsContent>
-
-            {/* Notes */}
-            <div className="space-y-2">
-              <Label>Notes (Optional)</Label>
-              <Textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Add any additional notes..."
-                rows={2}
-              />
             </div>
+          )}
+
+          {/* Notes */}
+          <div className="space-y-2">
+            <Label>Notes (Optional)</Label>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Add any additional notes..."
+              rows={2}
+            />
           </div>
-        </Tabs>
+        </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
