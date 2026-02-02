@@ -25,9 +25,9 @@ const ClientHistory = () => {
     }
   };
 
-  const pastReservations = reservations.filter(r =>
-    isPast(parseISO(r.start_date)) && !isToday(parseISO(r.start_date))
-  );
+  const pastReservations = reservations
+    .filter(r => isPast(parseISO(r.start_date)) && !isToday(parseISO(r.start_date)))
+    .sort((a, b) => parseISO(b.start_date).getTime() - parseISO(a.start_date).getTime());
 
   return (
     <ClientPortalLayout title="Past Appointments" description="View your appointment history">

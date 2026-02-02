@@ -1,9 +1,10 @@
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
-import { User, Dog, ShoppingBag, History, CalendarDays, FileText, MessageCircle } from 'lucide-react';
+import { User, Dog, ShoppingBag, History, CalendarDays, FileText, MessageCircle, LogOut } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarMenu,
@@ -11,6 +12,8 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
+import { Button } from '@/components/ui/button';
+import { useClientAuth } from '@/contexts/ClientAuthContext';
 
 const menuItems = [
   { title: 'Dashboard', url: '/portal', icon: CalendarDays },
@@ -26,6 +29,13 @@ export function ClientSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
   const location = useLocation();
+  const navigate = useNavigate();
+  const { signOut } = useClientAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
 
   return (
     <Sidebar collapsible="icon" className="border-r">
@@ -56,6 +66,16 @@ export function ClientSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter className="p-2">
+        <Button
+          variant="ghost"
+          onClick={handleSignOut}
+          className={`w-full justify-start gap-3 text-muted-foreground hover:text-foreground ${collapsed ? 'px-2' : ''}`}
+        >
+          <LogOut className="h-5 w-5 shrink-0" />
+          {!collapsed && <span>Sign Out</span>}
+        </Button>
+      </SidebarFooter>
     </Sidebar>
   );
 }
