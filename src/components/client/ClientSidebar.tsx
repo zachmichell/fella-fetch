@@ -11,13 +11,10 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { Badge } from '@/components/ui/badge';
-import { useClientAuth } from '@/contexts/ClientAuthContext';
-import { useClientUnreadMessages } from '@/hooks/useClientUnreadMessages';
 
 const menuItems = [
   { title: 'Dashboard', url: '/portal', icon: CalendarDays },
-  { title: 'Messages', url: '/portal/messages', icon: MessageCircle, showUnread: true },
+  { title: 'Messages', url: '/portal/messages', icon: MessageCircle },
   { title: 'Profile', url: '/portal/profile', icon: User },
   { title: 'Pets', url: '/portal/pets', icon: Dog },
   { title: 'Agreements', url: '/portal/agreements', icon: FileText },
@@ -29,8 +26,6 @@ export function ClientSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
   const location = useLocation();
-  const { clientData } = useClientAuth();
-  const { unreadCount } = useClientUnreadMessages(clientData?.id);
 
   return (
     <Sidebar collapsible="icon" className="border-r">
@@ -51,22 +46,8 @@ export function ClientSidebar() {
                       className="flex items-center gap-3"
                       activeClassName="bg-primary/10 text-primary font-medium"
                     >
-                      <div className="relative">
-                        <item.icon className="h-5 w-5 shrink-0" />
-                        {item.showUnread && unreadCount > 0 && collapsed && (
-                          <span className="absolute -top-1 -right-1 w-2 h-2 bg-destructive rounded-full" />
-                        )}
-                      </div>
-                      {!collapsed && (
-                        <span className="flex items-center gap-2">
-                          {item.title}
-                          {item.showUnread && unreadCount > 0 && (
-                            <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs">
-                              {unreadCount > 9 ? '9+' : unreadCount}
-                            </Badge>
-                          )}
-                        </span>
-                      )}
+                      <item.icon className="h-5 w-5 shrink-0" />
+                      {!collapsed && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
