@@ -186,16 +186,19 @@ export function SendReservationProposal({
   const { data: groomingProducts = [] } = useQuery({
     queryKey: ['shopify-grooming-products'],
     queryFn: async () => {
-      // Get the grooming collection mapping
+      // Get the grooming collection mapping (category 'services' for GROOM collection)
       const { data: mappings } = await supabase
         .from('shopify_collection_mappings')
         .select('shopify_collection_id')
-        .eq('category', 'reservations');
+        .eq('category', 'services');
 
       if (!mappings?.length) return [];
 
       const collectionId = mappings[0].shopify_collection_id;
-      const numericId = collectionId.replace('gid://shopify/Collection/', '');
+      // Handle both raw IDs and full GID format
+      const numericId = collectionId.includes('gid://') 
+        ? collectionId.replace('gid://shopify/Collection/', '')
+        : collectionId;
 
       const query = `
         query {
@@ -233,10 +236,8 @@ export function SendReservationProposal({
 
       const result = await response.json();
       const products = result.data?.collection?.products?.edges?.map((e: any) => e.node) || [];
-      // Filter for grooming products by title
-      return products.filter((p: ShopifyProduct) => 
-        p.title.toLowerCase().includes('groom')
-      );
+      // Return all products from the grooming collection (no additional filtering needed)
+      return products;
     },
     enabled: serviceType === 'grooming',
   });
