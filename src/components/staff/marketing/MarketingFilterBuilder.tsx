@@ -151,7 +151,7 @@ export const MarketingFilterBuilder = ({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {OPERATORS.map(op => (
+                    {(isStringField(filter.field) ? STRING_OPERATORS : NUMERIC_OPERATORS).map(op => (
                       <SelectItem key={op.value} value={op.value}>
                         {op.label}
                       </SelectItem>
