@@ -33,6 +33,7 @@ interface Pet {
   lastGroomDate: string | null;
   daysSinceLastVisit: number | null;
   daysSinceLastGroom: number | null;
+  hasActiveSubscription: boolean;
 }
 
 interface ClientWithPets {
@@ -108,6 +109,15 @@ const StaffMarketing = () => {
         .order('start_date', { ascending: false });
       if (visitsError) throw visitsError;
 
+      // Get active daycare subscriptions
+      const { data: activeSubscriptions, error: subsError } = await supabase
+        .from('daycare_subscriptions')
+        .select('pet_id')
+        .eq('is_active', true)
+        .eq('is_approved', true);
+      if (subsError) throw subsError;
+
+      const activePetIds = new Set(activeSubscriptions.map(s => s.pet_id));
       const today = new Date();
 
       // Map pets with their last visit/groom dates
@@ -132,6 +142,7 @@ const StaffMarketing = () => {
           daysSinceLastGroom: lastGroomDate 
             ? differenceInDays(today, parseISO(lastGroomDate)) 
             : null,
+          hasActiveSubscription: activePetIds.has(pet.id),
         };
       });
 
@@ -159,28 +170,55 @@ const StaffMarketing = () => {
       return filters.every(filter => {
         const { field, operator, value } = filter;
 
+        // Helper for numeric comparison
+        const compareNumeric = (actual: number, op: string, target: number): boolean => {
+          switch (op) {
+            case 'eq': return actual === target;
+            case 'neq': return actual !== target;
+            case 'gt': return actual > target;
+            case 'gte': return actual >= target;
+            case 'lt': return actual < target;
+            case 'lte': return actual <= target;
+            default: return true;
+          }
+        };
+
+        // Helper for string comparison
+        const compareString = (actual: string | null, op: string, target: string): boolean => {
+          if (!actual) return false;
+          const normalizedActual = actual.toLowerCase();
+          const normalizedTarget = target.toLowerCase();
+          switch (op) {
+            case 'contains': return normalizedActual.includes(normalizedTarget);
+            case 'eq': return normalizedActual === normalizedTarget;
+            case 'neq': return normalizedActual !== normalizedTarget;
+            case 'starts_with': return normalizedActual.startsWith(normalizedTarget);
+            default: return true;
+          }
+        };
+
         // Client-level filters
         if (field === 'daycare_credits') {
-          return compareValue(client.daycareCredits, operator, value);
+          return compareNumeric(client.daycareCredits, operator, value as number);
         }
         if (field === 'half_daycare_credits') {
-          return compareValue(client.halfDaycareCredits, operator, value);
+          return compareNumeric(client.halfDaycareCredits, operator, value as number);
         }
         if (field === 'boarding_credits') {
-          return compareValue(client.boardingCredits, operator, value);
+          return compareNumeric(client.boardingCredits, operator, value as number);
         }
 
         // Pet-level filters (at least one pet must match)
         if (field === 'days_since_last_visit') {
           return client.pets.some(pet => 
             pet.daysSinceLastVisit !== null && 
-            compareValue(pet.daysSinceLastVisit, operator, value)
+            compareNumeric(pet.daysSinceLastVisit, operator, value as number)
           );
         }
         if (field === 'days_since_last_groom') {
           return client.pets.some(pet => 
             pet.daysSinceLastGroom !== null && 
-            compareValue(pet.daysSinceLastGroom, operator, value)
+            compareNumeric(pet.daysSinceLastGroom, operator, value as number)
           );
         }
         if (field === 'never_visited') {
@@ -188,6 +226,17 @@ const StaffMarketing = () => {
         }
         if (field === 'never_groomed') {
           return client.pets.some(pet => pet.daysSinceLastGroom === null);
+        }
+
+        // New filters
+        if (field === 'has_active_subscription') {
+          return client.pets.some(pet => pet.hasActiveSubscription);
+        }
+        if (field === 'pet_name') {
+          return client.pets.some(pet => compareString(pet.name, operator, value as string));
+        }
+        if (field === 'pet_breed') {
+          return client.pets.some(pet => compareString(pet.breed, operator, value as string));
         }
 
         return true;
@@ -580,18 +629,5 @@ const StaffMarketing = () => {
     </StaffLayout>
   );
 };
-
-// Helper function to compare values based on operator
-function compareValue(actual: number, operator: string, expected: number): boolean {
-  switch (operator) {
-    case 'eq': return actual === expected;
-    case 'neq': return actual !== expected;
-    case 'gt': return actual > expected;
-    case 'gte': return actual >= expected;
-    case 'lt': return actual < expected;
-    case 'lte': return actual <= expected;
-    default: return true;
-  }
-}
 
 export default StaffMarketing;

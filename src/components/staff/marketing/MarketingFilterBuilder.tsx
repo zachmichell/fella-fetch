@@ -6,32 +6,43 @@ import { Plus, X } from 'lucide-react';
 export interface FilterCondition {
   field: string;
   operator: string;
-  value: number;
+  value: number | string;
 }
 
 interface FilterOption {
   value: string;
   label: string;
-  category: 'inactivity' | 'credits' | 'special';
+  category: 'inactivity' | 'credits' | 'special' | 'pet';
+  type: 'number' | 'string' | 'boolean';
 }
 
 const FILTER_FIELDS: FilterOption[] = [
-  { value: 'days_since_last_visit', label: 'Days since last visit', category: 'inactivity' },
-  { value: 'days_since_last_groom', label: 'Days since last groom', category: 'inactivity' },
-  { value: 'never_visited', label: 'Never visited', category: 'special' },
-  { value: 'never_groomed', label: 'Never groomed', category: 'special' },
-  { value: 'daycare_credits', label: 'Daycare credits', category: 'credits' },
-  { value: 'half_daycare_credits', label: 'Half-day credits', category: 'credits' },
-  { value: 'boarding_credits', label: 'Boarding credits', category: 'credits' },
+  { value: 'days_since_last_visit', label: 'Days since last visit', category: 'inactivity', type: 'number' },
+  { value: 'days_since_last_groom', label: 'Days since last groom', category: 'inactivity', type: 'number' },
+  { value: 'never_visited', label: 'Never visited', category: 'special', type: 'boolean' },
+  { value: 'never_groomed', label: 'Never groomed', category: 'special', type: 'boolean' },
+  { value: 'has_active_subscription', label: 'Has active recurring daycare', category: 'special', type: 'boolean' },
+  { value: 'pet_name', label: 'Pet name', category: 'pet', type: 'string' },
+  { value: 'pet_breed', label: 'Pet breed', category: 'pet', type: 'string' },
+  { value: 'daycare_credits', label: 'Daycare credits', category: 'credits', type: 'number' },
+  { value: 'half_daycare_credits', label: 'Half-day credits', category: 'credits', type: 'number' },
+  { value: 'boarding_credits', label: 'Boarding credits', category: 'credits', type: 'number' },
 ];
 
-const OPERATORS = [
+const NUMERIC_OPERATORS = [
   { value: 'eq', label: 'equals' },
   { value: 'neq', label: 'not equals' },
   { value: 'gt', label: 'greater than' },
   { value: 'gte', label: 'at least' },
   { value: 'lt', label: 'less than' },
   { value: 'lte', label: 'at most' },
+];
+
+const STRING_OPERATORS = [
+  { value: 'contains', label: 'contains' },
+  { value: 'eq', label: 'equals' },
+  { value: 'neq', label: 'not equals' },
+  { value: 'starts_with', label: 'starts with' },
 ];
 
 interface MarketingFilterBuilderProps {
@@ -60,8 +71,18 @@ export const MarketingFilterBuilder = ({
     onFiltersChange(filters.filter((_, i) => i !== index));
   };
 
+  const getFieldConfig = (field: string) => {
+    return FILTER_FIELDS.find(f => f.value === field);
+  };
+
   const isSpecialField = (field: string) => {
-    return field === 'never_visited' || field === 'never_groomed';
+    const config = getFieldConfig(field);
+    return config?.type === 'boolean';
+  };
+
+  const isStringField = (field: string) => {
+    const config = getFieldConfig(field);
+    return config?.type === 'string';
   };
 
   return (
@@ -89,6 +110,14 @@ export const MarketingFilterBuilder = ({
                   — Inactivity —
                 </SelectItem>
                 {FILTER_FIELDS.filter(f => f.category === 'inactivity').map(field => (
+                  <SelectItem key={field.value} value={field.value}>
+                    {field.label}
+                  </SelectItem>
+                ))}
+                <SelectItem value="header-pet" disabled className="font-semibold text-xs text-muted-foreground">
+                  — Pet Info —
+                </SelectItem>
+                {FILTER_FIELDS.filter(f => f.category === 'pet').map(field => (
                   <SelectItem key={field.value} value={field.value}>
                     {field.label}
                   </SelectItem>
@@ -122,7 +151,7 @@ export const MarketingFilterBuilder = ({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {OPERATORS.map(op => (
+                    {(isStringField(filter.field) ? STRING_OPERATORS : NUMERIC_OPERATORS).map(op => (
                       <SelectItem key={op.value} value={op.value}>
                         {op.label}
                       </SelectItem>
@@ -130,12 +159,22 @@ export const MarketingFilterBuilder = ({
                   </SelectContent>
                 </Select>
 
-                <Input
-                  type="number"
-                  value={filter.value}
-                  onChange={(e) => updateFilter(index, { value: parseInt(e.target.value) || 0 })}
-                  className="w-[100px]"
-                />
+                {isStringField(filter.field) ? (
+                  <Input
+                    type="text"
+                    value={filter.value}
+                    onChange={(e) => updateFilter(index, { value: e.target.value })}
+                    placeholder="Enter text..."
+                    className="w-[160px]"
+                  />
+                ) : (
+                  <Input
+                    type="number"
+                    value={filter.value}
+                    onChange={(e) => updateFilter(index, { value: parseInt(e.target.value) || 0 })}
+                    className="w-[100px]"
+                  />
+                )}
               </>
             )}
 
