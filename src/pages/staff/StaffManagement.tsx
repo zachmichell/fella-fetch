@@ -1,0 +1,422 @@
+import { useState, useEffect } from 'react';
+import { StaffLayout } from '@/components/staff/StaffLayout';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { Plus, Pencil, Trash2, Loader2, Shield, User, Eye, EyeOff } from 'lucide-react';
+import { useStaffCode } from '@/contexts/StaffCodeContext';
+import { useNavigate } from 'react-router-dom';
+
+interface StaffCode {
+  id: string;
+  name: string;
+  code: string;
+  is_admin: boolean;
+  is_active: boolean;
+  created_at: string;
+}
+
+const StaffManagement = () => {
+  const { toast } = useToast();
+  const { isCodeAdmin } = useStaffCode();
+  const navigate = useNavigate();
+  const [staffCodes, setStaffCodes] = useState<StaffCode[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingStaff, setEditingStaff] = useState<StaffCode | null>(null);
+  const [deleteStaff, setDeleteStaff] = useState<StaffCode | null>(null);
+  const [showCodes, setShowCodes] = useState<Record<string, boolean>>({});
+  
+  const [formData, setFormData] = useState({
+    name: '',
+    code: '',
+    is_admin: false,
+    is_active: true,
+  });
+
+  // Redirect non-admin code users
+  useEffect(() => {
+    if (!isCodeAdmin) {
+      navigate('/staff');
+    }
+  }, [isCodeAdmin, navigate]);
+
+  const fetchStaffCodes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('staff_codes')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+      setStaffCodes(data || []);
+    } catch (error) {
+      console.error('Error fetching staff codes:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load staff codes',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStaffCodes();
+  }, []);
+
+  const handleOpenDialog = (staff?: StaffCode) => {
+    if (staff) {
+      setEditingStaff(staff);
+      setFormData({
+        name: staff.name,
+        code: staff.code,
+        is_admin: staff.is_admin,
+        is_active: staff.is_active,
+      });
+    } else {
+      setEditingStaff(null);
+      setFormData({
+        name: '',
+        code: '',
+        is_admin: false,
+        is_active: true,
+      });
+    }
+    setIsDialogOpen(true);
+  };
+
+  const handleSubmit = async () => {
+    if (!formData.name.trim() || !formData.code.trim()) {
+      toast({
+        title: 'Validation Error',
+        description: 'Name and code are required',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!/^\d{4}$/.test(formData.code)) {
+      toast({
+        title: 'Validation Error',
+        description: 'Code must be exactly 4 digits',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      if (editingStaff) {
+        const { error } = await supabase
+          .from('staff_codes')
+          .update({
+            name: formData.name,
+            code: formData.code,
+            is_admin: formData.is_admin,
+            is_active: formData.is_active,
+          })
+          .eq('id', editingStaff.id);
+
+        if (error) throw error;
+        toast({ title: 'Staff code updated successfully!' });
+      } else {
+        const { error } = await supabase
+          .from('staff_codes')
+          .insert([{
+            name: formData.name,
+            code: formData.code,
+            is_admin: formData.is_admin,
+            is_active: formData.is_active,
+          }]);
+
+        if (error) {
+          if (error.code === '23505') {
+            toast({
+              title: 'Duplicate Code',
+              description: 'This code is already in use',
+              variant: 'destructive',
+            });
+            return;
+          }
+          throw error;
+        }
+        toast({ title: 'Staff code created successfully!' });
+      }
+
+      setIsDialogOpen(false);
+      fetchStaffCodes();
+    } catch (error) {
+      console.error('Error saving staff code:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save staff code',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteStaff) return;
+
+    try {
+      const { error } = await supabase
+        .from('staff_codes')
+        .delete()
+        .eq('id', deleteStaff.id);
+
+      if (error) throw error;
+
+      toast({ title: 'Staff code deleted successfully!' });
+      setDeleteStaff(null);
+      fetchStaffCodes();
+    } catch (error) {
+      console.error('Error deleting staff code:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete staff code',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const toggleShowCode = (id: string) => {
+    setShowCodes(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  if (!isCodeAdmin) {
+    return null;
+  }
+
+  return (
+    <StaffLayout>
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Staff Management</h1>
+            <p className="text-muted-foreground">Manage staff access codes and permissions</p>
+          </div>
+          <Button className="gap-2" onClick={() => handleOpenDialog()}>
+            <Plus className="h-4 w-4" />
+            Add Staff Code
+          </Button>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Staff Codes</CardTitle>
+            <CardDescription>
+              Each staff member has a unique 4-digit code to access the system
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : staffCodes.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <User className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No staff codes yet</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Code</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {staffCodes.map((staff) => (
+                    <TableRow key={staff.id}>
+                      <TableCell className="font-medium">{staff.name}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <code className="px-2 py-1 bg-muted rounded text-sm font-mono">
+                            {showCodes[staff.id] ? staff.code : '••••'}
+                          </code>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => toggleShowCode(staff.id)}
+                          >
+                            {showCodes[staff.id] ? (
+                              <EyeOff className="h-3 w-3" />
+                            ) : (
+                              <Eye className="h-3 w-3" />
+                            )}
+                          </Button>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {staff.is_admin ? (
+                          <Badge className="gap-1">
+                            <Shield className="h-3 w-3" />
+                            Admin
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary">Staff</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={staff.is_active ? 'default' : 'outline'}>
+                          {staff.is_active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleOpenDialog(staff)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => setDeleteStaff(staff)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Add/Edit Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingStaff ? 'Edit Staff Code' : 'Add Staff Code'}</DialogTitle>
+            <DialogDescription>
+              {editingStaff
+                ? 'Update the staff member\'s information'
+                : 'Create a new staff access code'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Staff member name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="code">4-Digit Code</Label>
+              <Input
+                id="code"
+                value={formData.code}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                  setFormData({ ...formData, code: value });
+                }}
+                placeholder="0000"
+                maxLength={4}
+                className="font-mono text-lg tracking-widest"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Admin Access</Label>
+                <p className="text-sm text-muted-foreground">
+                  Can access settings and manage other staff
+                </p>
+              </div>
+              <Switch
+                checked={formData.is_admin}
+                onCheckedChange={(checked) => setFormData({ ...formData, is_admin: checked })}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Active</Label>
+                <p className="text-sm text-muted-foreground">
+                  Allow this code to be used for login
+                </p>
+              </div>
+              <Switch
+                checked={formData.is_active}
+                onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit}>
+              {editingStaff ? 'Update' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteStaff} onOpenChange={() => setDeleteStaff(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Staff Code</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the code for "{deleteStaff?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </StaffLayout>
+  );
+};
+
+export default StaffManagement;
