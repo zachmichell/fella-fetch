@@ -95,6 +95,7 @@ const App = () => (
               <Route path="/staff/settings" element={<StaffSettings />} />
               <Route path="/staff/subscriptions" element={<StaffSubscriptions />} />
               <Route path="/staff/marketing" element={<StaffMarketing />} />
+              <Route path="/staff/staff-management" element={<StaffManagement />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

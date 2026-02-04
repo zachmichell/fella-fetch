@@ -2,7 +2,9 @@ import { ReactNode, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { StaffSidebar } from './StaffSidebar';
+import { StaffCodeLock } from './StaffCodeLock';
 import { useAuth } from '@/contexts/AuthContext';
+import { StaffCodeProvider } from '@/contexts/StaffCodeContext';
 import { Loader2 } from 'lucide-react';
 
 interface StaffLayoutProps {
@@ -40,19 +42,22 @@ export function StaffLayout({ children }: StaffLayoutProps) {
   }
 
   return (
-    <SidebarProvider defaultOpen={false}>
-      <div className="min-h-screen flex w-full bg-background">
-        <StaffSidebar />
-        <main className="flex-1 flex flex-col">
-          <header className="h-14 border-b border-border flex items-center px-4 bg-card">
-            <SidebarTrigger className="mr-4" />
-            <h1 className="font-medium text-lg">Fella & Fetch Staff Portal</h1>
-          </header>
-          <div className="flex-1 overflow-auto p-6">
-            {children}
-          </div>
-        </main>
-      </div>
-    </SidebarProvider>
+    <StaffCodeProvider>
+      <StaffCodeLock />
+      <SidebarProvider defaultOpen={false}>
+        <div className="min-h-screen flex w-full bg-background">
+          <StaffSidebar />
+          <main className="flex-1 flex flex-col">
+            <header className="h-14 border-b border-border flex items-center px-4 bg-card">
+              <SidebarTrigger className="mr-4" />
+              <h1 className="font-medium text-lg">Fella & Fetch Staff Portal</h1>
+            </header>
+            <div className="flex-1 overflow-auto p-6">
+              {children}
+            </div>
+          </main>
+        </div>
+      </SidebarProvider>
+    </StaffCodeProvider>
   );
 }
