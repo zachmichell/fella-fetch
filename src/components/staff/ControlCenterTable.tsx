@@ -130,6 +130,21 @@ const serviceTypeColors: Record<string, string> = {
   training: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
 };
 
+// Column configuration for resizable widths
+const COLUMN_CONFIG = [
+  { key: 'actions', defaultWidth: 140 },
+  { key: 'animal', defaultWidth: 200 },
+  { key: 'owner', defaultWidth: 160 },
+  { key: 'type', defaultWidth: 140 },
+  { key: 'lodging', defaultWidth: 120 },
+  { key: 'services', defaultWidth: 150 },
+  { key: 'start', defaultWidth: 140 },
+  { key: 'end', defaultWidth: 140 },
+];
+
+type SortField = 'pet_name' | 'client_name' | 'service_type' | 'lodging' | 'start_date' | 'end_date';
+type SortDirection = 'asc' | 'desc' | null;
+
 export function ControlCenterTable({
   reservations,
   loading,
@@ -150,8 +165,14 @@ export function ControlCenterTable({
   const [traitsDialogOpen, setTraitsDialogOpen] = useState(false);
   const [selectedPetForTraits, setSelectedPetForTraits] = useState<{ id: string; name: string } | null>(null);
   const [petLastActivity, setPetLastActivity] = useState<Record<string, number | null>>({});
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
   
   const { inactivityDays } = usePetInactivityDays();
+  const { widths, setWidth } = useColumnWidths({ 
+    columns: COLUMN_CONFIG, 
+    storageKey: 'control-center-column-widths' 
+  });
 
   // Fetch last activity for pets in requested tab
   useEffect(() => {
