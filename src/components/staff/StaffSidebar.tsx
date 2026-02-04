@@ -81,6 +81,7 @@ export function StaffSidebar() {
   const collapsed = state === 'collapsed';
   const location = useLocation();
   const { signOut, isAdmin, user } = useAuth();
+  const { currentStaff, isCodeAdmin, lock } = useStaffCode();
   const { unreadCount } = useUnreadMessages();
 
   const isActive = (path: string) => {
