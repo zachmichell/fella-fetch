@@ -225,7 +225,7 @@ export function EarlyLateFeeSettings() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <DollarSign className="h-5 w-5 text-emerald-500" />
+          <DollarSign className="h-5 w-5 text-primary" />
           Early Drop-off & Late Pickup Fees
         </CardTitle>
         <CardDescription>
