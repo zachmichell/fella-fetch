@@ -77,7 +77,7 @@ const StaffMarketing = () => {
       if (error) throw error;
       return data.map(segment => ({
         ...segment,
-        filters: (segment.filters || []) as FilterCondition[],
+        filters: (Array.isArray(segment.filters) ? segment.filters : []) as FilterCondition[],
       })) as MarketingSegment[];
     },
   });
