@@ -707,6 +707,22 @@ const StaffMarketing = () => {
           </CardContent>
         </Card>
 
+        {/* Message Composer Section */}
+        <div className="pt-4">
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            <Send className="h-5 w-5" />
+            Compose Message
+          </h2>
+          <MarketingMessageComposer
+            smsContent={smsContent}
+            onSmsContentChange={setSmsContent}
+            emailSubject={emailSubject}
+            onEmailSubjectChange={setEmailSubject}
+            emailBlocks={emailBlocks}
+            onEmailBlocksChange={setEmailBlocks}
+          />
+        </div>
+
         <SaveSegmentDialog
           open={saveDialogOpen}
           onOpenChange={setSaveDialogOpen}
