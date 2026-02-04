@@ -11,6 +11,7 @@ interface GroomingCompletePayload {
   clientName: string;
   clientPhone?: string;
   groomerId?: string;
+  groomerName?: string;
   completedAt: string;
   notes?: string;
 }
@@ -42,6 +43,7 @@ Deno.serve(async (req) => {
         client_name: payload.clientName,
         client_phone: payload.clientPhone || null,
         groomer_id: payload.groomerId || null,
+        groomer_name: payload.groomerName || null,
         completed_at: payload.completedAt,
         notes: payload.notes || null,
       },

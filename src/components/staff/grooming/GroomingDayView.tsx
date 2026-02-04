@@ -90,6 +90,9 @@ export const GroomingDayView = ({
               last_name,
               phone
             )
+          ),
+          groomers (
+            name
           )
         `)
         .in('service_type', ['grooming'])
@@ -112,6 +115,7 @@ export const GroomingDayView = ({
         end_time: r.end_time,
         status: r.status,
         groomer_id: r.groomer_id,
+        groomer_name: r.groomers?.name || null,
         notes: r.notes,
         service_type: r.service_type,
       })) as GroomingAppointment[];
