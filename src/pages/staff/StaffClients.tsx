@@ -43,6 +43,7 @@ import {
   Settings2
 } from 'lucide-react';
 import { ClientServicePermissions } from '@/components/staff/ClientServicePermissions';
+import { StaffNotesSection } from '@/components/staff/StaffNotesSection';
 import { format } from 'date-fns';
 
 interface Pet {
