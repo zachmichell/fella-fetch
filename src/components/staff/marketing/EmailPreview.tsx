@@ -64,7 +64,7 @@ const PreviewBlock = ({ block }: { block: EmailBlock }) => {
 
     case 'text':
       return (
-        <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
+        <p className="text-foreground/80 whitespace-pre-wrap leading-relaxed">
           {highlightVariables(block.content || '')}
         </p>
       );
