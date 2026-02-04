@@ -565,6 +565,9 @@ const StaffMarketing = () => {
                             FD: {client.daycareCredits}
                           </Badge>
                           <Badge variant="outline" className="text-xs">
+                            HD: {client.halfDaycareCredits}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
                             BD: {client.boardingCredits}
                           </Badge>
                         </div>
