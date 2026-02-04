@@ -560,7 +560,7 @@ export function DailyDetailsDialog({ open, onOpenChange, selectedDate }: DailyDe
                             )}
                             {reservation.pet_traits.length > 0 && (
                               <div className="mt-1">
-                                <PetTraitBadges traits={reservation.pet_traits} maxVisible={2} size="sm" />
+                                <PetTraitBadges traits={reservation.pet_traits} maxDisplay={2} />
                               </div>
                             )}
                           </div>
