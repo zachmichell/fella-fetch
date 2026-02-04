@@ -76,6 +76,7 @@ interface Pet {
   behavior_notes: string | null;
   feeding_instructions: string | null;
   special_needs: string | null;
+  allergies: string | null;
   photo_url: string | null;
   is_active: boolean | null;
   created_at: string;
