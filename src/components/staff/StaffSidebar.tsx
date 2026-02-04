@@ -17,7 +17,8 @@ import {
   BedDouble,
   Scissors,
   MessageCircle,
-  Repeat
+  Repeat,
+  Megaphone
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
