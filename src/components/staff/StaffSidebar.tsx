@@ -66,6 +66,7 @@ const adminOnlyOperationsItems = [
 ];
 
 const adminItems = [
+  { title: 'Staff Codes', url: '/staff/staff-management', icon: KeyRound },
   { title: 'Marketing', url: '/staff/marketing', icon: Megaphone },
   { title: 'User Management', url: '/staff/users', icon: UserCog },
   { title: 'Suite Management', url: '/staff/suites', icon: BedDouble },
