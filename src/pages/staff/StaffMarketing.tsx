@@ -558,7 +558,16 @@ const StaffMarketing = () => {
                     minWidth={100}
                     maxWidth={300}
                   >
-                    Contact
+                    Email
+                  </ResizableColumn>
+                  <ResizableColumn
+                    width={widths.phone}
+                    onResize={(w) => setWidth('phone', w)}
+                    isHeader
+                    minWidth={100}
+                    maxWidth={200}
+                  >
+                    Phone
                   </ResizableColumn>
                   <ResizableColumn
                     width={widths.credits}
