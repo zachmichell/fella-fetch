@@ -62,11 +62,12 @@ export const DynamicVariableInsert = ({ onInsert }: DynamicVariableInsertProps) 
               <DropdownMenuItem
                 key={variable.key}
                 onClick={() => onInsert(variable.key)}
+                className="flex justify-between"
               >
-                <code className="text-xs bg-muted px-1 rounded mr-2">
+                <span>{variable.label}</span>
+                <code className="text-xs bg-muted px-1.5 py-0.5 rounded ml-3">
                   {`{{${variable.key}}}`}
                 </code>
-                {variable.label}
               </DropdownMenuItem>
             ))}
           </div>

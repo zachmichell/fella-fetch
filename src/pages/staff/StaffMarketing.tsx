@@ -704,6 +704,27 @@ const StaffMarketing = () => {
           />
         </div>
 
+        {/* Send Buttons at Bottom */}
+        <div className="flex justify-end gap-3 pt-4 pb-8">
+          <Button
+            variant="outline"
+            size="lg"
+            disabled={selectedCount === 0 || isSending}
+            onClick={() => handleSendWebhook('email')}
+          >
+            <Mail className="h-4 w-4 mr-2" />
+            Send Email to {selectedCount} {selectedCount === 1 ? 'Client' : 'Clients'}
+          </Button>
+          <Button
+            size="lg"
+            disabled={selectedCount === 0 || isSending}
+            onClick={() => handleSendWebhook('sms')}
+          >
+            <MessageSquare className="h-4 w-4 mr-2" />
+            Send SMS to {selectedCount} {selectedCount === 1 ? 'Client' : 'Clients'}
+          </Button>
+        </div>
+
         <SaveSegmentDialog
           open={saveDialogOpen}
           onOpenChange={setSaveDialogOpen}
