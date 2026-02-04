@@ -47,7 +47,7 @@ interface StaffCode {
   created_at: string;
 }
 
-const StaffManagement = () => {
+const StaffManagementContent = () => {
   const { toast } = useToast();
   const { isCodeAdmin } = useStaffCode();
   const navigate = useNavigate();
@@ -220,112 +220,110 @@ const StaffManagement = () => {
   }
 
   return (
-    <StaffLayout>
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Staff Management</h1>
-            <p className="text-muted-foreground">Manage staff access codes and permissions</p>
-          </div>
-          <Button className="gap-2" onClick={() => handleOpenDialog()}>
-            <Plus className="h-4 w-4" />
-            Add Staff Code
-          </Button>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Staff Management</h1>
+          <p className="text-muted-foreground">Manage staff access codes and permissions</p>
         </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Staff Codes</CardTitle>
-            <CardDescription>
-              Each staff member has a unique 4-digit code to access the system
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : staffCodes.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <User className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No staff codes yet</p>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Code</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {staffCodes.map((staff) => (
-                    <TableRow key={staff.id}>
-                      <TableCell className="font-medium">{staff.name}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <code className="px-2 py-1 bg-muted rounded text-sm font-mono">
-                            {showCodes[staff.id] ? staff.code : '••••'}
-                          </code>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={() => toggleShowCode(staff.id)}
-                          >
-                            {showCodes[staff.id] ? (
-                              <EyeOff className="h-3 w-3" />
-                            ) : (
-                              <Eye className="h-3 w-3" />
-                            )}
-                          </Button>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {staff.is_admin ? (
-                          <Badge className="gap-1">
-                            <Shield className="h-3 w-3" />
-                            Admin
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">Staff</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={staff.is_active ? 'default' : 'outline'}>
-                          {staff.is_active ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleOpenDialog(staff)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => setDeleteStaff(staff)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+        <Button className="gap-2" onClick={() => handleOpenDialog()}>
+          <Plus className="h-4 w-4" />
+          Add Staff Code
+        </Button>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Staff Codes</CardTitle>
+          <CardDescription>
+            Each staff member has a unique 4-digit code to access the system
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : staffCodes.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <User className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No staff codes yet</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Code</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {staffCodes.map((staff) => (
+                  <TableRow key={staff.id}>
+                    <TableCell className="font-medium">{staff.name}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <code className="px-2 py-1 bg-muted rounded text-sm font-mono">
+                          {showCodes[staff.id] ? staff.code : '••••'}
+                        </code>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => toggleShowCode(staff.id)}
+                        >
+                          {showCodes[staff.id] ? (
+                            <EyeOff className="h-3 w-3" />
+                          ) : (
+                            <Eye className="h-3 w-3" />
+                          )}
+                        </Button>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {staff.is_admin ? (
+                        <Badge className="gap-1">
+                          <Shield className="h-3 w-3" />
+                          Admin
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">Staff</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={staff.is_active ? 'default' : 'outline'}>
+                        {staff.is_active ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleOpenDialog(staff)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => setDeleteStaff(staff)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Add/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -415,6 +413,14 @@ const StaffManagement = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+};
+
+const StaffManagement = () => {
+  return (
+    <StaffLayout>
+      <StaffManagementContent />
     </StaffLayout>
   );
 };
