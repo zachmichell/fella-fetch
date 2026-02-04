@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useStaffCode } from '@/contexts/StaffCodeContext';
 import { Button } from '@/components/ui/button';
 import { Dog, Delete, Lock } from 'lucide-react';
