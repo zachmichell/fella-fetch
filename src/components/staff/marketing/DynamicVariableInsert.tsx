@@ -53,7 +53,7 @@ export const DynamicVariableInsert = ({ onInsert }: DynamicVariableInsertProps) 
           Insert Variable
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-56 max-h-80 overflow-y-auto">
+      <DropdownMenuContent align="end" className="w-72 max-h-80 overflow-y-auto">
         {DYNAMIC_VARIABLES.map((group, idx) => (
           <div key={group.group}>
             {idx > 0 && <DropdownMenuSeparator />}
