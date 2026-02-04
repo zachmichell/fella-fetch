@@ -76,6 +76,11 @@ const StaffMarketing = () => {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
   
+  // Message composer state
+  const [smsContent, setSmsContent] = useState('');
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBlocks, setEmailBlocks] = useState<EmailBlock[]>([]);
+  
   const { widths, setWidth } = useColumnWidths({
     columns: COLUMN_CONFIG,
     storageKey: 'marketing-table-columns',
