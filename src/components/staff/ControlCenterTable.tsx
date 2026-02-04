@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -34,9 +34,13 @@ import {
   DollarSign,
   Scissors,
   Clock,
-  Repeat
+  Repeat,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { ResizableColumn, useColumnWidths } from '@/components/ui/resizable-column';
 
 // Parse date string as local date (not UTC) to avoid timezone shifting
 const parseLocalDate = (dateStr: string): Date => {
