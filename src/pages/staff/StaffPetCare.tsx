@@ -262,9 +262,7 @@ const StaffPetCare = () => {
 
       // Map feeding schedules
       (feedRes.data || []).forEach((feed: any) => {
-        const reservation = reservationsWithStatus.find(
-          (r: any) => r.pets?.id === feed.pet_id
-        );
+        const reservation = findBestReservation(feed.pet_id);
         if (!reservation) return;
 
         items.push({
