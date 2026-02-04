@@ -40,11 +40,16 @@ import {
   Dog,
   Search,
   RefreshCw,
+  ArrowUp,
+  ArrowDown,
+  X,
+  Home,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface CareItem {
   id: string;
@@ -54,6 +59,7 @@ interface CareItem {
   pet_breed: string | null;
   client_name: string;
   reservation_id: string;
+  suite_name: string | null;
   care_type: 'medication' | 'feeding';
   care_name: string;
   care_details: string;
@@ -62,10 +68,16 @@ interface CareItem {
   amount: string;
   is_prepared: boolean;
   last_administered_at: string | null;
+  arrival_status: 'arriving' | 'departing' | 'staying';
 }
 
-type SortField = 'pet_name' | 'care_type' | 'timing' | 'care_name';
-type SortDirection = 'asc' | 'desc';
+type SortField = 'pet_name' | 'care_type' | 'timing' | 'care_name' | 'suite_name';
+type SortDirection = 'asc' | 'desc' | null;
+
+interface SortLevel {
+  field: SortField;
+  direction: SortDirection;
+}
 
 const StaffPetCare = () => {
   const { isStaffOrAdmin, user } = useAuth();
@@ -73,9 +85,12 @@ const StaffPetCare = () => {
   const [careItems, setCareItems] = useState<CareItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortField, setSortField] = useState<SortField>('pet_name');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [filterType, setFilterType] = useState<'all' | 'medication' | 'feeding'>('all');
+  
+  // Multi-level sorting (up to 3 levels)
+  const [sortLevels, setSortLevels] = useState<SortLevel[]>([
+    { field: 'pet_name', direction: 'asc' },
+  ]);
   
   // Prepared state tracking (local state for quick toggle)
   const [preparedItems, setPreparedItems] = useState<Set<string>>(new Set());
@@ -97,12 +112,26 @@ const StaffPetCare = () => {
     }
 
     try {
-      // Fetch all currently checked-in reservations (excluding grooming)
-      const { data: checkedInReservations, error: resError } = await supabase
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
+
+      // Fetch reservations that are:
+      // 1. Currently checked in (status = 'checked_in')
+      // 2. Arriving today (start_date = today AND status = 'confirmed')
+      // 3. Departing today (end_date = today AND status = 'checked_in')
+      // Excluding grooming
+      const { data: relevantReservations, error: resError } = await supabase
         .from('reservations')
         .select(`
           id,
           pet_id,
+          start_date,
+          end_date,
+          status,
+          service_type,
+          suites (
+            id,
+            name
+          ),
           pets (
             id,
             name,
@@ -114,18 +143,31 @@ const StaffPetCare = () => {
             )
           )
         `)
-        .eq('status', 'checked_in')
-        .neq('service_type', 'grooming');
+        .neq('service_type', 'grooming')
+        .or(`status.eq.checked_in,and(status.eq.confirmed,start_date.eq.${todayStr})`);
 
       if (resError) throw resError;
 
-      if (!checkedInReservations || checkedInReservations.length === 0) {
+      if (!relevantReservations || relevantReservations.length === 0) {
         setCareItems([]);
         setLoading(false);
         return;
       }
 
-      const petIds = checkedInReservations
+      // Determine arrival status for each reservation
+      const reservationsWithStatus = relevantReservations.map((r: any) => {
+        let arrival_status: 'arriving' | 'departing' | 'staying' = 'staying';
+        
+        if (r.status === 'confirmed' && r.start_date === todayStr) {
+          arrival_status = 'arriving';
+        } else if (r.status === 'checked_in' && r.end_date === todayStr) {
+          arrival_status = 'departing';
+        }
+        
+        return { ...r, arrival_status };
+      });
+
+      const petIds = reservationsWithStatus
         .map((r: any) => r.pets?.id)
         .filter(Boolean);
 
@@ -135,7 +177,7 @@ const StaffPetCare = () => {
         return;
       }
 
-      // Fetch medications and feeding schedules for checked-in pets
+      // Fetch medications and feeding schedules for relevant pets
       const [medsRes, feedRes, logsRes] = await Promise.all([
         supabase
           .from('pet_medications')
@@ -151,7 +193,7 @@ const StaffPetCare = () => {
           .from('pet_care_logs')
           .select('*')
           .in('pet_id', petIds)
-          .gte('administered_at', format(new Date(), 'yyyy-MM-dd'))
+          .gte('administered_at', todayStr)
           .order('administered_at', { ascending: false }),
       ]);
 
@@ -172,7 +214,7 @@ const StaffPetCare = () => {
 
       // Map medications
       (medsRes.data || []).forEach((med: any) => {
-        const reservation = checkedInReservations.find(
+        const reservation = reservationsWithStatus.find(
           (r: any) => r.pets?.id === med.pet_id
         );
         if (!reservation) return;
@@ -187,6 +229,7 @@ const StaffPetCare = () => {
             ? `${reservation.pets.clients.first_name} ${reservation.pets.clients.last_name}`
             : 'Unknown',
           reservation_id: reservation.id,
+          suite_name: reservation.suites?.name || null,
           care_type: 'medication',
           care_name: med.name,
           care_details: `${med.dosage} • ${med.frequency}`,
@@ -195,12 +238,13 @@ const StaffPetCare = () => {
           amount: med.dosage,
           is_prepared: false,
           last_administered_at: latestLogs[med.id] || null,
+          arrival_status: reservation.arrival_status,
         });
       });
 
       // Map feeding schedules
       (feedRes.data || []).forEach((feed: any) => {
-        const reservation = checkedInReservations.find(
+        const reservation = reservationsWithStatus.find(
           (r: any) => r.pets?.id === feed.pet_id
         );
         if (!reservation) return;
@@ -215,6 +259,7 @@ const StaffPetCare = () => {
             ? `${reservation.pets.clients.first_name} ${reservation.pets.clients.last_name}`
             : 'Unknown',
           reservation_id: reservation.id,
+          suite_name: reservation.suites?.name || null,
           care_type: 'feeding',
           care_name: feed.food_type,
           care_details: `${feed.amount} • ${feed.frequency}`,
@@ -223,6 +268,7 @@ const StaffPetCare = () => {
           amount: feed.amount,
           is_prepared: false,
           last_administered_at: latestLogs[feed.id] || null,
+          arrival_status: reservation.arrival_status,
         });
       });
 
@@ -274,14 +320,44 @@ const StaffPetCare = () => {
     };
   }, [fetchCareItems]);
 
-  // Sorting logic
+  // Multi-level sorting logic
   const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
-    }
+    setSortLevels((prev) => {
+      const existingIndex = prev.findIndex((s) => s.field === field);
+      
+      if (existingIndex === 0) {
+        // If it's the primary sort, cycle through directions: asc -> desc -> remove
+        const current = prev[0];
+        if (current.direction === 'asc') {
+          return [{ field, direction: 'desc' }, ...prev.slice(1)];
+        } else if (current.direction === 'desc') {
+          // Remove this sort level if there are others, otherwise reset to asc
+          if (prev.length > 1) {
+            return prev.slice(1);
+          }
+          return [{ field, direction: 'asc' }];
+        }
+      } else if (existingIndex > 0) {
+        // Move to primary position
+        const newLevels = prev.filter((_, i) => i !== existingIndex);
+        return [{ field, direction: 'asc' }, ...newLevels.slice(0, 2)];
+      } else {
+        // Add as new primary sort, keep up to 2 previous
+        return [{ field, direction: 'asc' }, ...prev.slice(0, 2)];
+      }
+      
+      return prev;
+    });
+  };
+
+  const getSortPriority = (field: SortField): number | null => {
+    const index = sortLevels.findIndex((s) => s.field === field);
+    return index >= 0 ? index + 1 : null;
+  };
+
+  const getSortDirection = (field: SortField): SortDirection => {
+    const level = sortLevels.find((s) => s.field === field);
+    return level?.direction || null;
   };
 
   // Filtered and sorted items
@@ -300,43 +376,52 @@ const StaffPetCare = () => {
         (item) =>
           item.pet_name.toLowerCase().includes(query) ||
           item.care_name.toLowerCase().includes(query) ||
-          item.client_name.toLowerCase().includes(query)
+          item.client_name.toLowerCase().includes(query) ||
+          (item.suite_name && item.suite_name.toLowerCase().includes(query))
       );
     }
 
-    // Sort
+    // Multi-level sort
     const sorted = [...filtered].sort((a, b) => {
-      let aVal = '';
-      let bVal = '';
+      for (const level of sortLevels) {
+        if (!level.direction) continue;
+        
+        let aVal = '';
+        let bVal = '';
 
-      switch (sortField) {
-        case 'pet_name':
-          aVal = a.pet_name;
-          bVal = b.pet_name;
-          break;
-        case 'care_type':
-          aVal = a.care_type;
-          bVal = b.care_type;
-          break;
-        case 'timing':
-          aVal = a.timing || 'zzz';
-          bVal = b.timing || 'zzz';
-          break;
-        case 'care_name':
-          aVal = a.care_name;
-          bVal = b.care_name;
-          break;
-      }
+        switch (level.field) {
+          case 'pet_name':
+            aVal = a.pet_name;
+            bVal = b.pet_name;
+            break;
+          case 'care_type':
+            aVal = a.care_type;
+            bVal = b.care_type;
+            break;
+          case 'timing':
+            aVal = a.timing || 'zzz';
+            bVal = b.timing || 'zzz';
+            break;
+          case 'care_name':
+            aVal = a.care_name;
+            bVal = b.care_name;
+            break;
+          case 'suite_name':
+            aVal = a.suite_name || 'zzz';
+            bVal = b.suite_name || 'zzz';
+            break;
+        }
 
-      if (sortDirection === 'asc') {
-        return aVal.localeCompare(bVal);
-      } else {
-        return bVal.localeCompare(aVal);
+        const comparison = aVal.localeCompare(bVal);
+        if (comparison !== 0) {
+          return level.direction === 'asc' ? comparison : -comparison;
+        }
       }
+      return 0;
     });
 
     return sorted;
-  }, [careItems, filterType, searchQuery, sortField, sortDirection]);
+  }, [careItems, filterType, searchQuery, sortLevels]);
 
   // Toggle prepared state
   const togglePrepared = (itemId: string) => {
@@ -451,17 +536,42 @@ const StaffPetCare = () => {
     }
   };
 
-  const SortButton = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
-    <Button
-      variant="ghost"
-      size="sm"
-      className="-ml-3 h-8 data-[state=open]:bg-accent"
-      onClick={() => handleSort(field)}
-    >
-      {children}
-      <ArrowUpDown className="ml-2 h-4 w-4" />
-    </Button>
-  );
+  const clearSort = () => {
+    setSortLevels([{ field: 'pet_name', direction: 'asc' }]);
+  };
+
+  const SortButton = ({ field, children }: { field: SortField; children: React.ReactNode }) => {
+    const priority = getSortPriority(field);
+    const direction = getSortDirection(field);
+    
+    return (
+      <Button
+        variant="ghost"
+        size="sm"
+        className="-ml-3 h-8 data-[state=open]:bg-accent"
+        onClick={() => handleSort(field)}
+      >
+        {children}
+        <span className="ml-2 flex items-center gap-0.5">
+          {direction === 'asc' && <ArrowUp className="h-4 w-4" />}
+          {direction === 'desc' && <ArrowDown className="h-4 w-4" />}
+          {!direction && <ArrowUpDown className="h-4 w-4 opacity-50" />}
+          {priority && (
+            <span className="ml-0.5 text-xs bg-primary text-primary-foreground rounded-full w-4 h-4 flex items-center justify-center">
+              {priority}
+            </span>
+          )}
+        </span>
+      </Button>
+    );
+  };
+
+  const getRowClassName = (item: CareItem, isPrepared: boolean) => {
+    if (isPrepared) return 'bg-amber-50 dark:bg-amber-950/20';
+    if (item.arrival_status === 'arriving') return 'bg-blue-50 dark:bg-blue-950/30';
+    if (item.arrival_status === 'departing') return 'bg-red-50 dark:bg-red-950/30';
+    return '';
+  };
 
   return (
     <StaffLayout>
@@ -470,7 +580,7 @@ const StaffPetCare = () => {
           <div>
             <h1 className="text-2xl font-bold">Pet Care</h1>
             <p className="text-muted-foreground">
-              Manage medications and feedings for checked-in pets
+              Manage medications and feedings for today's pets
             </p>
           </div>
           <Button variant="outline" size="sm" onClick={fetchCareItems}>
@@ -486,7 +596,7 @@ const StaffPetCare = () => {
               <div className="relative flex-1 min-w-[200px] max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search pet, owner, or item..."
+                  placeholder="Search pet, owner, suite, or item..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9"
@@ -502,9 +612,25 @@ const StaffPetCare = () => {
                   <SelectItem value="feeding">Feedings Only</SelectItem>
                 </SelectContent>
               </Select>
-              <div className="text-sm text-muted-foreground">
-                {displayedItems.length} item{displayedItems.length !== 1 ? 's' : ''}
+              {sortLevels.length > 1 && (
+                <Button variant="ghost" size="sm" onClick={clearSort}>
+                  <X className="h-4 w-4 mr-1" />
+                  Clear Sort
+                </Button>
+              )}
+              <div className="flex items-center gap-2 text-sm text-muted-foreground ml-auto">
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded bg-blue-100 dark:bg-blue-950 border border-blue-200 dark:border-blue-800" />
+                  <span>Arriving</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded bg-red-100 dark:bg-red-950 border border-red-200 dark:border-red-800" />
+                  <span>Departing</span>
+                </div>
               </div>
+            </div>
+            <div className="mt-2 text-sm text-muted-foreground">
+              {displayedItems.length} item{displayedItems.length !== 1 ? 's' : ''}
             </div>
           </CardContent>
         </Card>
@@ -519,9 +645,9 @@ const StaffPetCare = () => {
             ) : displayedItems.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Dog className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No care items for checked-in pets</p>
+                <p>No care items for today's pets</p>
                 <p className="text-sm">
-                  Check in pets with medications or feeding schedules to see them here
+                  Pets arriving, checked in, or departing today with medications or feeding schedules will appear here
                 </p>
               </div>
             ) : (
@@ -532,6 +658,9 @@ const StaffPetCare = () => {
                       <TableHead className="w-[60px]">Prepared</TableHead>
                       <TableHead>
                         <SortButton field="pet_name">Pet</SortButton>
+                      </TableHead>
+                      <TableHead>
+                        <SortButton field="suite_name">Suite</SortButton>
                       </TableHead>
                       <TableHead>
                         <SortButton field="care_type">Type</SortButton>
@@ -554,7 +683,7 @@ const StaffPetCare = () => {
                       return (
                         <TableRow
                           key={`${item.care_type}-${item.id}`}
-                          className={isPrepared ? 'bg-amber-50 dark:bg-amber-950/20' : ''}
+                          className={getRowClassName(item, isPrepared)}
                         >
                           {/* Prepared Toggle */}
                           <TableCell>
@@ -590,6 +719,18 @@ const StaffPetCare = () => {
                                 <p className="text-xs text-muted-foreground">{item.client_name}</p>
                               </div>
                             </div>
+                          </TableCell>
+
+                          {/* Suite */}
+                          <TableCell>
+                            {item.suite_name ? (
+                              <Badge variant="outline" className="gap-1">
+                                <Home className="h-3 w-3" />
+                                {item.suite_name}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">—</span>
+                            )}
                           </TableCell>
 
                           {/* Type */}
