@@ -84,11 +84,11 @@ const serviceTypeColors: Record<string, string> = {
   training: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
 };
 
-function PetAvatarWithPhoto({ photoUrl, petName }: { photoUrl: string | null; petName: string }) {
-  const resolvedUrl = usePetPhotoUrl(photoUrl);
+function PetAvatarWithPhoto({ photoUrl, petId, petName }: { photoUrl: string | null; petId: string; petName: string }) {
+  const { signedUrl } = usePetPhotoUrl(photoUrl, petId);
   return (
     <Avatar className="h-8 w-8">
-      <AvatarImage src={resolvedUrl || undefined} alt={petName} />
+      <AvatarImage src={signedUrl || undefined} alt={petName} />
       <AvatarFallback className="bg-primary/10 text-primary text-xs">
         {petName.charAt(0).toUpperCase()}
       </AvatarFallback>
