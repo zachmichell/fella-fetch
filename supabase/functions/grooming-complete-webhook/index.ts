@@ -40,6 +40,7 @@ Deno.serve(async (req) => {
         reservation_id: payload.reservationId,
         pet_name: payload.petName,
         client_name: payload.clientName,
+        client_phone: payload.clientPhone || null,
         groomer_id: payload.groomerId || null,
         completed_at: payload.completedAt,
         notes: payload.notes || null,
