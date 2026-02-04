@@ -162,12 +162,23 @@ export function StaffSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              {/* Admin-only operations items - only show if staff code is admin */}
+              {isCodeAdmin && adminOnlyOperationsItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                    <NavLink to={item.url}>
+                      <item.icon className="h-4 w-4" />
+                      {!collapsed && <span>{item.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Admin Only */}
-        {isAdmin && (
+        {/* Admin Only - requires both isAdmin (auth role) AND isCodeAdmin (staff code) */}
+        {isAdmin && isCodeAdmin && (
           <>
             <Separator className="my-2" />
             <SidebarGroup>
@@ -192,22 +203,32 @@ export function StaffSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-4">
-        {!collapsed && user && (
+        {!collapsed && currentStaff && (
           <div className="mb-3 px-2">
-            <p className="text-sm font-medium truncate">{user.email}</p>
-            <p className="text-xs text-muted-foreground capitalize">
-              {isAdmin ? 'Administrator' : 'Staff'}
+            <p className="text-sm font-medium truncate">{currentStaff.name}</p>
+            <p className="text-xs text-muted-foreground">
+              {isCodeAdmin ? 'Admin' : 'Staff'}
             </p>
           </div>
         )}
-        <Button 
-          variant="ghost" 
-          className={`w-full justify-start ${collapsed ? 'px-2' : ''}`}
-          onClick={signOut}
-        >
-          <LogOut className="h-4 w-4" />
-          {!collapsed && <span className="ml-2">Sign Out</span>}
-        </Button>
+        <div className="flex flex-col gap-2">
+          <Button 
+            variant="ghost" 
+            className={`w-full justify-start ${collapsed ? 'px-2' : ''}`}
+            onClick={lock}
+          >
+            <Lock className="h-4 w-4" />
+            {!collapsed && <span className="ml-2">Lock</span>}
+          </Button>
+          <Button 
+            variant="ghost" 
+            className={`w-full justify-start ${collapsed ? 'px-2' : ''}`}
+            onClick={signOut}
+          >
+            <LogOut className="h-4 w-4" />
+            {!collapsed && <span className="ml-2">Sign Out</span>}
+          </Button>
+        </div>
       </SidebarFooter>
     </Sidebar>
   );
