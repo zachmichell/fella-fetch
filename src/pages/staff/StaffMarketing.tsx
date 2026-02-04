@@ -73,6 +73,11 @@ const StaffMarketing = () => {
   const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  
+  const { widths, setWidth } = useColumnWidths({
+    columns: COLUMN_CONFIG,
+    storageKey: 'marketing-table-columns',
+  });
 
   // Fetch segments
   const { data: segments, isLoading: segmentsLoading } = useQuery({
