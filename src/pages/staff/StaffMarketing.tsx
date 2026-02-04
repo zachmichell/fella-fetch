@@ -109,6 +109,15 @@ const StaffMarketing = () => {
         .order('start_date', { ascending: false });
       if (visitsError) throw visitsError;
 
+      // Get active daycare subscriptions
+      const { data: activeSubscriptions, error: subsError } = await supabase
+        .from('daycare_subscriptions')
+        .select('pet_id')
+        .eq('is_active', true)
+        .eq('is_approved', true);
+      if (subsError) throw subsError;
+
+      const activePetIds = new Set(activeSubscriptions.map(s => s.pet_id));
       const today = new Date();
 
       // Map pets with their last visit/groom dates
@@ -133,6 +142,7 @@ const StaffMarketing = () => {
           daysSinceLastGroom: lastGroomDate 
             ? differenceInDays(today, parseISO(lastGroomDate)) 
             : null,
+          hasActiveSubscription: activePetIds.has(pet.id),
         };
       });
 
