@@ -26,6 +26,9 @@ interface MarketingWebhookPayload {
   segmentName: string;
   segmentDescription?: string;
   filters: any[];
+  message?: string; // SMS message content
+  emailSubject?: string;
+  emailContent?: string; // JSON stringified email blocks
   recipients: MarketingRecipient[];
   sentAt: string;
   sentBy: string;
@@ -69,6 +72,9 @@ Deno.serve(async (req) => {
         segment_name: payload.segmentName,
         segment_description: payload.segmentDescription || null,
         filters: payload.filters,
+        message: payload.message || null,
+        email_subject: payload.emailSubject || null,
+        email_content: payload.emailContent || null,
         sent_at: payload.sentAt,
         sent_by: payload.sentBy,
         recipient_count: payload.recipients.length,

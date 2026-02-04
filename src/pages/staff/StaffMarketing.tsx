@@ -25,6 +25,7 @@ import {
 import { MarketingFilterBuilder, FilterCondition } from '@/components/staff/marketing/MarketingFilterBuilder';
 import { SaveSegmentDialog } from '@/components/staff/marketing/SaveSegmentDialog';
 import { ResizableColumn, useColumnWidths } from '@/components/ui/resizable-column';
+import { MarketingMessageComposer, EmailBlock } from '@/components/staff/marketing/MarketingMessageComposer';
 
 const COLUMN_CONFIG = [
   { key: 'client', defaultWidth: 200 },
@@ -74,6 +75,11 @@ const StaffMarketing = () => {
   const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  
+  // Message composer state
+  const [smsContent, setSmsContent] = useState('');
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBlocks, setEmailBlocks] = useState<EmailBlock[]>([]);
   
   const { widths, setWidth } = useColumnWidths({
     columns: COLUMN_CONFIG,
@@ -336,6 +342,25 @@ const StaffMarketing = () => {
       return;
     }
 
+    // Validate content exists
+    if (channel === 'sms' && !smsContent.trim()) {
+      toast({
+        title: 'No message content',
+        description: 'Please enter an SMS message to send',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (channel === 'email' && emailBlocks.length === 0) {
+      toast({
+        title: 'No email content',
+        description: 'Please add content blocks to your email',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSending(true);
     try {
       const selectedData = filteredClients.filter(c => selectedClients.has(c.id));
@@ -346,6 +371,9 @@ const StaffMarketing = () => {
         segmentName: activeSegment?.name || 'Custom Filter',
         segmentDescription: activeSegment?.description,
         filters,
+        message: channel === 'sms' ? smsContent : undefined,
+        emailSubject: channel === 'email' ? emailSubject : undefined,
+        emailContent: channel === 'email' ? JSON.stringify(emailBlocks) : undefined,
         sentAt: new Date().toISOString(),
         sentBy: 'admin',
         recipients: selectedData.map(client => ({
@@ -373,7 +401,7 @@ const StaffMarketing = () => {
 
       toast({
         title: 'Sent!',
-        description: `${channel.toUpperCase()} webhook sent for ${selectedData.length} clients`,
+        description: `${channel.toUpperCase()} message sent to ${selectedData.length} clients`,
       });
     } catch (error: any) {
       toast({
@@ -678,6 +706,22 @@ const StaffMarketing = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Message Composer Section */}
+        <div className="pt-4">
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            <Send className="h-5 w-5" />
+            Compose Message
+          </h2>
+          <MarketingMessageComposer
+            smsContent={smsContent}
+            onSmsContentChange={setSmsContent}
+            emailSubject={emailSubject}
+            onEmailSubjectChange={setEmailSubject}
+            emailBlocks={emailBlocks}
+            onEmailBlocksChange={setEmailBlocks}
+          />
+        </div>
 
         <SaveSegmentDialog
           open={saveDialogOpen}
