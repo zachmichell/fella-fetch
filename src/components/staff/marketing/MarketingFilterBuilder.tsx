@@ -114,6 +114,14 @@ export const MarketingFilterBuilder = ({
                     {field.label}
                   </SelectItem>
                 ))}
+                <SelectItem value="header-pet" disabled className="font-semibold text-xs text-muted-foreground">
+                  — Pet Info —
+                </SelectItem>
+                {FILTER_FIELDS.filter(f => f.category === 'pet').map(field => (
+                  <SelectItem key={field.value} value={field.value}>
+                    {field.label}
+                  </SelectItem>
+                ))}
                 <SelectItem value="header-special" disabled className="font-semibold text-xs text-muted-foreground">
                   — Special —
                 </SelectItem>
