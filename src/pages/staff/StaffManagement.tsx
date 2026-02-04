@@ -73,12 +73,15 @@ const StaffManagementContent = () => {
   const { toast } = useToast();
   const { isCodeAdmin } = useStaffCode();
   const navigate = useNavigate();
+  const { getSetting, updateSetting, isLoading: settingsLoading } = useSystemSettings();
   const [staffCodes, setStaffCodes] = useState<StaffCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffCode | null>(null);
   const [deleteStaff, setDeleteStaff] = useState<StaffCode | null>(null);
   const [showCodes, setShowCodes] = useState<Record<string, boolean>>({});
+  const [inactivityTimeout, setInactivityTimeout] = useState<number>(60);
+  const [savingTimeout, setSavingTimeout] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -86,6 +89,49 @@ const StaffManagementContent = () => {
     role: 'basic' as StaffCodeRole,
     is_active: true,
   });
+
+  // Load inactivity timeout setting
+  useEffect(() => {
+    if (!settingsLoading) {
+      const timeout = getSetting<number>('staff_inactivity_timeout', 60);
+      setInactivityTimeout(timeout);
+    }
+  }, [settingsLoading, getSetting]);
+
+  const handleSaveTimeout = async () => {
+    setSavingTimeout(true);
+    try {
+      // First check if setting exists, if not create it
+      const { data: existing } = await supabase
+        .from('system_settings')
+        .select('id')
+        .eq('key', 'staff_inactivity_timeout')
+        .single();
+
+      if (existing) {
+        await updateSetting.mutateAsync({ key: 'staff_inactivity_timeout', value: inactivityTimeout });
+      } else {
+        await supabase
+          .from('system_settings')
+          .insert({ 
+            key: 'staff_inactivity_timeout', 
+            value: inactivityTimeout,
+            description: 'Duration in seconds before staff code lock activates due to inactivity'
+          });
+      }
+      
+      toast({ title: 'Inactivity timeout updated!' });
+    } catch (error) {
+      console.error('Error saving timeout:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save timeout setting',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingTimeout(false);
+    }
+  };
 
   // Redirect non-admin code users
   useEffect(() => {
