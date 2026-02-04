@@ -326,6 +326,39 @@ const StaffManagementContent = () => {
         </Button>
       </div>
 
+      {/* Inactivity Timeout Setting */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Inactivity Timeout
+          </CardTitle>
+          <CardDescription>
+            Lock the staff portal after this many seconds of inactivity
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4">
+            <div className="flex-1 max-w-xs">
+              <Input
+                type="number"
+                min={10}
+                max={3600}
+                value={inactivityTimeout}
+                onChange={(e) => setInactivityTimeout(Math.max(10, Math.min(3600, parseInt(e.target.value) || 60)))}
+                className="font-mono"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Min: 10 seconds, Max: 3600 seconds (1 hour)
+              </p>
+            </div>
+            <Button onClick={handleSaveTimeout} disabled={savingTimeout}>
+              {savingTimeout ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Staff Codes</CardTitle>

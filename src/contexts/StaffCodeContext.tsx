@@ -139,8 +139,8 @@ export function StaffCodeProvider({ children }: { children: ReactNode }) {
     }
     timerRef.current = setTimeout(() => {
       lock();
-    }, INACTIVITY_TIMEOUT);
-  }, [lock]);
+    }, inactivityTimeout * 1000);
+  }, [lock, inactivityTimeout]);
 
   const resetInactivityTimer = useCallback(() => {
     if (!isLocked && currentStaff) {
