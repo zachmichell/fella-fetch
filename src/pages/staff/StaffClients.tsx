@@ -404,10 +404,10 @@ const StaffClients = () => {
 
         {/* Client Detail Dialog */}
         <Dialog open={!!selectedClient} onOpenChange={(open) => !open && setSelectedClient(null)}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
             {selectedClient && (
               <>
-                <DialogHeader>
+                <DialogHeader className="flex-shrink-0">
                   <div className="flex items-center gap-4">
                     <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
                       <User className="h-8 w-8 text-primary" />
@@ -423,7 +423,7 @@ const StaffClients = () => {
                   </div>
                 </DialogHeader>
 
-                <ScrollArea className="flex-1 pr-4">
+                <div className="flex-1 overflow-y-auto pr-2 -mr-2">
                   <div className="space-y-6">
                     {/* Contact Info */}
                     <Card>
@@ -609,7 +609,7 @@ const StaffClients = () => {
                       </CardContent>
                     </Card>
                   </div>
-                </ScrollArea>
+                </div>
               </>
             )}
           </DialogContent>
