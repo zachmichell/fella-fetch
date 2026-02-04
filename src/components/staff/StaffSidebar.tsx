@@ -58,6 +58,10 @@ const operationsItems = [
   { title: 'Subscriptions', url: '/staff/subscriptions', icon: Repeat },
   { title: 'Trait Templates', url: '/staff/trait-templates', icon: Sparkles },
   { title: 'Time Clock', url: '/staff/time-clock', icon: Clock },
+];
+
+// Items restricted from non-admin staff codes
+const adminOnlyOperationsItems = [
   { title: 'Analytics', url: '/staff/analytics', icon: BarChart3 },
 ];
 
