@@ -56,21 +56,33 @@ export function StaffNotesSection({ entityType, entityId, entityName }: StaffNot
   const [noteText, setNoteText] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const tableName = entityType === 'pet' ? 'pet_notes' : 'client_notes';
-  const foreignKey = entityType === 'pet' ? 'pet_id' : 'client_id';
-
   const fetchNotes = async () => {
     try {
-      const { data, error } = await supabase
-        .from(tableName)
-        .select('*')
-        .eq(foreignKey, entityId)
-        .order('created_at', { ascending: false });
+      let data: any[] | null = null;
+      let error: any = null;
+
+      if (entityType === 'pet') {
+        const result = await supabase
+          .from('pet_notes')
+          .select('*')
+          .eq('pet_id', entityId)
+          .order('created_at', { ascending: false });
+        data = result.data;
+        error = result.error;
+      } else {
+        const result = await supabase
+          .from('client_notes')
+          .select('*')
+          .eq('client_id', entityId)
+          .order('created_at', { ascending: false });
+        data = result.data;
+        error = result.error;
+      }
 
       if (error) throw error;
 
       // Fetch staff names for each note
-      const staffIds = [...new Set((data || []).map(n => n.created_by))];
+      const staffIds = [...new Set((data || []).map((n: any) => n.created_by))];
       
       let staffMap: Record<string, string> = {};
       if (staffIds.length > 0) {
@@ -84,7 +96,7 @@ export function StaffNotesSection({ entityType, entityId, entityName }: StaffNot
         });
       }
 
-      const notesWithStaff = (data || []).map(note => ({
+      const notesWithStaff = (data || []).map((note: any) => ({
         ...note,
         staff_name: staffMap[note.created_by] || 'Staff',
       }));
