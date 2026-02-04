@@ -74,7 +74,7 @@ export const GroomingAppointmentCell = ({
             reservationId: appointment.id,
             petName: appointment.pet_name,
             clientName: appointment.client_name,
-            groomerName: appointment.groomer_name,
+            groomerId: appointment.groomer_id,
             completedAt: new Date().toISOString(),
             notes: appointment.notes,
           },
