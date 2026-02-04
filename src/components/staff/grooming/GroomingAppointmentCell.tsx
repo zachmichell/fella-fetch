@@ -67,18 +67,18 @@ export const GroomingAppointmentCell = ({
 
       if (error) throw error;
 
-      // Send webhook notification
+      // Send webhook notification with locked-in payload structure
       try {
         await supabase.functions.invoke('grooming-complete-webhook', {
           body: {
             reservationId: appointment.id,
             petName: appointment.pet_name,
             clientName: appointment.client_name,
-            clientPhone: appointment.client_phone,
-            groomerId: appointment.groomer_id,
-            groomerName: appointment.groomer_name,
+            clientPhone: appointment.client_phone || '',
+            groomerName: appointment.groomer_name || '',
+            serviceType: productTitle || 'Unknown',
             completedAt: new Date().toISOString(),
-            notes: appointment.notes,
+            notes: appointment.notes || null,
           },
         });
       } catch (webhookError) {
