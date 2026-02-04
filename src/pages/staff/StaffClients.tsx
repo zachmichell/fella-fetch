@@ -497,6 +497,13 @@ const StaffClients = () => {
                       </Card>
                     )}
 
+                    {/* Staff Notes */}
+                    <StaffNotesSection 
+                      entityType="client" 
+                      entityId={selectedClient.id} 
+                      entityName={`${selectedClient.first_name} ${selectedClient.last_name}`} 
+                    />
+
                     {/* Credits */}
                     <Card>
                       <CardHeader className="py-3">
