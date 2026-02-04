@@ -71,8 +71,18 @@ export const MarketingFilterBuilder = ({
     onFiltersChange(filters.filter((_, i) => i !== index));
   };
 
+  const getFieldConfig = (field: string) => {
+    return FILTER_FIELDS.find(f => f.value === field);
+  };
+
   const isSpecialField = (field: string) => {
-    return field === 'never_visited' || field === 'never_groomed';
+    const config = getFieldConfig(field);
+    return config?.type === 'boolean';
+  };
+
+  const isStringField = (field: string) => {
+    const config = getFieldConfig(field);
+    return config?.type === 'string';
   };
 
   return (
