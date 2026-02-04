@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -22,23 +22,70 @@ interface StaffCodeContextType {
 const StaffCodeContext = createContext<StaffCodeContextType | undefined>(undefined);
 
 const INACTIVITY_TIMEOUT = 60 * 1000; // 60 seconds
+const SESSION_KEY = 'staff_code_session';
 
 export function StaffCodeProvider({ children }: { children: ReactNode }) {
   const { isStaffOrAdmin } = useAuth();
   const [currentStaff, setCurrentStaff] = useState<StaffCode | null>(null);
   const [isLocked, setIsLocked] = useState(true);
+  const [initialized, setInitialized] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const isCodeAdmin = currentStaff?.is_admin ?? false;
+
+  // Restore session from sessionStorage on mount
+  useEffect(() => {
+    const restoreSession = async () => {
+      const savedStaffId = sessionStorage.getItem(SESSION_KEY);
+      if (savedStaffId) {
+        try {
+          const { data, error } = await supabase
+            .from('staff_codes')
+            .select('*')
+            .eq('id', savedStaffId)
+            .eq('is_active', true)
+            .single();
+
+          if (!error && data) {
+            setCurrentStaff(data);
+            setIsLocked(false);
+          } else {
+            sessionStorage.removeItem(SESSION_KEY);
+          }
+        } catch {
+          sessionStorage.removeItem(SESSION_KEY);
+        }
+      }
+      setInitialized(true);
+    };
+
+    restoreSession();
+  }, []);
 
   const lock = useCallback(() => {
     setIsLocked(true);
     setCurrentStaff(null);
+    sessionStorage.removeItem(SESSION_KEY);
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
   }, []);
 
-  // Placeholder for external reset calls (activity listeners handle this internally)
+  const startInactivityTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+    timerRef.current = setTimeout(() => {
+      lock();
+    }, INACTIVITY_TIMEOUT);
+  }, [lock]);
+
   const resetInactivityTimer = useCallback(() => {
-    // No-op: timer is managed internally by the activity listener effect
-  }, []);
+    if (!isLocked && currentStaff) {
+      startInactivityTimer();
+    }
+  }, [isLocked, currentStaff, startInactivityTimer]);
 
   const unlockWithCode = useCallback(async (code: string): Promise<boolean> => {
     try {
@@ -55,31 +102,24 @@ export function StaffCodeProvider({ children }: { children: ReactNode }) {
 
       setCurrentStaff(data);
       setIsLocked(false);
+      sessionStorage.setItem(SESSION_KEY, data.id);
+      startInactivityTimer();
       return true;
     } catch {
       return false;
     }
-  }, []);
+  }, [startInactivityTimer]);
 
   // Set up activity listeners - resets the inactivity timer on user interaction
   useEffect(() => {
     if (!isStaffOrAdmin || isLocked || !currentStaff) return;
 
-    let timer: NodeJS.Timeout | null = null;
-    
-    const startTimer = () => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        lock();
-      }, INACTIVITY_TIMEOUT);
-    };
-
     const handleActivity = () => {
-      startTimer();
+      startInactivityTimer();
     };
 
     // Start the initial timer
-    startTimer();
+    startInactivityTimer();
 
     const events = ['mousedown', 'keydown', 'touchstart', 'scroll'];
     events.forEach(event => {
@@ -90,11 +130,16 @@ export function StaffCodeProvider({ children }: { children: ReactNode }) {
       events.forEach(event => {
         window.removeEventListener(event, handleActivity);
       });
-      if (timer) {
-        clearTimeout(timer);
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
       }
     };
-  }, [isStaffOrAdmin, isLocked, currentStaff, lock]);
+  }, [isStaffOrAdmin, isLocked, currentStaff, startInactivityTimer]);
+
+  // Don't render children until we've checked for an existing session
+  if (!initialized) {
+    return null;
+  }
 
   return (
     <StaffCodeContext.Provider
