@@ -33,6 +33,7 @@ interface Pet {
   lastGroomDate: string | null;
   daysSinceLastVisit: number | null;
   daysSinceLastGroom: number | null;
+  hasActiveSubscription: boolean;
 }
 
 interface ClientWithPets {
