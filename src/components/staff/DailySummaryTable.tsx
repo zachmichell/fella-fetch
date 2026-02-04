@@ -382,6 +382,12 @@ export const DailySummaryTable = () => {
           </Table>
         </Collapsible>
       </CardContent>
+
+      <DailyDetailsDialog
+        open={detailsDialogOpen}
+        onOpenChange={setDetailsDialogOpen}
+        selectedDate={selectedDate}
+      />
     </Card>
   );
 };
