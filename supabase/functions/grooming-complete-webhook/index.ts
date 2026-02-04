@@ -11,6 +11,7 @@ interface GroomingCompletePayload {
   clientName: string;
   clientPhone?: string;
   groomerId?: string;
+  groomerName?: string;
   completedAt: string;
   notes?: string;
 }
