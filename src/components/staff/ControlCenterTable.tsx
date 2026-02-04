@@ -769,7 +769,7 @@ export function ControlCenterTable({
                   </TableCell>
 
                   {/* Services Column */}
-                  <TableCell className="align-top py-2">
+                  <TableCell style={{ width: widths.services }} className="align-top py-2 overflow-hidden">
                     <div className="flex flex-col gap-1.5">
                       {/* Display linked services stacked vertically */}
                       {reservation.linked_services && reservation.linked_services.length > 0 && (
