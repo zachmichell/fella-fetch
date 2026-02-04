@@ -118,18 +118,27 @@ export function StaffNotesSection({ entityType, entityId, entityName }: StaffNot
 
     setSaving(true);
     try {
-      const insertData: any = {
-        [foreignKey]: entityId,
-        note: noteText.trim(),
-        source_type: 'manual',
-        created_by: user.id,
-      };
-
-      const { error } = await supabase
-        .from(tableName)
-        .insert([insertData]);
-
-      if (error) throw error;
+      if (entityType === 'pet') {
+        const { error } = await supabase
+          .from('pet_notes')
+          .insert([{
+            pet_id: entityId,
+            note: noteText.trim(),
+            source_type: 'manual',
+            created_by: user.id,
+          }]);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('client_notes')
+          .insert([{
+            client_id: entityId,
+            note: noteText.trim(),
+            source_type: 'manual',
+            created_by: user.id,
+          }]);
+        if (error) throw error;
+      }
 
       toast({ title: 'Note added successfully' });
       setNoteText('');
