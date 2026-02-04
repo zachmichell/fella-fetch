@@ -159,12 +159,22 @@ export const MarketingFilterBuilder = ({
                   </SelectContent>
                 </Select>
 
-                <Input
-                  type="number"
-                  value={filter.value}
-                  onChange={(e) => updateFilter(index, { value: parseInt(e.target.value) || 0 })}
-                  className="w-[100px]"
-                />
+                {isStringField(filter.field) ? (
+                  <Input
+                    type="text"
+                    value={filter.value}
+                    onChange={(e) => updateFilter(index, { value: e.target.value })}
+                    placeholder="Enter text..."
+                    className="w-[160px]"
+                  />
+                ) : (
+                  <Input
+                    type="number"
+                    value={filter.value}
+                    onChange={(e) => updateFilter(index, { value: parseInt(e.target.value) || 0 })}
+                    className="w-[100px]"
+                  />
+                )}
               </>
             )}
 
