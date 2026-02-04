@@ -25,7 +25,7 @@ interface StaffCodeContextType {
 
 const StaffCodeContext = createContext<StaffCodeContextType | undefined>(undefined);
 
-const INACTIVITY_TIMEOUT = 60 * 1000; // 60 seconds
+const DEFAULT_INACTIVITY_TIMEOUT = 60; // seconds
 const SESSION_KEY = 'staff_code_session';
 
 export function StaffCodeProvider({ children }: { children: ReactNode }) {
