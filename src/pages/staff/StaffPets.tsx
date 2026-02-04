@@ -639,10 +639,10 @@ const StaffPets = () => {
 
         {/* Pet Detail Dialog */}
         <Dialog open={!!selectedPet} onOpenChange={(open) => !open && setSelectedPet(null)}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto flex flex-col">
+          <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-0">
             {selectedPet && (
               <>
-                <DialogHeader>
+                <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
                   <div className="flex items-center gap-4">
                     <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
                       <Dog className="h-8 w-8 text-primary" />
@@ -656,7 +656,7 @@ const StaffPets = () => {
                   </div>
                 </DialogHeader>
 
-                <ScrollArea className="flex-1 pr-4">
+                <ScrollArea className="flex-1 overflow-y-auto px-6 pb-6">
                   <div className="space-y-6">
                     {/* Owner Info */}
                     <Card>
