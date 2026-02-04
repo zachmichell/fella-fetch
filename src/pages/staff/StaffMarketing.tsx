@@ -342,6 +342,25 @@ const StaffMarketing = () => {
       return;
     }
 
+    // Validate content exists
+    if (channel === 'sms' && !smsContent.trim()) {
+      toast({
+        title: 'No message content',
+        description: 'Please enter an SMS message to send',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (channel === 'email' && emailBlocks.length === 0) {
+      toast({
+        title: 'No email content',
+        description: 'Please add content blocks to your email',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSending(true);
     try {
       const selectedData = filteredClients.filter(c => selectedClients.has(c.id));
@@ -352,6 +371,9 @@ const StaffMarketing = () => {
         segmentName: activeSegment?.name || 'Custom Filter',
         segmentDescription: activeSegment?.description,
         filters,
+        message: channel === 'sms' ? smsContent : undefined,
+        emailSubject: channel === 'email' ? emailSubject : undefined,
+        emailContent: channel === 'email' ? JSON.stringify(emailBlocks) : undefined,
         sentAt: new Date().toISOString(),
         sentBy: 'admin',
         recipients: selectedData.map(client => ({
@@ -379,7 +401,7 @@ const StaffMarketing = () => {
 
       toast({
         title: 'Sent!',
-        description: `${channel.toUpperCase()} webhook sent for ${selectedData.length} clients`,
+        description: `${channel.toUpperCase()} message sent to ${selectedData.length} clients`,
       });
     } catch (error: any) {
       toast({
