@@ -68,7 +68,7 @@ export const ResizableColumn = ({
       {children}
       {isHeader && (
         <div
-          className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/50 active:bg-primary"
+          className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize bg-border hover:bg-primary/50 active:bg-primary"
           onMouseDown={handleMouseDown}
         />
       )}
