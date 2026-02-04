@@ -18,10 +18,13 @@ import {
   Scissors,
   MessageCircle,
   Repeat,
-  Megaphone
+  Megaphone,
+  Lock,
+  KeyRound
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
+import { useStaffCode } from '@/contexts/StaffCodeContext';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import {
   Sidebar,
@@ -55,10 +58,15 @@ const operationsItems = [
   { title: 'Subscriptions', url: '/staff/subscriptions', icon: Repeat },
   { title: 'Trait Templates', url: '/staff/trait-templates', icon: Sparkles },
   { title: 'Time Clock', url: '/staff/time-clock', icon: Clock },
+];
+
+// Items restricted from non-admin staff codes
+const adminOnlyOperationsItems = [
   { title: 'Analytics', url: '/staff/analytics', icon: BarChart3 },
 ];
 
 const adminItems = [
+  { title: 'Staff Codes', url: '/staff/staff-management', icon: KeyRound },
   { title: 'Marketing', url: '/staff/marketing', icon: Megaphone },
   { title: 'User Management', url: '/staff/users', icon: UserCog },
   { title: 'Suite Management', url: '/staff/suites', icon: BedDouble },
@@ -73,6 +81,7 @@ export function StaffSidebar() {
   const collapsed = state === 'collapsed';
   const location = useLocation();
   const { signOut, isAdmin, user } = useAuth();
+  const { currentStaff, isCodeAdmin, lock } = useStaffCode();
   const { unreadCount } = useUnreadMessages();
 
   const isActive = (path: string) => {
@@ -153,12 +162,23 @@ export function StaffSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              {/* Admin-only operations items - only show if staff code is admin */}
+              {isCodeAdmin && adminOnlyOperationsItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                    <NavLink to={item.url}>
+                      <item.icon className="h-4 w-4" />
+                      {!collapsed && <span>{item.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Admin Only */}
-        {isAdmin && (
+        {/* Admin Only - requires both isAdmin (auth role) AND isCodeAdmin (staff code) */}
+        {isAdmin && isCodeAdmin && (
           <>
             <Separator className="my-2" />
             <SidebarGroup>
@@ -183,22 +203,32 @@ export function StaffSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-4">
-        {!collapsed && user && (
+        {!collapsed && currentStaff && (
           <div className="mb-3 px-2">
-            <p className="text-sm font-medium truncate">{user.email}</p>
-            <p className="text-xs text-muted-foreground capitalize">
-              {isAdmin ? 'Administrator' : 'Staff'}
+            <p className="text-sm font-medium truncate">{currentStaff.name}</p>
+            <p className="text-xs text-muted-foreground">
+              {isCodeAdmin ? 'Admin' : 'Staff'}
             </p>
           </div>
         )}
-        <Button 
-          variant="ghost" 
-          className={`w-full justify-start ${collapsed ? 'px-2' : ''}`}
-          onClick={signOut}
-        >
-          <LogOut className="h-4 w-4" />
-          {!collapsed && <span className="ml-2">Sign Out</span>}
-        </Button>
+        <div className="flex flex-col gap-2">
+          <Button 
+            variant="ghost" 
+            className={`w-full justify-start ${collapsed ? 'px-2' : ''}`}
+            onClick={lock}
+          >
+            <Lock className="h-4 w-4" />
+            {!collapsed && <span className="ml-2">Lock</span>}
+          </Button>
+          <Button 
+            variant="ghost" 
+            className={`w-full justify-start ${collapsed ? 'px-2' : ''}`}
+            onClick={signOut}
+          >
+            <LogOut className="h-4 w-4" />
+            {!collapsed && <span className="ml-2">Sign Out</span>}
+          </Button>
+        </div>
       </SidebarFooter>
     </Sidebar>
   );
