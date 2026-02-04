@@ -29,6 +29,7 @@ import { ResizableColumn, useColumnWidths } from '@/components/ui/resizable-colu
 const COLUMN_CONFIG = [
   { key: 'client', defaultWidth: 200 },
   { key: 'contact', defaultWidth: 180 },
+  { key: 'phone', defaultWidth: 140 },
   { key: 'credits', defaultWidth: 180 },
   { key: 'pets', defaultWidth: 80 },
 ];
@@ -557,7 +558,16 @@ const StaffMarketing = () => {
                     minWidth={100}
                     maxWidth={300}
                   >
-                    Contact
+                    Email
+                  </ResizableColumn>
+                  <ResizableColumn
+                    width={widths.phone}
+                    onResize={(w) => setWidth('phone', w)}
+                    isHeader
+                    minWidth={100}
+                    maxWidth={200}
+                  >
+                    Phone
                   </ResizableColumn>
                   <ResizableColumn
                     width={widths.credits}
@@ -603,7 +613,10 @@ const StaffMarketing = () => {
                         {client.firstName} {client.lastName}
                       </div>
                       <div className="text-sm text-muted-foreground truncate" style={{ width: widths.contact }}>
-                        {client.email || client.phone || 'No contact'}
+                        {client.email || '—'}
+                      </div>
+                      <div className="text-sm text-muted-foreground truncate" style={{ width: widths.phone }}>
+                        {client.phone || '—'}
                       </div>
                       <div style={{ width: widths.credits }}>
                         <div className="flex gap-1 flex-wrap">
