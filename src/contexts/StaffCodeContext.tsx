@@ -37,17 +37,25 @@ export function StaffCodeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const resetInactivityTimer = useCallback(() => {
-    if (inactivityTimer) {
-      clearTimeout(inactivityTimer);
-    }
-    
+    setInactivityTimer(prev => {
+      if (prev) {
+        clearTimeout(prev);
+      }
+      return null;
+    });
+  }, []);
+
+  // Start timer in a separate effect to avoid dependency issues
+  useEffect(() => {
     if (!isLocked && currentStaff) {
       const timer = setTimeout(() => {
         lock();
       }, INACTIVITY_TIMEOUT);
       setInactivityTimer(timer);
+      
+      return () => clearTimeout(timer);
     }
-  }, [inactivityTimer, isLocked, currentStaff, lock]);
+  }, [isLocked, currentStaff, lock]);
 
   const unlockWithCode = useCallback(async (code: string): Promise<boolean> => {
     try {
