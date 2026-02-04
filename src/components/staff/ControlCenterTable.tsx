@@ -751,7 +751,7 @@ export function ControlCenterTable({
                   </TableCell>
 
                   {/* Lodging Column */}
-                  <TableCell>
+                  <TableCell style={{ width: widths.lodging }} className="overflow-hidden">
                     {reservation.service_type === 'boarding' ? (
                       reservation.lodging ? (
                         <span className="text-sm">{reservation.lodging}</span>
