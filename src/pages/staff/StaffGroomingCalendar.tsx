@@ -24,6 +24,7 @@ export interface GroomingAppointment {
   end_time: string | null;
   status: string;
   groomer_id: string | null;
+  groomer_name: string | null;
   notes: string | null;
   service_type: string;
 }
