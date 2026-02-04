@@ -664,7 +664,7 @@ export function ControlCenterTable({
                   </TableCell>
 
                   {/* Animal Column */}
-                  <TableCell>
+                  <TableCell style={{ width: widths.animal }} className="overflow-hidden">
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10 shrink-0">
                         <AvatarImage src={reservation.pet_photo_url || undefined} alt={reservation.pet_name} />
