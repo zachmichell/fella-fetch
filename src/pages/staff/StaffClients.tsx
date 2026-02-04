@@ -593,6 +593,21 @@ const StaffClients = () => {
                         )}
                       </CardContent>
                     </Card>
+
+                    {/* Booking Permissions */}
+                    <Card>
+                      <CardHeader className="py-3">
+                        <CardTitle className="text-sm font-medium flex items-center gap-2">
+                          <Settings2 className="h-4 w-4" /> Booking Permissions
+                        </CardTitle>
+                        <CardDescription className="text-xs">
+                          Toggle which services this client can book online
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="py-3">
+                        <ClientServicePermissions clientId={selectedClient.id} />
+                      </CardContent>
+                    </Card>
                   </div>
                 </ScrollArea>
               </>
