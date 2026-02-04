@@ -29,6 +29,7 @@ import { ResizableColumn, useColumnWidths } from '@/components/ui/resizable-colu
 const COLUMN_CONFIG = [
   { key: 'client', defaultWidth: 200 },
   { key: 'contact', defaultWidth: 180 },
+  { key: 'phone', defaultWidth: 140 },
   { key: 'credits', defaultWidth: 180 },
   { key: 'pets', defaultWidth: 80 },
 ];
