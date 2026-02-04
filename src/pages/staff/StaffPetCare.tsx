@@ -337,29 +337,35 @@ const StaffPetCare = () => {
   }, [fetchCareItems]);
 
   // Multi-level sorting logic
+  // First column clicked = primary sort, second column clicked = secondary sort
   const handleSort = (field: SortField) => {
     setSortLevels((prev) => {
       const existingIndex = prev.findIndex((s) => s.field === field);
       
-      if (existingIndex === 0) {
-        // If it's the primary sort, cycle through directions: asc -> desc -> remove
-        const current = prev[0];
+      if (existingIndex >= 0) {
+        // Column is already in sort levels - cycle its direction: asc -> desc -> remove
+        const current = prev[existingIndex];
         if (current.direction === 'asc') {
-          return [{ field, direction: 'desc' }, ...prev.slice(1)];
+          // Change to desc
+          const newLevels = [...prev];
+          newLevels[existingIndex] = { field, direction: 'desc' };
+          return newLevels;
         } else if (current.direction === 'desc') {
-          // Remove this sort level if there are others, otherwise reset to asc
+          // Remove this sort level
           if (prev.length > 1) {
-            return prev.slice(1);
+            return prev.filter((_, i) => i !== existingIndex);
           }
+          // If it's the only one, reset to asc
           return [{ field, direction: 'asc' }];
         }
-      } else if (existingIndex > 0) {
-        // Move to primary position
-        const newLevels = prev.filter((_, i) => i !== existingIndex);
-        return [{ field, direction: 'asc' }, ...newLevels.slice(0, 1)];
       } else {
-        // Add as new primary sort, keep up to 1 previous (2 levels total)
-        return [{ field, direction: 'asc' }, ...prev.slice(0, 1)];
+        // New column - add as next level (up to 2 levels)
+        if (prev.length < 2) {
+          return [...prev, { field, direction: 'asc' }];
+        } else {
+          // Replace secondary sort
+          return [prev[0], { field, direction: 'asc' }];
+        }
       }
       
       return prev;
