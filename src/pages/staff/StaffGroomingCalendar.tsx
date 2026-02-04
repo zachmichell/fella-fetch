@@ -18,6 +18,7 @@ export interface GroomingAppointment {
   pet_name: string;
   pet_breed: string | null;
   client_name: string;
+  client_phone: string | null;
   start_date: string;
   start_time: string | null;
   end_time: string | null;

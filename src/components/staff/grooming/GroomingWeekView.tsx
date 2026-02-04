@@ -99,6 +99,7 @@ export const GroomingWeekView = ({
         client_name: r.pets?.clients 
           ? `${r.pets.clients.first_name} ${r.pets.clients.last_name}`
           : 'Unknown',
+        client_phone: r.pets?.clients?.phone || null,
         start_date: r.start_date,
         start_time: r.start_time,
         end_time: r.end_time,
