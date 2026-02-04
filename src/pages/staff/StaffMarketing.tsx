@@ -613,7 +613,10 @@ const StaffMarketing = () => {
                         {client.firstName} {client.lastName}
                       </div>
                       <div className="text-sm text-muted-foreground truncate" style={{ width: widths.contact }}>
-                        {client.email || client.phone || 'No contact'}
+                        {client.email || '—'}
+                      </div>
+                      <div className="text-sm text-muted-foreground truncate" style={{ width: widths.phone }}>
+                        {client.phone || '—'}
                       </div>
                       <div style={{ width: widths.credits }}>
                         <div className="flex gap-1 flex-wrap">
