@@ -1002,23 +1002,40 @@ const BookingPage = () => {
                 <h2 className="font-display text-xl font-semibold text-foreground mb-6">
                   What service would you like to book?
                 </h2>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  {serviceOptions.map((service) => (
-                    <button
-                      key={service.id}
-                      onClick={() => handleServiceSelect(service.id)}
-                      className={`p-6 rounded-2xl border-2 text-left transition-all ${
-                        bookingData.service === service.id
-                          ? "border-primary bg-accent/30"
-                          : "border-border hover:border-primary/50 bg-card"
-                      }`}
-                    >
-                      <img src={service.icon} alt={service.name} className="w-12 h-12 mb-3" />
-                      <h3 className="font-semibold text-foreground text-lg">{service.name}</h3>
-                      <p className="text-sm text-muted-foreground">{service.description}</p>
-                    </button>
-                  ))}
-                </div>
+                {loadingPermissions ? (
+                  <div className="bg-card rounded-2xl border border-border p-8 text-center">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-muted-foreground">Loading available services...</p>
+                  </div>
+                ) : filteredServiceOptions.length === 0 ? (
+                  <div className="bg-card rounded-2xl border border-border p-8 text-center space-y-4">
+                    <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto">
+                      <AlertTriangle className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="font-semibold text-foreground text-lg">No services available</h3>
+                    <p className="text-muted-foreground">
+                      You don't have any services available for booking. Please contact us for assistance.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    {filteredServiceOptions.map((service) => (
+                      <button
+                        key={service.id}
+                        onClick={() => handleServiceSelect(service.id)}
+                        className={`p-6 rounded-2xl border-2 text-left transition-all ${
+                          bookingData.service === service.id
+                            ? "border-primary bg-accent/30"
+                            : "border-border hover:border-primary/50 bg-card"
+                        }`}
+                      >
+                        <img src={service.icon} alt={service.name} className="w-12 h-12 mb-3" />
+                        <h3 className="font-semibold text-foreground text-lg">{service.name}</h3>
+                        <p className="text-sm text-muted-foreground">{service.description}</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </motion.div>
             )}
 
