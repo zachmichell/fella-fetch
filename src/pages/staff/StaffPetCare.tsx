@@ -212,11 +212,29 @@ const StaffPetCare = () => {
       // Build care items list
       const items: CareItem[] = [];
 
+      // Helper to find the best reservation for a pet (prefer arriving, then departing, then staying with suite)
+      const findBestReservation = (petId: string) => {
+        const petReservations = reservationsWithStatus.filter(
+          (r: any) => r.pets?.id === petId
+        );
+        if (petReservations.length === 0) return null;
+        
+        // Priority: arriving > departing > staying with suite > any
+        const arriving = petReservations.find((r: any) => r.arrival_status === 'arriving');
+        if (arriving) return arriving;
+        
+        const departing = petReservations.find((r: any) => r.arrival_status === 'departing');
+        if (departing) return departing;
+        
+        const withSuite = petReservations.find((r: any) => r.suites?.name);
+        if (withSuite) return withSuite;
+        
+        return petReservations[0];
+      };
+
       // Map medications
       (medsRes.data || []).forEach((med: any) => {
-        const reservation = reservationsWithStatus.find(
-          (r: any) => r.pets?.id === med.pet_id
-        );
+        const reservation = findBestReservation(med.pet_id);
         if (!reservation) return;
 
         items.push({
