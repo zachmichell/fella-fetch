@@ -57,6 +57,7 @@ import { PetTraitsSection } from '@/components/staff/PetTraitsSection';
 import { StaffVaccinationEditor } from '@/components/staff/StaffVaccinationEditor';
 import { StaffPetCareLogger } from '@/components/staff/StaffPetCareLogger';
 import { PetGroomingPreferencesEditor } from '@/components/staff/grooming/PetGroomingPreferencesEditor';
+import { StaffNotesSection } from '@/components/staff/StaffNotesSection';
 interface Pet {
   id: string;
   name: string;
