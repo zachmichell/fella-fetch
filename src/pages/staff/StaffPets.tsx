@@ -830,6 +830,13 @@ const StaffPets = () => {
                       </CardContent>
                     </Card>
 
+                    {/* Staff Notes */}
+                    <StaffNotesSection 
+                      entityType="pet" 
+                      entityId={selectedPet.id} 
+                      entityName={selectedPet.name} 
+                    />
+
                     {/* Activity Log */}
                     <Card>
                       <CardHeader className="py-3">
