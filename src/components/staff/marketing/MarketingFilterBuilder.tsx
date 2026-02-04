@@ -29,13 +29,20 @@ const FILTER_FIELDS: FilterOption[] = [
   { value: 'boarding_credits', label: 'Boarding credits', category: 'credits', type: 'number' },
 ];
 
-const OPERATORS = [
+const NUMERIC_OPERATORS = [
   { value: 'eq', label: 'equals' },
   { value: 'neq', label: 'not equals' },
   { value: 'gt', label: 'greater than' },
   { value: 'gte', label: 'at least' },
   { value: 'lt', label: 'less than' },
   { value: 'lte', label: 'at most' },
+];
+
+const STRING_OPERATORS = [
+  { value: 'contains', label: 'contains' },
+  { value: 'eq', label: 'equals' },
+  { value: 'neq', label: 'not equals' },
+  { value: 'starts_with', label: 'starts with' },
 ];
 
 interface MarketingFilterBuilderProps {
