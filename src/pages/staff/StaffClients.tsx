@@ -609,7 +609,7 @@ const StaffClients = () => {
                       </CardContent>
                     </Card>
                   </div>
-                </ScrollArea>
+                </div>
               </>
             )}
           </DialogContent>
