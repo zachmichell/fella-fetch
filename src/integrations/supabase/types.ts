@@ -1336,8 +1336,8 @@ export type Database = {
           created_at: string
           id: string
           is_active: boolean
-          is_admin: boolean
           name: string
+          role: Database["public"]["Enums"]["staff_code_role"]
           updated_at: string
         }
         Insert: {
@@ -1345,8 +1345,8 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
-          is_admin?: boolean
           name: string
+          role?: Database["public"]["Enums"]["staff_code_role"]
           updated_at?: string
         }
         Update: {
@@ -1354,8 +1354,8 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
-          is_admin?: boolean
           name?: string
+          role?: Database["public"]["Enums"]["staff_code_role"]
           updated_at?: string
         }
         Relationships: []
@@ -1562,6 +1562,7 @@ export type Database = {
         | "checked_out"
         | "cancelled"
       service_type: "daycare" | "boarding" | "grooming" | "training"
+      staff_code_role: "basic" | "supervisor" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1698,6 +1699,7 @@ export const Constants = {
         "cancelled",
       ],
       service_type: ["daycare", "boarding", "grooming", "training"],
+      staff_code_role: ["basic", "supervisor", "admin"],
     },
   },
 } as const
