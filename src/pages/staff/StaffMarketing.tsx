@@ -630,17 +630,4 @@ const StaffMarketing = () => {
   );
 };
 
-// Helper function to compare values based on operator
-function compareValue(actual: number, operator: string, expected: number): boolean {
-  switch (operator) {
-    case 'eq': return actual === expected;
-    case 'neq': return actual !== expected;
-    case 'gt': return actual > expected;
-    case 'gte': return actual >= expected;
-    case 'lt': return actual < expected;
-    case 'lte': return actual <= expected;
-    default: return true;
-  }
-}
-
 export default StaffMarketing;
