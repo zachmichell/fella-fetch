@@ -41,9 +41,10 @@ import {
 } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Pencil, Trash2, Loader2, Shield, User, Eye, EyeOff, Users } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Shield, User, Eye, EyeOff, Users, Clock } from 'lucide-react';
 import { useStaffCode } from '@/contexts/StaffCodeContext';
 import { useNavigate } from 'react-router-dom';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
 
 type StaffCodeRole = 'basic' | 'supervisor' | 'admin';
 
