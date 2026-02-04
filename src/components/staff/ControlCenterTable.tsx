@@ -213,6 +213,33 @@ export function ControlCenterTable({
     fetchLastActivity();
   }, [reservations]);
 
+  // Toggle sort
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Cycle: asc -> desc -> null
+      if (sortDirection === 'asc') {
+        setSortDirection('desc');
+      } else if (sortDirection === 'desc') {
+        setSortField(null);
+        setSortDirection(null);
+      }
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // Get sort icon
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50" />;
+    }
+    if (sortDirection === 'asc') {
+      return <ArrowUp className="h-3 w-3 ml-1" />;
+    }
+    return <ArrowDown className="h-3 w-3 ml-1" />;
+  };
+
   // Filter by tab
   const getFilteredByTab = () => {
     switch (activeTab) {
@@ -229,15 +256,61 @@ export function ControlCenterTable({
     }
   };
 
-  // Filter by search
-  const filteredReservations = getFilteredByTab().filter(r => {
-    if (!searchQuery.trim()) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      r.pet_name.toLowerCase().includes(query) ||
-      r.client_name.toLowerCase().includes(query)
-    );
-  });
+  // Filter by search and sort
+  const filteredReservations = useMemo(() => {
+    let filtered = getFilteredByTab().filter(r => {
+      if (!searchQuery.trim()) return true;
+      const query = searchQuery.toLowerCase();
+      return (
+        r.pet_name.toLowerCase().includes(query) ||
+        r.client_name.toLowerCase().includes(query)
+      );
+    });
+
+    // Apply sorting
+    if (sortField && sortDirection) {
+      filtered = [...filtered].sort((a, b) => {
+        let aVal: string | null = null;
+        let bVal: string | null = null;
+
+        switch (sortField) {
+          case 'pet_name':
+            aVal = a.pet_name.toLowerCase();
+            bVal = b.pet_name.toLowerCase();
+            break;
+          case 'client_name':
+            aVal = a.client_name.toLowerCase();
+            bVal = b.client_name.toLowerCase();
+            break;
+          case 'service_type':
+            aVal = a.service_type;
+            bVal = b.service_type;
+            break;
+          case 'lodging':
+            aVal = a.lodging || '';
+            bVal = b.lodging || '';
+            break;
+          case 'start_date':
+            aVal = a.start_date + (a.start_time || '');
+            bVal = b.start_date + (b.start_time || '');
+            break;
+          case 'end_date':
+            aVal = (a.end_date || a.start_date) + (a.end_time || '');
+            bVal = (b.end_date || b.start_date) + (b.end_time || '');
+            break;
+        }
+
+        if (aVal === null && bVal === null) return 0;
+        if (aVal === null) return 1;
+        if (bVal === null) return -1;
+
+        const comparison = aVal.localeCompare(bVal);
+        return sortDirection === 'asc' ? comparison : -comparison;
+      });
+    }
+
+    return filtered;
+  }, [reservations, activeTab, searchQuery, sortField, sortDirection]);
 
   // Tab counts
   const expectedCount = reservations.filter(r => r.status === 'confirmed').length;
