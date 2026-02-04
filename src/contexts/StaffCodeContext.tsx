@@ -78,13 +78,25 @@ export function StaffCodeProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Set up activity listeners
+  // Set up activity listeners - resets the inactivity timer on user interaction
   useEffect(() => {
-    if (!isStaffOrAdmin) return;
+    if (!isStaffOrAdmin || isLocked || !currentStaff) return;
+
+    let timer: NodeJS.Timeout | null = null;
+    
+    const startTimer = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        lock();
+      }, INACTIVITY_TIMEOUT);
+    };
 
     const handleActivity = () => {
-      resetInactivityTimer();
+      startTimer();
     };
+
+    // Start the initial timer
+    startTimer();
 
     const events = ['mousedown', 'keydown', 'touchstart', 'scroll'];
     events.forEach(event => {
@@ -95,18 +107,11 @@ export function StaffCodeProvider({ children }: { children: ReactNode }) {
       events.forEach(event => {
         window.removeEventListener(event, handleActivity);
       });
-      if (inactivityTimer) {
-        clearTimeout(inactivityTimer);
+      if (timer) {
+        clearTimeout(timer);
       }
     };
-  }, [isStaffOrAdmin, resetInactivityTimer, inactivityTimer]);
-
-  // Start inactivity timer when unlocked
-  useEffect(() => {
-    if (!isLocked && currentStaff) {
-      resetInactivityTimer();
-    }
-  }, [isLocked, currentStaff, resetInactivityTimer]);
+  }, [isStaffOrAdmin, isLocked, currentStaff, lock]);
 
   return (
     <StaffCodeContext.Provider
