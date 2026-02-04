@@ -197,12 +197,19 @@ export function StaffNotesSection({ entityType, entityId, entityName }: StaffNot
 
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from(tableName)
-        .delete()
-        .eq('id', selectedNote.id);
-
-      if (error) throw error;
+      if (entityType === 'pet') {
+        const { error } = await supabase
+          .from('pet_notes')
+          .delete()
+          .eq('id', selectedNote.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('client_notes')
+          .delete()
+          .eq('id', selectedNote.id);
+        if (error) throw error;
+      }
 
       toast({ title: 'Note deleted successfully' });
       setSelectedNote(null);
