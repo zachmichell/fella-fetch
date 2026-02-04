@@ -9,6 +9,7 @@ interface GroomingCompletePayload {
   reservationId: string;
   petName: string;
   clientName: string;
+  clientPhone?: string;
   groomerId?: string;
   completedAt: string;
   notes?: string;
