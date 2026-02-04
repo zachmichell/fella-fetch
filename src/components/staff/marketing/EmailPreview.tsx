@@ -99,7 +99,7 @@ const PreviewBlock = ({ block }: { block: EmailBlock }) => {
       );
 
     case 'divider':
-      return <hr className="border-gray-200" />;
+      return <hr className="border-border" />;
 
     case 'spacer':
       return <div className="h-8" />;

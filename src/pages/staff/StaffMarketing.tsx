@@ -25,6 +25,7 @@ import {
 import { MarketingFilterBuilder, FilterCondition } from '@/components/staff/marketing/MarketingFilterBuilder';
 import { SaveSegmentDialog } from '@/components/staff/marketing/SaveSegmentDialog';
 import { ResizableColumn, useColumnWidths } from '@/components/ui/resizable-column';
+import { MarketingMessageComposer, EmailBlock } from '@/components/staff/marketing/MarketingMessageComposer';
 
 const COLUMN_CONFIG = [
   { key: 'client', defaultWidth: 200 },
