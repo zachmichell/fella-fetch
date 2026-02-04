@@ -714,7 +714,7 @@ export function ControlCenterTable({
                   </TableCell>
 
                   {/* Owner Column */}
-                  <TableCell>
+                  <TableCell style={{ width: widths.owner }} className="overflow-hidden">
                     <div>
                       <span>{reservation.client_name}</span>
                       <div className="text-xs text-muted-foreground mt-0.5">
