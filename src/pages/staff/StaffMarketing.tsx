@@ -75,7 +75,10 @@ const StaffMarketing = () => {
         .order('is_preset', { ascending: false })
         .order('name');
       if (error) throw error;
-      return data as MarketingSegment[];
+      return data.map(segment => ({
+        ...segment,
+        filters: (segment.filters || []) as FilterCondition[],
+      })) as MarketingSegment[];
     },
   });
 
