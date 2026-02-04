@@ -145,7 +145,6 @@ export const ClientServicePermissions = ({ clientId }: ClientServicePermissionsP
                 <div className="flex items-center gap-3">
                   <ServiceTypeIcon 
                     iconName={st.icon_name} 
-                    color={st.color} 
                     className="h-5 w-5" 
                   />
                   <Label htmlFor={`perm-${st.id}`} className="font-medium cursor-pointer">
