@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -34,9 +34,13 @@ import {
   DollarSign,
   Scissors,
   Clock,
-  Repeat
+  Repeat,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { ResizableColumn, useColumnWidths } from '@/components/ui/resizable-column';
 
 // Parse date string as local date (not UTC) to avoid timezone shifting
 const parseLocalDate = (dateStr: string): Date => {
@@ -126,6 +130,21 @@ const serviceTypeColors: Record<string, string> = {
   training: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
 };
 
+// Column configuration for resizable widths
+const COLUMN_CONFIG = [
+  { key: 'actions', defaultWidth: 140 },
+  { key: 'animal', defaultWidth: 200 },
+  { key: 'owner', defaultWidth: 160 },
+  { key: 'type', defaultWidth: 140 },
+  { key: 'lodging', defaultWidth: 120 },
+  { key: 'services', defaultWidth: 150 },
+  { key: 'start', defaultWidth: 140 },
+  { key: 'end', defaultWidth: 140 },
+];
+
+type SortField = 'pet_name' | 'client_name' | 'service_type' | 'lodging' | 'start_date' | 'end_date';
+type SortDirection = 'asc' | 'desc' | null;
+
 export function ControlCenterTable({
   reservations,
   loading,
@@ -146,8 +165,14 @@ export function ControlCenterTable({
   const [traitsDialogOpen, setTraitsDialogOpen] = useState(false);
   const [selectedPetForTraits, setSelectedPetForTraits] = useState<{ id: string; name: string } | null>(null);
   const [petLastActivity, setPetLastActivity] = useState<Record<string, number | null>>({});
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
   
   const { inactivityDays } = usePetInactivityDays();
+  const { widths, setWidth } = useColumnWidths({ 
+    columns: COLUMN_CONFIG, 
+    storageKey: 'control-center-column-widths' 
+  });
 
   // Fetch last activity for pets in requested tab
   useEffect(() => {
@@ -188,6 +213,33 @@ export function ControlCenterTable({
     fetchLastActivity();
   }, [reservations]);
 
+  // Toggle sort
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Cycle: asc -> desc -> null
+      if (sortDirection === 'asc') {
+        setSortDirection('desc');
+      } else if (sortDirection === 'desc') {
+        setSortField(null);
+        setSortDirection(null);
+      }
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // Get sort icon
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50" />;
+    }
+    if (sortDirection === 'asc') {
+      return <ArrowUp className="h-3 w-3 ml-1" />;
+    }
+    return <ArrowDown className="h-3 w-3 ml-1" />;
+  };
+
   // Filter by tab
   const getFilteredByTab = () => {
     switch (activeTab) {
@@ -204,15 +256,61 @@ export function ControlCenterTable({
     }
   };
 
-  // Filter by search
-  const filteredReservations = getFilteredByTab().filter(r => {
-    if (!searchQuery.trim()) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      r.pet_name.toLowerCase().includes(query) ||
-      r.client_name.toLowerCase().includes(query)
-    );
-  });
+  // Filter by search and sort
+  const filteredReservations = useMemo(() => {
+    let filtered = getFilteredByTab().filter(r => {
+      if (!searchQuery.trim()) return true;
+      const query = searchQuery.toLowerCase();
+      return (
+        r.pet_name.toLowerCase().includes(query) ||
+        r.client_name.toLowerCase().includes(query)
+      );
+    });
+
+    // Apply sorting
+    if (sortField && sortDirection) {
+      filtered = [...filtered].sort((a, b) => {
+        let aVal: string | null = null;
+        let bVal: string | null = null;
+
+        switch (sortField) {
+          case 'pet_name':
+            aVal = a.pet_name.toLowerCase();
+            bVal = b.pet_name.toLowerCase();
+            break;
+          case 'client_name':
+            aVal = a.client_name.toLowerCase();
+            bVal = b.client_name.toLowerCase();
+            break;
+          case 'service_type':
+            aVal = a.service_type;
+            bVal = b.service_type;
+            break;
+          case 'lodging':
+            aVal = a.lodging || '';
+            bVal = b.lodging || '';
+            break;
+          case 'start_date':
+            aVal = a.start_date + (a.start_time || '');
+            bVal = b.start_date + (b.start_time || '');
+            break;
+          case 'end_date':
+            aVal = (a.end_date || a.start_date) + (a.end_time || '');
+            bVal = (b.end_date || b.start_date) + (b.end_time || '');
+            break;
+        }
+
+        if (aVal === null && bVal === null) return 0;
+        if (aVal === null) return 1;
+        if (bVal === null) return -1;
+
+        const comparison = aVal.localeCompare(bVal);
+        return sortDirection === 'asc' ? comparison : -comparison;
+      });
+    }
+
+    return filtered;
+  }, [reservations, activeTab, searchQuery, sortField, sortDirection]);
 
   // Tab counts
   const expectedCount = reservations.filter(r => r.status === 'confirmed').length;
@@ -339,25 +437,141 @@ export function ControlCenterTable({
           <p>No reservations found</p>
         </div>
       ) : (
-        <div className="border rounded-lg overflow-hidden">
-          <Table>
+        <div className="border rounded-lg overflow-x-auto">
+          <Table className="table-fixed">
             <TableHeader>
               <TableRow className="bg-muted/50">
-                <TableHead className="w-[140px]">Actions</TableHead>
-                <TableHead>Animal</TableHead>
-                <TableHead>Owner</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Lodging</TableHead>
-                <TableHead>Services</TableHead>
-                <TableHead>Start</TableHead>
-                <TableHead>End</TableHead>
+                <TableHead style={{ width: widths.actions }}>
+                  <ResizableColumn
+                    width={widths.actions}
+                    onResize={(w) => setWidth('actions', w)}
+                    isHeader
+                    minWidth={100}
+                    maxWidth={200}
+                  >
+                    Actions
+                  </ResizableColumn>
+                </TableHead>
+                <TableHead style={{ width: widths.animal }}>
+                  <ResizableColumn
+                    width={widths.animal}
+                    onResize={(w) => setWidth('animal', w)}
+                    isHeader
+                    minWidth={120}
+                    maxWidth={300}
+                  >
+                    <button
+                      onClick={() => handleSort('pet_name')}
+                      className="flex items-center hover:text-foreground transition-colors"
+                    >
+                      Animal
+                      {getSortIcon('pet_name')}
+                    </button>
+                  </ResizableColumn>
+                </TableHead>
+                <TableHead style={{ width: widths.owner }}>
+                  <ResizableColumn
+                    width={widths.owner}
+                    onResize={(w) => setWidth('owner', w)}
+                    isHeader
+                    minWidth={100}
+                    maxWidth={250}
+                  >
+                    <button
+                      onClick={() => handleSort('client_name')}
+                      className="flex items-center hover:text-foreground transition-colors"
+                    >
+                      Owner
+                      {getSortIcon('client_name')}
+                    </button>
+                  </ResizableColumn>
+                </TableHead>
+                <TableHead style={{ width: widths.type }}>
+                  <ResizableColumn
+                    width={widths.type}
+                    onResize={(w) => setWidth('type', w)}
+                    isHeader
+                    minWidth={100}
+                    maxWidth={200}
+                  >
+                    <button
+                      onClick={() => handleSort('service_type')}
+                      className="flex items-center hover:text-foreground transition-colors"
+                    >
+                      Type
+                      {getSortIcon('service_type')}
+                    </button>
+                  </ResizableColumn>
+                </TableHead>
+                <TableHead style={{ width: widths.lodging }}>
+                  <ResizableColumn
+                    width={widths.lodging}
+                    onResize={(w) => setWidth('lodging', w)}
+                    isHeader
+                    minWidth={80}
+                    maxWidth={180}
+                  >
+                    <button
+                      onClick={() => handleSort('lodging')}
+                      className="flex items-center hover:text-foreground transition-colors"
+                    >
+                      Lodging
+                      {getSortIcon('lodging')}
+                    </button>
+                  </ResizableColumn>
+                </TableHead>
+                <TableHead style={{ width: widths.services }}>
+                  <ResizableColumn
+                    width={widths.services}
+                    onResize={(w) => setWidth('services', w)}
+                    isHeader
+                    minWidth={100}
+                    maxWidth={250}
+                  >
+                    Services
+                  </ResizableColumn>
+                </TableHead>
+                <TableHead style={{ width: widths.start }}>
+                  <ResizableColumn
+                    width={widths.start}
+                    onResize={(w) => setWidth('start', w)}
+                    isHeader
+                    minWidth={100}
+                    maxWidth={200}
+                  >
+                    <button
+                      onClick={() => handleSort('start_date')}
+                      className="flex items-center hover:text-foreground transition-colors"
+                    >
+                      Start
+                      {getSortIcon('start_date')}
+                    </button>
+                  </ResizableColumn>
+                </TableHead>
+                <TableHead style={{ width: widths.end }}>
+                  <ResizableColumn
+                    width={widths.end}
+                    onResize={(w) => setWidth('end', w)}
+                    isHeader
+                    minWidth={100}
+                    maxWidth={200}
+                  >
+                    <button
+                      onClick={() => handleSort('end_date')}
+                      className="flex items-center hover:text-foreground transition-colors"
+                    >
+                      End
+                      {getSortIcon('end_date')}
+                    </button>
+                  </ResizableColumn>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredReservations.map((reservation) => (
                 <TableRow key={reservation.id} className="hover:bg-muted/30">
                   {/* Actions Column */}
-                  <TableCell>
+                  <TableCell style={{ width: widths.actions }} className="overflow-hidden">
                     <div className="flex items-center gap-1">
                       {reservation.status === 'pending' && (
                         <Button
@@ -450,7 +664,7 @@ export function ControlCenterTable({
                   </TableCell>
 
                   {/* Animal Column */}
-                  <TableCell>
+                  <TableCell style={{ width: widths.animal }} className="overflow-hidden">
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10 shrink-0">
                         <AvatarImage src={reservation.pet_photo_url || undefined} alt={reservation.pet_name} />
@@ -500,7 +714,7 @@ export function ControlCenterTable({
                   </TableCell>
 
                   {/* Owner Column */}
-                  <TableCell>
+                  <TableCell style={{ width: widths.owner }} className="overflow-hidden">
                     <div>
                       <span>{reservation.client_name}</span>
                       <div className="text-xs text-muted-foreground mt-0.5">
@@ -520,7 +734,7 @@ export function ControlCenterTable({
                   </TableCell>
 
                   {/* Type Column */}
-                  <TableCell>
+                  <TableCell style={{ width: widths.type }} className="overflow-hidden">
                     <div className="flex items-center gap-1.5">
                       <Badge 
                         variant="secondary"
@@ -537,7 +751,7 @@ export function ControlCenterTable({
                   </TableCell>
 
                   {/* Lodging Column */}
-                  <TableCell>
+                  <TableCell style={{ width: widths.lodging }} className="overflow-hidden">
                     {reservation.service_type === 'boarding' ? (
                       reservation.lodging ? (
                         <span className="text-sm">{reservation.lodging}</span>
@@ -555,7 +769,7 @@ export function ControlCenterTable({
                   </TableCell>
 
                   {/* Services Column */}
-                  <TableCell className="align-top py-2">
+                  <TableCell style={{ width: widths.services }} className="align-top py-2 overflow-hidden">
                     <div className="flex flex-col gap-1.5">
                       {/* Display linked services stacked vertically */}
                       {reservation.linked_services && reservation.linked_services.length > 0 && (
@@ -596,7 +810,7 @@ export function ControlCenterTable({
                   </TableCell>
 
                   {/* Start Column */}
-                  <TableCell>
+                  <TableCell style={{ width: widths.start }} className="overflow-hidden">
                     {(() => {
                       const parsedTimes = parseTimesFromNotes(reservation.notes);
                       return (
@@ -608,7 +822,7 @@ export function ControlCenterTable({
                   </TableCell>
 
                   {/* End Column */}
-                  <TableCell>
+                  <TableCell style={{ width: widths.end }} className="overflow-hidden">
                     {(() => {
                       const parsedTimes = parseTimesFromNotes(reservation.notes);
                       const endDate = reservation.end_date || reservation.start_date;
