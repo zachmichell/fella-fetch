@@ -535,6 +535,7 @@ export function DailyDetailsDialog({ open, onOpenChange, selectedDate }: DailyDe
                         <div className="flex items-center gap-2 min-w-0">
                           <PetAvatarWithPhoto
                             photoUrl={reservation.pet_photo_url}
+                            petId={reservation.pet_id}
                             petName={reservation.pet_name}
                           />
                           <div className="min-w-0 flex-1">
