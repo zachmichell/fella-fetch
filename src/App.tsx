@@ -43,6 +43,7 @@ import StaffGroomers from "./pages/staff/StaffGroomers";
 import StaffPetCare from "./pages/staff/StaffPetCare";
 import StaffMessages from "./pages/staff/StaffMessages";
 import StaffSubscriptions from "./pages/staff/StaffSubscriptions";
+import StaffMarketing from "./pages/staff/StaffMarketing";
 
 const queryClient = new QueryClient();
 
