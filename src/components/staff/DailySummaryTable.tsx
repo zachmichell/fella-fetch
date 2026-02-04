@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { format, addDays, subDays } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -17,6 +17,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { DailyDetailsDialog } from './DailyDetailsDialog';
 
 interface DailySummaryStats {
   arriving: number;
@@ -51,6 +52,7 @@ interface ServiceTypeRecord {
 export const DailySummaryTable = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isExpanded, setIsExpanded] = useState(false);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [summary, setSummary] = useState<DailySummaryStats>({
     arriving: 0,
     departing: 0,
@@ -290,8 +292,16 @@ export const DailySummaryTable = () => {
             </TableHeader>
             <TableBody>
               {/* Summary Row */}
-              <TableRow className="font-medium bg-muted/30">
-                <TableCell>All Services</TableCell>
+              <TableRow 
+                className="font-medium bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => setDetailsDialogOpen(true)}
+              >
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    All Services
+                    <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                  </div>
+                </TableCell>
                 <TableCell className="text-center">
                   <span className="inline-flex items-center justify-center h-7 min-w-[28px] px-1 rounded-full bg-green-100 text-green-700 font-semibold text-sm">
                     {loading ? '-' : summary.arriving}
@@ -372,6 +382,12 @@ export const DailySummaryTable = () => {
           </Table>
         </Collapsible>
       </CardContent>
+
+      <DailyDetailsDialog
+        open={detailsDialogOpen}
+        onOpenChange={setDetailsDialogOpen}
+        selectedDate={selectedDate}
+      />
     </Card>
   );
 };
