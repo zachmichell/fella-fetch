@@ -356,10 +356,10 @@ const StaffPetCare = () => {
       } else if (existingIndex > 0) {
         // Move to primary position
         const newLevels = prev.filter((_, i) => i !== existingIndex);
-        return [{ field, direction: 'asc' }, ...newLevels.slice(0, 2)];
+        return [{ field, direction: 'asc' }, ...newLevels.slice(0, 1)];
       } else {
-        // Add as new primary sort, keep up to 2 previous
-        return [{ field, direction: 'asc' }, ...prev.slice(0, 2)];
+        // Add as new primary sort, keep up to 1 previous (2 levels total)
+        return [{ field, direction: 'asc' }, ...prev.slice(0, 1)];
       }
       
       return prev;
