@@ -328,7 +328,7 @@ export default function StaffServiceTypes() {
                 Add Service Type
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto flex flex-col">
               <DialogHeader>
                 <DialogTitle>{editingType ? 'Edit Service Type' : 'Add Service Type'}</DialogTitle>
                 <DialogDescription>

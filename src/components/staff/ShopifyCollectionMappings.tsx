@@ -186,7 +186,7 @@ export function ShopifyCollectionMappings() {
               Add Collection
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto flex flex-col">
             <DialogHeader>
               <DialogTitle>Categorize Collection</DialogTitle>
               <DialogDescription>

@@ -404,7 +404,7 @@ const StaffClients = () => {
 
         {/* Client Detail Dialog */}
         <Dialog open={!!selectedClient} onOpenChange={(open) => !open && setSelectedClient(null)}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col">
             {selectedClient && (
               <>
                 <DialogHeader>

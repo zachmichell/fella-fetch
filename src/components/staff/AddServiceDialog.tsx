@@ -491,7 +491,7 @@ export function AddServiceDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto flex flex-col">
         <DialogHeader>
           <DialogTitle>Add Service for {petName}</DialogTitle>
           <DialogDescription>
