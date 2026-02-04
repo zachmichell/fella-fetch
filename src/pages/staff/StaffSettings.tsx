@@ -266,6 +266,9 @@ const StaffSettings = () => {
           </CardContent>
         </Card>
 
+        {/* Early/Late Fee Settings */}
+        <EarlyLateFeeSettings />
+
         {/* Business Timezone Settings */}
         <Card>
           <CardHeader>
