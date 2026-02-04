@@ -67,6 +67,23 @@ export const GroomingAppointmentCell = ({
 
       if (error) throw error;
 
+      // Send webhook notification
+      try {
+        await supabase.functions.invoke('grooming-complete-webhook', {
+          body: {
+            reservationId: appointment.id,
+            petName: appointment.pet_name,
+            clientName: appointment.client_name,
+            groomerId: appointment.groomer_id,
+            completedAt: new Date().toISOString(),
+            notes: appointment.notes,
+          },
+        });
+      } catch (webhookError) {
+        console.error('Failed to send webhook:', webhookError);
+        // Don't fail the completion if webhook fails
+      }
+
       toast({
         title: 'Completed',
         description: `${appointment.pet_name}'s grooming marked as complete`,

@@ -11,3 +11,9 @@ verify_jwt = false
 
 [functions.shopify-customer-orders]
 verify_jwt = false
+
+[functions.generate-subscription-reservations]
+verify_jwt = false
+
+[functions.grooming-complete-webhook]
+verify_jwt = false
