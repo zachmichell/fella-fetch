@@ -18,10 +18,13 @@ import {
   Scissors,
   MessageCircle,
   Repeat,
-  Megaphone
+  Megaphone,
+  Lock,
+  KeyRound
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
+import { useStaffCode } from '@/contexts/StaffCodeContext';
 import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import {
   Sidebar,
