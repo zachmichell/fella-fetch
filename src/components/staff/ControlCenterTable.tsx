@@ -734,7 +734,7 @@ export function ControlCenterTable({
                   </TableCell>
 
                   {/* Type Column */}
-                  <TableCell>
+                  <TableCell style={{ width: widths.type }} className="overflow-hidden">
                     <div className="flex items-center gap-1.5">
                       <Badge 
                         variant="secondary"
