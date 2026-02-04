@@ -9,9 +9,9 @@ interface GroomingCompletePayload {
   reservationId: string;
   petName: string;
   clientName: string;
-  clientPhone?: string;
-  groomerId?: string;
-  groomerName?: string;
+  clientPhone: string;
+  groomerName: string;
+  serviceType: string;
   completedAt: string;
   notes?: string;
 }
@@ -41,9 +41,9 @@ Deno.serve(async (req) => {
         reservation_id: payload.reservationId,
         pet_name: payload.petName,
         client_name: payload.clientName,
-        client_phone: payload.clientPhone || null,
-        groomer_id: payload.groomerId || null,
-        groomer_name: payload.groomerName || null,
+        client_phone: payload.clientPhone,
+        groomer_name: payload.groomerName,
+        service_type: payload.serviceType,
         completed_at: payload.completedAt,
         notes: payload.notes || null,
       },
