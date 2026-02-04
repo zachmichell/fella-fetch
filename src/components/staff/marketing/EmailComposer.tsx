@@ -7,6 +7,7 @@ import { Mail, Plus, Eye, Edit } from 'lucide-react';
 import { TemplateSelector } from './TemplateSelector';
 import { EmailBlockEditor, EmailBlock } from './EmailBlockEditor';
 import { EmailPreview } from './EmailPreview';
+import { DynamicVariableInsert } from './DynamicVariableInsert';
 
 interface EmailComposerProps {
   subject: string;
@@ -38,6 +39,10 @@ export const EmailComposer = ({
       onSubjectChange(templateSubject);
     }
     setShowTemplates(false);
+  };
+
+  const handleInsertVariableInSubject = (variable: string) => {
+    onSubjectChange(subject + `{{${variable}}}`);
   };
 
   const getContentForTemplate = () => {
@@ -93,7 +98,10 @@ export const EmailComposer = ({
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="email-subject">Subject Line</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="email-subject">Subject Line</Label>
+            <DynamicVariableInsert onInsert={handleInsertVariableInSubject} />
+          </div>
           <Input
             id="email-subject"
             placeholder="Enter email subject... Use {{client_name}} for personalization"

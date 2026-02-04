@@ -53,7 +53,7 @@ export const DynamicVariableInsert = ({ onInsert }: DynamicVariableInsertProps) 
           Insert Variable
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-56 max-h-80 overflow-y-auto">
+      <DropdownMenuContent align="end" className="w-72 max-h-80 overflow-y-auto">
         {DYNAMIC_VARIABLES.map((group, idx) => (
           <div key={group.group}>
             {idx > 0 && <DropdownMenuSeparator />}
@@ -62,11 +62,12 @@ export const DynamicVariableInsert = ({ onInsert }: DynamicVariableInsertProps) 
               <DropdownMenuItem
                 key={variable.key}
                 onClick={() => onInsert(variable.key)}
+                className="flex justify-between"
               >
-                <code className="text-xs bg-muted px-1 rounded mr-2">
+                <span>{variable.label}</span>
+                <code className="text-xs bg-muted px-1.5 py-0.5 rounded ml-3">
                   {`{{${variable.key}}}`}
                 </code>
-                {variable.label}
               </DropdownMenuItem>
             ))}
           </div>
