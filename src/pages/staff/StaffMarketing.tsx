@@ -24,6 +24,14 @@ import {
 } from 'lucide-react';
 import { MarketingFilterBuilder, FilterCondition } from '@/components/staff/marketing/MarketingFilterBuilder';
 import { SaveSegmentDialog } from '@/components/staff/marketing/SaveSegmentDialog';
+import { ResizableColumn, useColumnWidths } from '@/components/ui/resizable-column';
+
+const COLUMN_CONFIG = [
+  { key: 'client', defaultWidth: 200 },
+  { key: 'contact', defaultWidth: 180 },
+  { key: 'credits', defaultWidth: 180 },
+  { key: 'pets', defaultWidth: 80 },
+];
 
 interface Pet {
   id: string;
@@ -65,6 +73,11 @@ const StaffMarketing = () => {
   const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  
+  const { widths, setWidth } = useColumnWidths({
+    columns: COLUMN_CONFIG,
+    storageKey: 'marketing-table-columns',
+  });
 
   // Fetch segments
   const { data: segments, isLoading: segmentsLoading } = useQuery({
@@ -520,25 +533,58 @@ const StaffMarketing = () => {
                 No clients match the current filters
               </div>
             ) : (
-              <div className="space-y-1">
+              <div className="space-y-1 overflow-x-auto">
                 {/* Header row */}
-                <div className="flex items-center gap-3 px-3 py-2 bg-muted/50 rounded-md font-medium text-sm">
+                <div className="flex items-center gap-3 px-3 py-2 bg-muted/50 rounded-md font-medium text-sm min-w-max">
                   <Checkbox
                     checked={allSelected}
                     onCheckedChange={handleSelectAll}
                   />
-                  <div className="w-8" /> {/* Expand icon space */}
-                  <div className="flex-1">Client</div>
-                  <div className="w-40">Contact</div>
-                  <div className="w-32">Credits</div>
-                  <div className="w-20 text-center">Pets</div>
+                  <div className="w-8 flex-shrink-0" /> {/* Expand icon space */}
+                  <ResizableColumn
+                    width={widths.client}
+                    onResize={(w) => setWidth('client', w)}
+                    isHeader
+                    minWidth={120}
+                    maxWidth={400}
+                  >
+                    Client
+                  </ResizableColumn>
+                  <ResizableColumn
+                    width={widths.contact}
+                    onResize={(w) => setWidth('contact', w)}
+                    isHeader
+                    minWidth={100}
+                    maxWidth={300}
+                  >
+                    Contact
+                  </ResizableColumn>
+                  <ResizableColumn
+                    width={widths.credits}
+                    onResize={(w) => setWidth('credits', w)}
+                    isHeader
+                    minWidth={120}
+                    maxWidth={300}
+                  >
+                    Credits
+                  </ResizableColumn>
+                  <ResizableColumn
+                    width={widths.pets}
+                    onResize={(w) => setWidth('pets', w)}
+                    isHeader
+                    minWidth={60}
+                    maxWidth={120}
+                    className="text-center"
+                  >
+                    Pets
+                  </ResizableColumn>
                 </div>
 
                 {/* Client rows */}
                 {filteredClients.map(client => (
                   <div key={client.id}>
                     <div 
-                      className="flex items-center gap-3 px-3 py-3 hover:bg-muted/30 rounded-md cursor-pointer"
+                      className="flex items-center gap-3 px-3 py-3 hover:bg-muted/30 rounded-md cursor-pointer min-w-max"
                       onClick={() => toggleExpanded(client.id)}
                     >
                       <Checkbox
@@ -546,21 +592,21 @@ const StaffMarketing = () => {
                         onCheckedChange={() => handleSelectClient(client.id)}
                         onClick={(e) => e.stopPropagation()}
                       />
-                      <div className="w-8">
+                      <div className="w-8 flex-shrink-0">
                         {client.pets.length > 0 && (
                           expandedClients.has(client.id) 
                             ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
                             : <ChevronRight className="h-4 w-4 text-muted-foreground" />
                         )}
                       </div>
-                      <div className="flex-1 font-medium">
+                      <div className="font-medium truncate" style={{ width: widths.client }}>
                         {client.firstName} {client.lastName}
                       </div>
-                      <div className="w-40 text-sm text-muted-foreground truncate">
+                      <div className="text-sm text-muted-foreground truncate" style={{ width: widths.contact }}>
                         {client.email || client.phone || 'No contact'}
                       </div>
-                      <div className="w-32">
-                        <div className="flex gap-1">
+                      <div style={{ width: widths.credits }}>
+                        <div className="flex gap-1 flex-wrap">
                           <Badge variant="outline" className="text-xs">
                             FD: {client.daycareCredits}
                           </Badge>
@@ -572,7 +618,7 @@ const StaffMarketing = () => {
                           </Badge>
                         </div>
                       </div>
-                      <div className="w-20 text-center">
+                      <div className="text-center" style={{ width: widths.pets }}>
                         <Badge variant="secondary">
                           <Dog className="h-3 w-3 mr-1" />
                           {client.pets.length}
