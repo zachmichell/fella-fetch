@@ -57,7 +57,7 @@ const PreviewBlock = ({ block }: { block: EmailBlock }) => {
   switch (block.type) {
     case 'heading':
       return (
-        <h2 className="text-2xl font-bold text-gray-900">
+        <h2 className="text-2xl font-bold text-foreground">
           {highlightVariables(block.content || '')}
         </h2>
       );
