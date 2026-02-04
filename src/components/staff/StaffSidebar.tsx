@@ -80,8 +80,8 @@ export function StaffSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
   const location = useLocation();
-  const { signOut, isAdmin, user } = useAuth();
-  const { currentStaff, isCodeAdmin, lock } = useStaffCode();
+  const { signOut, isAdmin } = useAuth();
+  const { currentStaff, isCodeAdmin, isSupervisorOrAbove, lock } = useStaffCode();
   const { unreadCount } = useUnreadMessages();
 
   const isActive = (path: string) => {
