@@ -443,6 +443,39 @@ export type Database = {
         }
         Relationships: []
       }
+      marketing_segments: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          filters: Json
+          id: string
+          is_preset: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          filters?: Json
+          id?: string
+          is_preset?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          filters?: Json
+          id?: string
+          is_preset?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pet_activity_logs: {
         Row: {
           action_category: string

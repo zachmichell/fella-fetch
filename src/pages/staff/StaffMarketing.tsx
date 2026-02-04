@@ -1,0 +1,597 @@
+import { useState, useMemo } from 'react';
+import { StaffLayout } from '@/components/staff/StaffLayout';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { differenceInDays, parseISO } from 'date-fns';
+import { 
+  Mail, 
+  MessageSquare, 
+  Filter, 
+  Users, 
+  Dog,
+  Plus,
+  Save,
+  ChevronDown,
+  ChevronRight,
+  Send,
+  Trash2
+} from 'lucide-react';
+import { MarketingFilterBuilder, FilterCondition } from '@/components/staff/marketing/MarketingFilterBuilder';
+import { SaveSegmentDialog } from '@/components/staff/marketing/SaveSegmentDialog';
+
+interface Pet {
+  id: string;
+  name: string;
+  breed: string | null;
+  lastVisitDate: string | null;
+  lastGroomDate: string | null;
+  daysSinceLastVisit: number | null;
+  daysSinceLastGroom: number | null;
+}
+
+interface ClientWithPets {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phone: string | null;
+  daycareCredits: number;
+  halfDaycareCredits: number;
+  boardingCredits: number;
+  pets: Pet[];
+}
+
+interface MarketingSegment {
+  id: string;
+  name: string;
+  description: string | null;
+  filters: FilterCondition[];
+  is_preset: boolean;
+}
+
+const StaffMarketing = () => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [filters, setFilters] = useState<FilterCondition[]>([]);
+  const [selectedClients, setSelectedClients] = useState<Set<string>>(new Set());
+  const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
+  const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+
+  // Fetch segments
+  const { data: segments, isLoading: segmentsLoading } = useQuery({
+    queryKey: ['marketing-segments'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('marketing_segments')
+        .select('*')
+        .order('is_preset', { ascending: false })
+        .order('name');
+      if (error) throw error;
+      return data.map(segment => ({
+        ...segment,
+        filters: (Array.isArray(segment.filters) ? segment.filters : []) as unknown as FilterCondition[],
+      })) as MarketingSegment[];
+    },
+  });
+
+  // Fetch all clients with pets and calculate metrics
+  const { data: clientsWithPets, isLoading: clientsLoading } = useQuery({
+    queryKey: ['marketing-clients'],
+    queryFn: async () => {
+      // Get all clients
+      const { data: clients, error: clientsError } = await supabase
+        .from('clients')
+        .select('*')
+        .order('last_name');
+      if (clientsError) throw clientsError;
+
+      // Get all pets
+      const { data: pets, error: petsError } = await supabase
+        .from('pets')
+        .select('*')
+        .eq('is_active', true);
+      if (petsError) throw petsError;
+
+      // Get last visits for each pet (most recent reservation)
+      const { data: lastVisits, error: visitsError } = await supabase
+        .from('reservations')
+        .select('pet_id, start_date, service_type')
+        .in('status', ['checked_out', 'confirmed', 'checked_in'])
+        .order('start_date', { ascending: false });
+      if (visitsError) throw visitsError;
+
+      const today = new Date();
+
+      // Map pets with their last visit/groom dates
+      const petsWithDates = pets.map(pet => {
+        const petVisits = lastVisits.filter(v => v.pet_id === pet.id);
+        const lastVisit = petVisits[0];
+        const lastGroom = petVisits.find(v => v.service_type === 'grooming');
+
+        const lastVisitDate = lastVisit?.start_date || null;
+        const lastGroomDate = lastGroom?.start_date || null;
+
+        return {
+          id: pet.id,
+          clientId: pet.client_id,
+          name: pet.name,
+          breed: pet.breed,
+          lastVisitDate,
+          lastGroomDate,
+          daysSinceLastVisit: lastVisitDate 
+            ? differenceInDays(today, parseISO(lastVisitDate)) 
+            : null,
+          daysSinceLastGroom: lastGroomDate 
+            ? differenceInDays(today, parseISO(lastGroomDate)) 
+            : null,
+        };
+      });
+
+      // Group by client
+      return clients.map(client => ({
+        id: client.id,
+        firstName: client.first_name,
+        lastName: client.last_name,
+        email: client.email,
+        phone: client.phone,
+        daycareCredits: client.daycare_credits,
+        halfDaycareCredits: client.half_daycare_credits,
+        boardingCredits: client.boarding_credits,
+        pets: petsWithDates.filter(p => p.clientId === client.id),
+      })) as ClientWithPets[];
+    },
+  });
+
+  // Apply filters to get filtered results
+  const filteredClients = useMemo(() => {
+    if (!clientsWithPets) return [];
+    if (filters.length === 0) return clientsWithPets;
+
+    return clientsWithPets.filter(client => {
+      return filters.every(filter => {
+        const { field, operator, value } = filter;
+
+        // Client-level filters
+        if (field === 'daycare_credits') {
+          return compareValue(client.daycareCredits, operator, value);
+        }
+        if (field === 'half_daycare_credits') {
+          return compareValue(client.halfDaycareCredits, operator, value);
+        }
+        if (field === 'boarding_credits') {
+          return compareValue(client.boardingCredits, operator, value);
+        }
+
+        // Pet-level filters (at least one pet must match)
+        if (field === 'days_since_last_visit') {
+          return client.pets.some(pet => 
+            pet.daysSinceLastVisit !== null && 
+            compareValue(pet.daysSinceLastVisit, operator, value)
+          );
+        }
+        if (field === 'days_since_last_groom') {
+          return client.pets.some(pet => 
+            pet.daysSinceLastGroom !== null && 
+            compareValue(pet.daysSinceLastGroom, operator, value)
+          );
+        }
+        if (field === 'never_visited') {
+          return client.pets.some(pet => pet.daysSinceLastVisit === null);
+        }
+        if (field === 'never_groomed') {
+          return client.pets.some(pet => pet.daysSinceLastGroom === null);
+        }
+
+        return true;
+      });
+    });
+  }, [clientsWithPets, filters]);
+
+  // Update selection when filtered results change
+  const selectedCount = selectedClients.size;
+  const allSelected = filteredClients.length > 0 && selectedClients.size === filteredClients.length;
+
+  const handleSelectAll = () => {
+    if (allSelected) {
+      setSelectedClients(new Set());
+    } else {
+      setSelectedClients(new Set(filteredClients.map(c => c.id)));
+    }
+  };
+
+  const handleSelectClient = (clientId: string) => {
+    const newSelected = new Set(selectedClients);
+    if (newSelected.has(clientId)) {
+      newSelected.delete(clientId);
+    } else {
+      newSelected.add(clientId);
+    }
+    setSelectedClients(newSelected);
+  };
+
+  const toggleExpanded = (clientId: string) => {
+    const newExpanded = new Set(expandedClients);
+    if (newExpanded.has(clientId)) {
+      newExpanded.delete(clientId);
+    } else {
+      newExpanded.add(clientId);
+    }
+    setExpandedClients(newExpanded);
+  };
+
+  const handleApplySegment = (segment: MarketingSegment) => {
+    setFilters(segment.filters);
+    setActiveSegmentId(segment.id);
+    setSelectedClients(new Set());
+  };
+
+  const handleClearFilters = () => {
+    setFilters([]);
+    setActiveSegmentId(null);
+    setSelectedClients(new Set());
+  };
+
+  const handleDeleteSegment = async (segmentId: string) => {
+    const { error } = await supabase
+      .from('marketing_segments')
+      .delete()
+      .eq('id', segmentId);
+
+    if (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete segment',
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Deleted',
+        description: 'Segment deleted successfully',
+      });
+      queryClient.invalidateQueries({ queryKey: ['marketing-segments'] });
+      if (activeSegmentId === segmentId) {
+        handleClearFilters();
+      }
+    }
+  };
+
+  const handleSendWebhook = async (channel: 'sms' | 'email') => {
+    if (selectedClients.size === 0) {
+      toast({
+        title: 'No recipients selected',
+        description: 'Please select at least one client to send to',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      const selectedData = filteredClients.filter(c => selectedClients.has(c.id));
+      const activeSegment = segments?.find(s => s.id === activeSegmentId);
+
+      const payload = {
+        channel,
+        segmentName: activeSegment?.name || 'Custom Filter',
+        segmentDescription: activeSegment?.description,
+        filters,
+        sentAt: new Date().toISOString(),
+        sentBy: 'admin',
+        recipients: selectedData.map(client => ({
+          clientId: client.id,
+          clientName: `${client.firstName} ${client.lastName}`,
+          clientEmail: client.email,
+          clientPhone: client.phone,
+          pets: client.pets.map(pet => ({
+            petId: pet.id,
+            petName: pet.name,
+            petBreed: pet.breed,
+            daysSinceLastVisit: pet.daysSinceLastVisit,
+            daysSinceLastGroom: pet.daysSinceLastGroom,
+            lastVisitDate: pet.lastVisitDate,
+            lastGroomDate: pet.lastGroomDate,
+          })),
+        })),
+      };
+
+      const { error } = await supabase.functions.invoke('marketing-webhook', {
+        body: payload,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Sent!',
+        description: `${channel.toUpperCase()} webhook sent for ${selectedData.length} clients`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to send webhook',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const isLoading = segmentsLoading || clientsLoading;
+
+  return (
+    <StaffLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold">Marketing</h1>
+          <p className="text-muted-foreground">
+            Segment clients and pets for targeted outreach
+          </p>
+        </div>
+
+        {/* Segment Quick Buttons */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Filter className="h-5 w-5" />
+              Saved Segments
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {segmentsLoading ? (
+              <div className="flex gap-2 flex-wrap">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} className="h-9 w-32" />
+                ))}
+              </div>
+            ) : (
+              <div className="flex gap-2 flex-wrap">
+                {segments?.map(segment => (
+                  <div key={segment.id} className="flex items-center gap-1">
+                    <Button
+                      variant={activeSegmentId === segment.id ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => handleApplySegment(segment)}
+                    >
+                      {segment.name}
+                      {segment.is_preset && (
+                        <Badge variant="secondary" className="ml-2 text-xs">
+                          Preset
+                        </Badge>
+                      )}
+                    </Button>
+                    {!segment.is_preset && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                        onClick={() => handleDeleteSegment(segment.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                {filters.length > 0 && (
+                  <Button variant="ghost" size="sm" onClick={handleClearFilters}>
+                    Clear Filters
+                  </Button>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Filter Builder */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Plus className="h-5 w-5" />
+                Build Custom Filter
+              </CardTitle>
+              {filters.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSaveDialogOpen(true)}
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Segment
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <MarketingFilterBuilder 
+              filters={filters} 
+              onFiltersChange={(newFilters) => {
+                setFilters(newFilters);
+                setActiveSegmentId(null);
+              }} 
+            />
+          </CardContent>
+        </Card>
+
+        {/* Results & Actions */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Results
+                  <Badge variant="secondary">
+                    {filteredClients.length} clients
+                  </Badge>
+                  {selectedCount > 0 && (
+                    <Badge variant="default">
+                      {selectedCount} selected
+                    </Badge>
+                  )}
+                </CardTitle>
+                <CardDescription>
+                  Select clients to include in your outreach
+                </CardDescription>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  disabled={selectedCount === 0 || isSending}
+                  onClick={() => handleSendWebhook('email')}
+                >
+                  <Mail className="h-4 w-4 mr-2" />
+                  Send Email
+                </Button>
+                <Button
+                  disabled={selectedCount === 0 || isSending}
+                  onClick={() => handleSendWebhook('sms')}
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Send SMS
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            ) : filteredClients.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No clients match the current filters
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {/* Header row */}
+                <div className="flex items-center gap-3 px-3 py-2 bg-muted/50 rounded-md font-medium text-sm">
+                  <Checkbox
+                    checked={allSelected}
+                    onCheckedChange={handleSelectAll}
+                  />
+                  <div className="w-8" /> {/* Expand icon space */}
+                  <div className="flex-1">Client</div>
+                  <div className="w-40">Contact</div>
+                  <div className="w-32">Credits</div>
+                  <div className="w-20 text-center">Pets</div>
+                </div>
+
+                {/* Client rows */}
+                {filteredClients.map(client => (
+                  <div key={client.id}>
+                    <div 
+                      className="flex items-center gap-3 px-3 py-3 hover:bg-muted/30 rounded-md cursor-pointer"
+                      onClick={() => toggleExpanded(client.id)}
+                    >
+                      <Checkbox
+                        checked={selectedClients.has(client.id)}
+                        onCheckedChange={() => handleSelectClient(client.id)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <div className="w-8">
+                        {client.pets.length > 0 && (
+                          expandedClients.has(client.id) 
+                            ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                            : <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="flex-1 font-medium">
+                        {client.firstName} {client.lastName}
+                      </div>
+                      <div className="w-40 text-sm text-muted-foreground truncate">
+                        {client.email || client.phone || 'No contact'}
+                      </div>
+                      <div className="w-32">
+                        <div className="flex gap-1">
+                          <Badge variant="outline" className="text-xs">
+                            FD: {client.daycareCredits}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            BD: {client.boardingCredits}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="w-20 text-center">
+                        <Badge variant="secondary">
+                          <Dog className="h-3 w-3 mr-1" />
+                          {client.pets.length}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    {/* Expanded pet details */}
+                    {expandedClients.has(client.id) && client.pets.length > 0 && (
+                      <div className="ml-14 mb-2 space-y-1">
+                        {client.pets.map(pet => (
+                          <div 
+                            key={pet.id}
+                            className="flex items-center gap-3 px-3 py-2 bg-muted/20 rounded text-sm"
+                          >
+                            <Dog className="h-4 w-4 text-muted-foreground" />
+                            <div className="flex-1">
+                              <span className="font-medium">{pet.name}</span>
+                              {pet.breed && (
+                                <span className="text-muted-foreground ml-2">
+                                  ({pet.breed})
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex gap-3 text-xs text-muted-foreground">
+                              <span>
+                                Last visit: {pet.daysSinceLastVisit !== null 
+                                  ? `${pet.daysSinceLastVisit} days ago` 
+                                  : 'Never'}
+                              </span>
+                              <span>
+                                Last groom: {pet.daysSinceLastGroom !== null 
+                                  ? `${pet.daysSinceLastGroom} days ago` 
+                                  : 'Never'}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <SaveSegmentDialog
+          open={saveDialogOpen}
+          onOpenChange={setSaveDialogOpen}
+          filters={filters}
+          onSaved={() => {
+            queryClient.invalidateQueries({ queryKey: ['marketing-segments'] });
+          }}
+        />
+      </div>
+    </StaffLayout>
+  );
+};
+
+// Helper function to compare values based on operator
+function compareValue(actual: number, operator: string, expected: number): boolean {
+  switch (operator) {
+    case 'eq': return actual === expected;
+    case 'neq': return actual !== expected;
+    case 'gt': return actual > expected;
+    case 'gte': return actual >= expected;
+    case 'lt': return actual < expected;
+    case 'lte': return actual <= expected;
+    default: return true;
+  }
+}
+
+export default StaffMarketing;

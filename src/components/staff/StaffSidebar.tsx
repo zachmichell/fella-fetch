@@ -17,7 +17,8 @@ import {
   BedDouble,
   Scissors,
   MessageCircle,
-  Repeat
+  Repeat,
+  Megaphone
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
@@ -58,6 +59,7 @@ const operationsItems = [
 ];
 
 const adminItems = [
+  { title: 'Marketing', url: '/staff/marketing', icon: Megaphone },
   { title: 'User Management', url: '/staff/users', icon: UserCog },
   { title: 'Suite Management', url: '/staff/suites', icon: BedDouble },
   { title: 'Groomer Management', url: '/staff/groomers', icon: Scissors },
