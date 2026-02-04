@@ -208,8 +208,8 @@ export function StaffSidebar() {
         {!collapsed && currentStaff && (
           <div className="mb-3 px-2">
             <p className="text-sm font-medium truncate">{currentStaff.name}</p>
-            <p className="text-xs text-muted-foreground">
-              {isCodeAdmin ? 'Admin' : 'Staff'}
+            <p className="text-xs text-muted-foreground capitalize">
+              {currentStaff.role}
             </p>
           </div>
         )}

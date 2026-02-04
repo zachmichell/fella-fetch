@@ -152,7 +152,9 @@ export function StaffCodeProvider({ children }: { children: ReactNode }) {
       value={{
         currentStaff,
         isLocked,
+        staffRole,
         isCodeAdmin,
+        isSupervisorOrAbove,
         unlockWithCode,
         lock,
         resetInactivityTimer,
