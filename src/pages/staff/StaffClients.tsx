@@ -43,6 +43,7 @@ import {
   Settings2
 } from 'lucide-react';
 import { ClientServicePermissions } from '@/components/staff/ClientServicePermissions';
+import { StaffNotesSection } from '@/components/staff/StaffNotesSection';
 import { format } from 'date-fns';
 
 interface Pet {
@@ -495,6 +496,13 @@ const StaffClients = () => {
                         </CardContent>
                       </Card>
                     )}
+
+                    {/* Staff Notes */}
+                    <StaffNotesSection 
+                      entityType="client" 
+                      entityId={selectedClient.id} 
+                      entityName={`${selectedClient.first_name} ${selectedClient.last_name}`} 
+                    />
 
                     {/* Credits */}
                     <Card>

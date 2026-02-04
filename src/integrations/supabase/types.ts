@@ -99,6 +99,47 @@ export type Database = {
           },
         ]
       }
+      client_notes: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string
+          id: string
+          note: string
+          source_id: string | null
+          source_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          note: string
+          source_id?: string | null
+          source_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          note?: string
+          source_id?: string | null
+          source_type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_notes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_notifications: {
         Row: {
           client_id: string
@@ -720,6 +761,47 @@ export type Database = {
           },
         ]
       }
+      pet_notes: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          note: string
+          pet_id: string
+          source_id: string | null
+          source_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          note: string
+          pet_id: string
+          source_id?: string | null
+          source_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          note?: string
+          pet_id?: string
+          source_id?: string | null
+          source_type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pet_notes_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pet_traits: {
         Row: {
           color_key: string
@@ -760,6 +842,7 @@ export type Database = {
       }
       pets: {
         Row: {
+          allergies: string | null
           behavior_notes: string | null
           breed: string | null
           client_id: string
@@ -788,6 +871,7 @@ export type Database = {
           weight: number | null
         }
         Insert: {
+          allergies?: string | null
           behavior_notes?: string | null
           breed?: string | null
           client_id: string
@@ -816,6 +900,7 @@ export type Database = {
           weight?: number | null
         }
         Update: {
+          allergies?: string | null
           behavior_notes?: string | null
           breed?: string | null
           client_id?: string

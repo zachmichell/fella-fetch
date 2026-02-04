@@ -57,6 +57,7 @@ import { PetTraitsSection } from '@/components/staff/PetTraitsSection';
 import { StaffVaccinationEditor } from '@/components/staff/StaffVaccinationEditor';
 import { StaffPetCareLogger } from '@/components/staff/StaffPetCareLogger';
 import { PetGroomingPreferencesEditor } from '@/components/staff/grooming/PetGroomingPreferencesEditor';
+import { StaffNotesSection } from '@/components/staff/StaffNotesSection';
 interface Pet {
   id: string;
   name: string;
@@ -75,6 +76,7 @@ interface Pet {
   behavior_notes: string | null;
   feeding_instructions: string | null;
   special_needs: string | null;
+  allergies: string | null;
   photo_url: string | null;
   is_active: boolean | null;
   created_at: string;
@@ -717,6 +719,14 @@ const StaffPets = () => {
                             <p className="font-medium">{selectedPet.spayed_neutered ? 'Yes' : 'No'}</p>
                           </div>
                         </div>
+                        {selectedPet.allergies && (
+                          <div className="mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                            <p className="text-sm font-medium text-destructive flex items-center gap-1">
+                              <AlertCircle className="h-4 w-4" /> Allergies
+                            </p>
+                            <p className="text-sm mt-1">{selectedPet.allergies}</p>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
 
@@ -819,6 +829,13 @@ const StaffPets = () => {
                         </div>
                       </CardContent>
                     </Card>
+
+                    {/* Staff Notes */}
+                    <StaffNotesSection 
+                      entityType="pet" 
+                      entityId={selectedPet.id} 
+                      entityName={selectedPet.name} 
+                    />
 
                     {/* Activity Log */}
                     <Card>
