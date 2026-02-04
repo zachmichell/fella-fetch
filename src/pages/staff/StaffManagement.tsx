@@ -32,20 +32,41 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Pencil, Trash2, Loader2, Shield, User, Eye, EyeOff } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Shield, User, Eye, EyeOff, Users } from 'lucide-react';
 import { useStaffCode } from '@/contexts/StaffCodeContext';
 import { useNavigate } from 'react-router-dom';
+
+type StaffCodeRole = 'basic' | 'supervisor' | 'admin';
 
 interface StaffCode {
   id: string;
   name: string;
   code: string;
-  is_admin: boolean;
+  role: StaffCodeRole;
   is_active: boolean;
   created_at: string;
 }
+
+const roleLabels: Record<StaffCodeRole, string> = {
+  basic: 'Basic',
+  supervisor: 'Supervisor',
+  admin: 'Admin',
+};
+
+const roleDescriptions: Record<StaffCodeRole, string> = {
+  basic: 'Main menu only',
+  supervisor: 'Main + Operations',
+  admin: 'Full access',
+};
 
 const StaffManagementContent = () => {
   const { toast } = useToast();
@@ -61,7 +82,7 @@ const StaffManagementContent = () => {
   const [formData, setFormData] = useState({
     name: '',
     code: '',
-    is_admin: false,
+    role: 'basic' as StaffCodeRole,
     is_active: true,
   });
 
@@ -103,7 +124,7 @@ const StaffManagementContent = () => {
       setFormData({
         name: staff.name,
         code: staff.code,
-        is_admin: staff.is_admin,
+        role: staff.role,
         is_active: staff.is_active,
       });
     } else {
@@ -111,7 +132,7 @@ const StaffManagementContent = () => {
       setFormData({
         name: '',
         code: '',
-        is_admin: false,
+        role: 'basic',
         is_active: true,
       });
     }
@@ -144,7 +165,7 @@ const StaffManagementContent = () => {
           .update({
             name: formData.name,
             code: formData.code,
-            is_admin: formData.is_admin,
+            role: formData.role,
             is_active: formData.is_active,
           })
           .eq('id', editingStaff.id);
@@ -157,7 +178,7 @@ const StaffManagementContent = () => {
           .insert([{
             name: formData.name,
             code: formData.code,
-            is_admin: formData.is_admin,
+            role: formData.role,
             is_active: formData.is_active,
           }]);
 
@@ -213,6 +234,32 @@ const StaffManagementContent = () => {
 
   const toggleShowCode = (id: string) => {
     setShowCodes(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const getRoleBadge = (role: StaffCodeRole) => {
+    switch (role) {
+      case 'admin':
+        return (
+          <Badge className="gap-1">
+            <Shield className="h-3 w-3" />
+            Admin
+          </Badge>
+        );
+      case 'supervisor':
+        return (
+          <Badge variant="secondary" className="gap-1">
+            <Users className="h-3 w-3" />
+            Supervisor
+          </Badge>
+        );
+      default:
+        return (
+          <Badge variant="outline">
+            <User className="h-3 w-3 mr-1" />
+            Basic
+          </Badge>
+        );
+    }
   };
 
   if (!isCodeAdmin) {
@@ -283,16 +330,7 @@ const StaffManagementContent = () => {
                         </Button>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      {staff.is_admin ? (
-                        <Badge className="gap-1">
-                          <Shield className="h-3 w-3" />
-                          Admin
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary">Staff</Badge>
-                      )}
-                    </TableCell>
+                    <TableCell>{getRoleBadge(staff.role)}</TableCell>
                     <TableCell>
                       <Badge variant={staff.is_active ? 'default' : 'outline'}>
                         {staff.is_active ? 'Active' : 'Inactive'}
@@ -360,17 +398,26 @@ const StaffManagementContent = () => {
                 className="font-mono text-lg tracking-widest"
               />
             </div>
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Admin Access</Label>
-                <p className="text-sm text-muted-foreground">
-                  Can access settings and manage other staff
-                </p>
-              </div>
-              <Switch
-                checked={formData.is_admin}
-                onCheckedChange={(checked) => setFormData({ ...formData, is_admin: checked })}
-              />
+            <div className="space-y-2">
+              <Label>Access Level</Label>
+              <Select
+                value={formData.role}
+                onValueChange={(value: StaffCodeRole) => setFormData({ ...formData, role: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(['basic', 'supervisor', 'admin'] as StaffCodeRole[]).map((role) => (
+                    <SelectItem key={role} value={role}>
+                      <div className="flex flex-col">
+                        <span>{roleLabels[role]}</span>
+                        <span className="text-xs text-muted-foreground">{roleDescriptions[role]}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">

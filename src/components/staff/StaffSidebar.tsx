@@ -80,8 +80,8 @@ export function StaffSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
   const location = useLocation();
-  const { signOut, isAdmin, user } = useAuth();
-  const { currentStaff, isCodeAdmin, lock } = useStaffCode();
+  const { signOut, isAdmin } = useAuth();
+  const { currentStaff, isCodeAdmin, isSupervisorOrAbove, lock } = useStaffCode();
   const { unreadCount } = useUnreadMessages();
 
   const isActive = (path: string) => {
@@ -147,35 +147,37 @@ export function StaffSidebar() {
 
         <Separator className="my-2" />
 
-        {/* Operations */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Operations</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {operationsItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink to={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-              {/* Admin-only operations items - only show if staff code is admin */}
-              {isCodeAdmin && adminOnlyOperationsItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink to={item.url}>
-                      <item.icon className="h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Operations - Supervisor and Admin only */}
+        {isSupervisorOrAbove && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Operations</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {operationsItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                      <NavLink to={item.url}>
+                        <item.icon className="h-4 w-4" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+                {/* Admin-only operations items - only show if staff code is admin */}
+                {isCodeAdmin && adminOnlyOperationsItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                      <NavLink to={item.url}>
+                        <item.icon className="h-4 w-4" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {/* Admin Only - requires both isAdmin (auth role) AND isCodeAdmin (staff code) */}
         {isAdmin && isCodeAdmin && (
@@ -206,8 +208,8 @@ export function StaffSidebar() {
         {!collapsed && currentStaff && (
           <div className="mb-3 px-2">
             <p className="text-sm font-medium truncate">{currentStaff.name}</p>
-            <p className="text-xs text-muted-foreground">
-              {isCodeAdmin ? 'Admin' : 'Staff'}
+            <p className="text-xs text-muted-foreground capitalize">
+              {currentStaff.role}
             </p>
           </div>
         )}

@@ -2,18 +2,22 @@ import { createContext, useContext, useState, useEffect, useCallback, ReactNode,
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
+type StaffCodeRole = 'basic' | 'supervisor' | 'admin';
+
 interface StaffCode {
   id: string;
   name: string;
   code: string;
-  is_admin: boolean;
+  role: StaffCodeRole;
   is_active: boolean;
 }
 
 interface StaffCodeContextType {
   currentStaff: StaffCode | null;
   isLocked: boolean;
+  staffRole: StaffCodeRole | null;
   isCodeAdmin: boolean;
+  isSupervisorOrAbove: boolean;
   unlockWithCode: (code: string) => Promise<boolean>;
   lock: () => void;
   resetInactivityTimer: () => void;
@@ -31,7 +35,9 @@ export function StaffCodeProvider({ children }: { children: ReactNode }) {
   const [initialized, setInitialized] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const isCodeAdmin = currentStaff?.is_admin ?? false;
+  const staffRole = currentStaff?.role ?? null;
+  const isCodeAdmin = staffRole === 'admin';
+  const isSupervisorOrAbove = staffRole === 'admin' || staffRole === 'supervisor';
 
   // Restore session from sessionStorage on mount
   useEffect(() => {
@@ -146,7 +152,9 @@ export function StaffCodeProvider({ children }: { children: ReactNode }) {
       value={{
         currentStaff,
         isLocked,
+        staffRole,
         isCodeAdmin,
+        isSupervisorOrAbove,
         unlockWithCode,
         lock,
         resetInactivityTimer,
