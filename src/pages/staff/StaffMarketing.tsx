@@ -513,41 +513,22 @@ const StaffMarketing = () => {
         {/* Results & Actions */}
         <Card>
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  Results
-                  <Badge variant="secondary">
-                    {filteredClients.length} clients
+            <div>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Results
+                <Badge variant="secondary">
+                  {filteredClients.length} clients
+                </Badge>
+                {selectedCount > 0 && (
+                  <Badge variant="default">
+                    {selectedCount} selected
                   </Badge>
-                  {selectedCount > 0 && (
-                    <Badge variant="default">
-                      {selectedCount} selected
-                    </Badge>
-                  )}
-                </CardTitle>
-                <CardDescription>
-                  Select clients to include in your outreach
-                </CardDescription>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  disabled={selectedCount === 0 || isSending}
-                  onClick={() => handleSendWebhook('email')}
-                >
-                  <Mail className="h-4 w-4 mr-2" />
-                  Send Email
-                </Button>
-                <Button
-                  disabled={selectedCount === 0 || isSending}
-                  onClick={() => handleSendWebhook('sms')}
-                >
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Send SMS
-                </Button>
-              </div>
+                )}
+              </CardTitle>
+              <CardDescription>
+                Select clients to include in your outreach
+              </CardDescription>
             </div>
           </CardHeader>
           <CardContent>
