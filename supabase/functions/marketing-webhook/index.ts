@@ -26,6 +26,9 @@ interface MarketingWebhookPayload {
   segmentName: string;
   segmentDescription?: string;
   filters: any[];
+  message?: string; // SMS message content
+  emailSubject?: string;
+  emailContent?: string; // JSON stringified email blocks
   recipients: MarketingRecipient[];
   sentAt: string;
   sentBy: string;
