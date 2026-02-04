@@ -35,26 +35,10 @@ export function StaffCodeProvider({ children }: { children: ReactNode }) {
     setCurrentStaff(null);
   }, []);
 
+  // Placeholder for external reset calls (activity listeners handle this internally)
   const resetInactivityTimer = useCallback(() => {
-    setInactivityTimer(prev => {
-      if (prev) {
-        clearTimeout(prev);
-      }
-      return null;
-    });
+    // No-op: timer is managed internally by the activity listener effect
   }, []);
-
-  // Start timer in a separate effect to avoid dependency issues
-  useEffect(() => {
-    if (!isLocked && currentStaff) {
-      const timer = setTimeout(() => {
-        lock();
-      }, INACTIVITY_TIMEOUT);
-      setInactivityTimer(timer);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [isLocked, currentStaff, lock]);
 
   const unlockWithCode = useCallback(async (code: string): Promise<boolean> => {
     try {
