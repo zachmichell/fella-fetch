@@ -24,6 +24,14 @@ import {
 } from 'lucide-react';
 import { MarketingFilterBuilder, FilterCondition } from '@/components/staff/marketing/MarketingFilterBuilder';
 import { SaveSegmentDialog } from '@/components/staff/marketing/SaveSegmentDialog';
+import { ResizableColumn, useColumnWidths } from '@/components/ui/resizable-column';
+
+const COLUMN_CONFIG = [
+  { key: 'client', defaultWidth: 200 },
+  { key: 'contact', defaultWidth: 180 },
+  { key: 'credits', defaultWidth: 180 },
+  { key: 'pets', defaultWidth: 80 },
+];
 
 interface Pet {
   id: string;
