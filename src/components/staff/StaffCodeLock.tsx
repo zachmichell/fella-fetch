@@ -42,6 +42,14 @@ export function StaffCodeLock() {
     setError(false);
   }, []);
 
+  // Clear code whenever lock screen appears
+  useEffect(() => {
+    if (isLocked) {
+      setCode('');
+      setError(false);
+    }
+  }, [isLocked]);
+
   if (!isLocked) return null;
 
   return (
