@@ -810,7 +810,7 @@ export function ControlCenterTable({
                   </TableCell>
 
                   {/* Start Column */}
-                  <TableCell>
+                  <TableCell style={{ width: widths.start }} className="overflow-hidden">
                     {(() => {
                       const parsedTimes = parseTimesFromNotes(reservation.notes);
                       return (
