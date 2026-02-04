@@ -292,8 +292,16 @@ export const DailySummaryTable = () => {
             </TableHeader>
             <TableBody>
               {/* Summary Row */}
-              <TableRow className="font-medium bg-muted/30">
-                <TableCell>All Services</TableCell>
+              <TableRow 
+                className="font-medium bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => setDetailsDialogOpen(true)}
+              >
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    All Services
+                    <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                  </div>
+                </TableCell>
                 <TableCell className="text-center">
                   <span className="inline-flex items-center justify-center h-7 min-w-[28px] px-1 rounded-full bg-green-100 text-green-700 font-semibold text-sm">
                     {loading ? '-' : summary.arriving}
