@@ -822,7 +822,7 @@ export function ControlCenterTable({
                   </TableCell>
 
                   {/* End Column */}
-                  <TableCell>
+                  <TableCell style={{ width: widths.end }} className="overflow-hidden">
                     {(() => {
                       const parsedTimes = parseTimesFromNotes(reservation.notes);
                       const endDate = reservation.end_date || reservation.start_date;
