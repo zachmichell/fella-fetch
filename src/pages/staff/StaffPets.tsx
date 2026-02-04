@@ -719,6 +719,14 @@ const StaffPets = () => {
                             <p className="font-medium">{selectedPet.spayed_neutered ? 'Yes' : 'No'}</p>
                           </div>
                         </div>
+                        {selectedPet.allergies && (
+                          <div className="mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                            <p className="text-sm font-medium text-destructive flex items-center gap-1">
+                              <AlertCircle className="h-4 w-4" /> Allergies
+                            </p>
+                            <p className="text-sm mt-1">{selectedPet.allergies}</p>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
 
