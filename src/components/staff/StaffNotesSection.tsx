@@ -161,12 +161,19 @@ export function StaffNotesSection({ entityType, entityId, entityName }: StaffNot
 
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from(tableName)
-        .update({ note: noteText.trim() })
-        .eq('id', selectedNote.id);
-
-      if (error) throw error;
+      if (entityType === 'pet') {
+        const { error } = await supabase
+          .from('pet_notes')
+          .update({ note: noteText.trim() })
+          .eq('id', selectedNote.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('client_notes')
+          .update({ note: noteText.trim() })
+          .eq('id', selectedNote.id);
+        if (error) throw error;
+      }
 
       toast({ title: 'Note updated successfully' });
       setNoteText('');
