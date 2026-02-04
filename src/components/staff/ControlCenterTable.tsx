@@ -571,7 +571,7 @@ export function ControlCenterTable({
               {filteredReservations.map((reservation) => (
                 <TableRow key={reservation.id} className="hover:bg-muted/30">
                   {/* Actions Column */}
-                  <TableCell>
+                  <TableCell style={{ width: widths.actions }} className="overflow-hidden">
                     <div className="flex items-center gap-1">
                       {reservation.status === 'pending' && (
                         <Button
