@@ -430,7 +430,7 @@ export function QuickCheckInDialog({ open, onOpenChange, onSuccess }: QuickCheck
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto flex flex-col">
           <DialogHeader>
             <DialogTitle>Quick Check In</DialogTitle>
           </DialogHeader>

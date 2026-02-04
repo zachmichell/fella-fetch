@@ -637,7 +637,7 @@ const StaffPets = () => {
 
         {/* Pet Detail Dialog */}
         <Dialog open={!!selectedPet} onOpenChange={(open) => !open && setSelectedPet(null)}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto flex flex-col">
             {selectedPet && (
               <>
                 <DialogHeader>
