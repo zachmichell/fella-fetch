@@ -27,7 +27,6 @@ export function StaffCodeProvider({ children }: { children: ReactNode }) {
   const { isStaffOrAdmin } = useAuth();
   const [currentStaff, setCurrentStaff] = useState<StaffCode | null>(null);
   const [isLocked, setIsLocked] = useState(true);
-  const [inactivityTimer, setInactivityTimer] = useState<NodeJS.Timeout | null>(null);
 
   const isCodeAdmin = currentStaff?.is_admin ?? false;
 
