@@ -437,18 +437,134 @@ export function ControlCenterTable({
           <p>No reservations found</p>
         </div>
       ) : (
-        <div className="border rounded-lg overflow-hidden">
-          <Table>
+        <div className="border rounded-lg overflow-x-auto">
+          <Table className="table-fixed">
             <TableHeader>
               <TableRow className="bg-muted/50">
-                <TableHead className="w-[140px]">Actions</TableHead>
-                <TableHead>Animal</TableHead>
-                <TableHead>Owner</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Lodging</TableHead>
-                <TableHead>Services</TableHead>
-                <TableHead>Start</TableHead>
-                <TableHead>End</TableHead>
+                <TableHead style={{ width: widths.actions }}>
+                  <ResizableColumn
+                    width={widths.actions}
+                    onResize={(w) => setWidth('actions', w)}
+                    isHeader
+                    minWidth={100}
+                    maxWidth={200}
+                  >
+                    Actions
+                  </ResizableColumn>
+                </TableHead>
+                <TableHead style={{ width: widths.animal }}>
+                  <ResizableColumn
+                    width={widths.animal}
+                    onResize={(w) => setWidth('animal', w)}
+                    isHeader
+                    minWidth={120}
+                    maxWidth={300}
+                  >
+                    <button
+                      onClick={() => handleSort('pet_name')}
+                      className="flex items-center hover:text-foreground transition-colors"
+                    >
+                      Animal
+                      {getSortIcon('pet_name')}
+                    </button>
+                  </ResizableColumn>
+                </TableHead>
+                <TableHead style={{ width: widths.owner }}>
+                  <ResizableColumn
+                    width={widths.owner}
+                    onResize={(w) => setWidth('owner', w)}
+                    isHeader
+                    minWidth={100}
+                    maxWidth={250}
+                  >
+                    <button
+                      onClick={() => handleSort('client_name')}
+                      className="flex items-center hover:text-foreground transition-colors"
+                    >
+                      Owner
+                      {getSortIcon('client_name')}
+                    </button>
+                  </ResizableColumn>
+                </TableHead>
+                <TableHead style={{ width: widths.type }}>
+                  <ResizableColumn
+                    width={widths.type}
+                    onResize={(w) => setWidth('type', w)}
+                    isHeader
+                    minWidth={100}
+                    maxWidth={200}
+                  >
+                    <button
+                      onClick={() => handleSort('service_type')}
+                      className="flex items-center hover:text-foreground transition-colors"
+                    >
+                      Type
+                      {getSortIcon('service_type')}
+                    </button>
+                  </ResizableColumn>
+                </TableHead>
+                <TableHead style={{ width: widths.lodging }}>
+                  <ResizableColumn
+                    width={widths.lodging}
+                    onResize={(w) => setWidth('lodging', w)}
+                    isHeader
+                    minWidth={80}
+                    maxWidth={180}
+                  >
+                    <button
+                      onClick={() => handleSort('lodging')}
+                      className="flex items-center hover:text-foreground transition-colors"
+                    >
+                      Lodging
+                      {getSortIcon('lodging')}
+                    </button>
+                  </ResizableColumn>
+                </TableHead>
+                <TableHead style={{ width: widths.services }}>
+                  <ResizableColumn
+                    width={widths.services}
+                    onResize={(w) => setWidth('services', w)}
+                    isHeader
+                    minWidth={100}
+                    maxWidth={250}
+                  >
+                    Services
+                  </ResizableColumn>
+                </TableHead>
+                <TableHead style={{ width: widths.start }}>
+                  <ResizableColumn
+                    width={widths.start}
+                    onResize={(w) => setWidth('start', w)}
+                    isHeader
+                    minWidth={100}
+                    maxWidth={200}
+                  >
+                    <button
+                      onClick={() => handleSort('start_date')}
+                      className="flex items-center hover:text-foreground transition-colors"
+                    >
+                      Start
+                      {getSortIcon('start_date')}
+                    </button>
+                  </ResizableColumn>
+                </TableHead>
+                <TableHead style={{ width: widths.end }}>
+                  <ResizableColumn
+                    width={widths.end}
+                    onResize={(w) => setWidth('end', w)}
+                    isHeader
+                    minWidth={100}
+                    maxWidth={200}
+                  >
+                    <button
+                      onClick={() => handleSort('end_date')}
+                      className="flex items-center hover:text-foreground transition-colors"
+                    >
+                      End
+                      {getSortIcon('end_date')}
+                    </button>
+                  </ResizableColumn>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
