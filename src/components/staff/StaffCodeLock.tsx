@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useStaffCode } from '@/contexts/StaffCodeContext';
 import { Button } from '@/components/ui/button';
 import { Dog, Delete, Lock } from 'lucide-react';
@@ -41,6 +41,14 @@ export function StaffCodeLock() {
     setCode('');
     setError(false);
   }, []);
+
+  // Clear code whenever lock screen appears
+  useEffect(() => {
+    if (isLocked) {
+      setCode('');
+      setError(false);
+    }
+  }, [isLocked]);
 
   if (!isLocked) return null;
 
