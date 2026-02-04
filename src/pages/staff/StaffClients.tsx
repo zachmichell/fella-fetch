@@ -39,8 +39,10 @@ import {
   AlertCircle,
   Calendar,
   CreditCard,
-  Pencil
+  Pencil,
+  Settings2
 } from 'lucide-react';
+import { ClientServicePermissions } from '@/components/staff/ClientServicePermissions';
 import { format } from 'date-fns';
 
 interface Pet {
