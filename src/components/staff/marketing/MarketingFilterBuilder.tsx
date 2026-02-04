@@ -6,23 +6,27 @@ import { Plus, X } from 'lucide-react';
 export interface FilterCondition {
   field: string;
   operator: string;
-  value: number;
+  value: number | string;
 }
 
 interface FilterOption {
   value: string;
   label: string;
-  category: 'inactivity' | 'credits' | 'special';
+  category: 'inactivity' | 'credits' | 'special' | 'pet';
+  type: 'number' | 'string' | 'boolean';
 }
 
 const FILTER_FIELDS: FilterOption[] = [
-  { value: 'days_since_last_visit', label: 'Days since last visit', category: 'inactivity' },
-  { value: 'days_since_last_groom', label: 'Days since last groom', category: 'inactivity' },
-  { value: 'never_visited', label: 'Never visited', category: 'special' },
-  { value: 'never_groomed', label: 'Never groomed', category: 'special' },
-  { value: 'daycare_credits', label: 'Daycare credits', category: 'credits' },
-  { value: 'half_daycare_credits', label: 'Half-day credits', category: 'credits' },
-  { value: 'boarding_credits', label: 'Boarding credits', category: 'credits' },
+  { value: 'days_since_last_visit', label: 'Days since last visit', category: 'inactivity', type: 'number' },
+  { value: 'days_since_last_groom', label: 'Days since last groom', category: 'inactivity', type: 'number' },
+  { value: 'never_visited', label: 'Never visited', category: 'special', type: 'boolean' },
+  { value: 'never_groomed', label: 'Never groomed', category: 'special', type: 'boolean' },
+  { value: 'has_active_subscription', label: 'Has active recurring daycare', category: 'special', type: 'boolean' },
+  { value: 'pet_name', label: 'Pet name', category: 'pet', type: 'string' },
+  { value: 'pet_breed', label: 'Pet breed', category: 'pet', type: 'string' },
+  { value: 'daycare_credits', label: 'Daycare credits', category: 'credits', type: 'number' },
+  { value: 'half_daycare_credits', label: 'Half-day credits', category: 'credits', type: 'number' },
+  { value: 'boarding_credits', label: 'Boarding credits', category: 'credits', type: 'number' },
 ];
 
 const OPERATORS = [
