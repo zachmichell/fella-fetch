@@ -52,6 +52,7 @@ interface ServiceTypeRecord {
 export const DailySummaryTable = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isExpanded, setIsExpanded] = useState(false);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [summary, setSummary] = useState<DailySummaryStats>({
     arriving: 0,
     departing: 0,
