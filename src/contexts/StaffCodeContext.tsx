@@ -25,7 +25,7 @@ interface StaffCodeContextType {
 
 const StaffCodeContext = createContext<StaffCodeContextType | undefined>(undefined);
 
-const INACTIVITY_TIMEOUT = 60 * 1000; // 60 seconds
+const DEFAULT_INACTIVITY_TIMEOUT = 60; // seconds
 const SESSION_KEY = 'staff_code_session';
 
 export function StaffCodeProvider({ children }: { children: ReactNode }) {
@@ -33,7 +33,62 @@ export function StaffCodeProvider({ children }: { children: ReactNode }) {
   const [currentStaff, setCurrentStaff] = useState<StaffCode | null>(null);
   const [isLocked, setIsLocked] = useState(true);
   const [initialized, setInitialized] = useState(false);
+  const [inactivityTimeout, setInactivityTimeout] = useState(DEFAULT_INACTIVITY_TIMEOUT);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Fetch inactivity timeout from system settings
+  useEffect(() => {
+    const fetchTimeout = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('system_settings')
+          .select('value')
+          .eq('key', 'staff_inactivity_timeout')
+          .single();
+        
+        if (!error && data) {
+          const value = typeof data.value === 'number' 
+            ? data.value 
+            : typeof data.value === 'string' 
+              ? parseInt(data.value, 10) 
+              : DEFAULT_INACTIVITY_TIMEOUT;
+          setInactivityTimeout(value);
+        }
+      } catch {
+        // Use default if fetch fails
+      }
+    };
+    
+    fetchTimeout();
+
+    // Subscribe to changes
+    const channel = supabase
+      .channel('system-settings-timeout')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'system_settings',
+          filter: 'key=eq.staff_inactivity_timeout'
+        },
+        (payload) => {
+          if (payload.new && 'value' in payload.new) {
+            const value = typeof payload.new.value === 'number' 
+              ? payload.new.value 
+              : typeof payload.new.value === 'string' 
+                ? parseInt(payload.new.value as string, 10) 
+                : DEFAULT_INACTIVITY_TIMEOUT;
+            setInactivityTimeout(value);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const staffRole = currentStaff?.role ?? null;
   const isCodeAdmin = staffRole === 'admin';
@@ -84,8 +139,8 @@ export function StaffCodeProvider({ children }: { children: ReactNode }) {
     }
     timerRef.current = setTimeout(() => {
       lock();
-    }, INACTIVITY_TIMEOUT);
-  }, [lock]);
+    }, inactivityTimeout * 1000);
+  }, [lock, inactivityTimeout]);
 
   const resetInactivityTimer = useCallback(() => {
     if (!isLocked && currentStaff) {

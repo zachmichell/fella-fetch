@@ -41,9 +41,10 @@ import {
 } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Pencil, Trash2, Loader2, Shield, User, Eye, EyeOff, Users } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Shield, User, Eye, EyeOff, Users, Clock } from 'lucide-react';
 import { useStaffCode } from '@/contexts/StaffCodeContext';
 import { useNavigate } from 'react-router-dom';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
 
 type StaffCodeRole = 'basic' | 'supervisor' | 'admin';
 
@@ -72,12 +73,15 @@ const StaffManagementContent = () => {
   const { toast } = useToast();
   const { isCodeAdmin } = useStaffCode();
   const navigate = useNavigate();
+  const { getSetting, updateSetting, isLoading: settingsLoading } = useSystemSettings();
   const [staffCodes, setStaffCodes] = useState<StaffCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffCode | null>(null);
   const [deleteStaff, setDeleteStaff] = useState<StaffCode | null>(null);
   const [showCodes, setShowCodes] = useState<Record<string, boolean>>({});
+  const [inactivityTimeout, setInactivityTimeout] = useState<number>(60);
+  const [savingTimeout, setSavingTimeout] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -85,6 +89,49 @@ const StaffManagementContent = () => {
     role: 'basic' as StaffCodeRole,
     is_active: true,
   });
+
+  // Load inactivity timeout setting
+  useEffect(() => {
+    if (!settingsLoading) {
+      const timeout = getSetting<number>('staff_inactivity_timeout', 60);
+      setInactivityTimeout(timeout);
+    }
+  }, [settingsLoading, getSetting]);
+
+  const handleSaveTimeout = async () => {
+    setSavingTimeout(true);
+    try {
+      // First check if setting exists, if not create it
+      const { data: existing } = await supabase
+        .from('system_settings')
+        .select('id')
+        .eq('key', 'staff_inactivity_timeout')
+        .single();
+
+      if (existing) {
+        await updateSetting.mutateAsync({ key: 'staff_inactivity_timeout', value: inactivityTimeout });
+      } else {
+        await supabase
+          .from('system_settings')
+          .insert({ 
+            key: 'staff_inactivity_timeout', 
+            value: inactivityTimeout,
+            description: 'Duration in seconds before staff code lock activates due to inactivity'
+          });
+      }
+      
+      toast({ title: 'Inactivity timeout updated!' });
+    } catch (error) {
+      console.error('Error saving timeout:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save timeout setting',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingTimeout(false);
+    }
+  };
 
   // Redirect non-admin code users
   useEffect(() => {
@@ -278,6 +325,39 @@ const StaffManagementContent = () => {
           Add Staff Code
         </Button>
       </div>
+
+      {/* Inactivity Timeout Setting */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Inactivity Timeout
+          </CardTitle>
+          <CardDescription>
+            Lock the staff portal after this many seconds of inactivity
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4">
+            <div className="flex-1 max-w-xs">
+              <Input
+                type="number"
+                min={10}
+                max={3600}
+                value={inactivityTimeout}
+                onChange={(e) => setInactivityTimeout(Math.max(10, Math.min(3600, parseInt(e.target.value) || 60)))}
+                className="font-mono"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Min: 10 seconds, Max: 3600 seconds (1 hour)
+              </p>
+            </div>
+            <Button onClick={handleSaveTimeout} disabled={savingTimeout}>
+              {savingTimeout ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
