@@ -44,6 +44,7 @@ import StaffPetCare from "./pages/staff/StaffPetCare";
 import StaffMessages from "./pages/staff/StaffMessages";
 import StaffSubscriptions from "./pages/staff/StaffSubscriptions";
 import StaffMarketing from "./pages/staff/StaffMarketing";
+import StaffManagement from "./pages/staff/StaffManagement";
 
 const queryClient = new QueryClient();
 
