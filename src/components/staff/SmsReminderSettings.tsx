@@ -59,12 +59,14 @@ export const SmsReminderSettings = () => {
     },
   });
 
+  const initialized = useRef(false);
   useEffect(() => {
-    if (!isLoadingSettings) {
+    if (!isLoadingSettings && !initialized.current) {
+      initialized.current = true;
       const saved = getSetting<ReminderSettings>('sms_reminder_settings', {});
       setReminders(saved);
     }
-  }, [isLoadingSettings, getSetting]);
+  }, [isLoadingSettings]);
 
   const getReminder = (serviceTypeId: string): ReminderConfig => {
     return reminders[serviceTypeId] || { ...DEFAULT_REMINDER };
