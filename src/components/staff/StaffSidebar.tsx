@@ -17,6 +17,7 @@ import {
   BedDouble,
   Scissors,
   MessageCircle,
+  MessageSquare,
   Repeat,
   Megaphone,
   Lock,
