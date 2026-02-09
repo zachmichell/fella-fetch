@@ -28,27 +28,17 @@ export function useSystemSettings() {
   const getSetting = <T = string>(key: string, defaultValue: T): T => {
     const setting = settings?.find(s => s.key === key);
     if (!setting) return defaultValue;
-    
-    // Parse the JSONB value
-    const value = setting.value;
-    if (typeof value === 'string') {
-      try {
-        return JSON.parse(value) as T;
-      } catch {
-        return value as unknown as T;
-      }
-    }
-    return value as T;
+    return setting.value as T;
   };
 
   const updateSetting = useMutation({
     mutationFn: async ({ key, value, description }: { key: string; value: string | number | boolean | object; description?: string }) => {
+      const payload: any = { key, value };
+      if (description) payload.description = description;
+      
       const { data, error } = await supabase
         .from('system_settings')
-        .upsert(
-          { key, value: JSON.stringify(value) as any, description: description || null },
-          { onConflict: 'key' }
-        )
+        .upsert(payload, { onConflict: 'key' })
         .select()
         .single();
       

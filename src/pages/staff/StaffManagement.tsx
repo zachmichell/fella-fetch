@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { StaffLayout } from '@/components/staff/StaffLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -91,34 +91,23 @@ const StaffManagementContent = () => {
   });
 
   // Load inactivity timeout setting
+  const timeoutInitialized = useRef(false);
   useEffect(() => {
-    if (!settingsLoading) {
+    if (!settingsLoading && !timeoutInitialized.current) {
+      timeoutInitialized.current = true;
       const timeout = getSetting<number>('staff_inactivity_timeout', 60);
       setInactivityTimeout(timeout);
     }
-  }, [settingsLoading, getSetting]);
+  }, [settingsLoading]);
 
   const handleSaveTimeout = async () => {
     setSavingTimeout(true);
     try {
-      // First check if setting exists, if not create it
-      const { data: existing } = await supabase
-        .from('system_settings')
-        .select('id')
-        .eq('key', 'staff_inactivity_timeout')
-        .single();
-
-      if (existing) {
-        await updateSetting.mutateAsync({ key: 'staff_inactivity_timeout', value: inactivityTimeout });
-      } else {
-        await supabase
-          .from('system_settings')
-          .insert({ 
-            key: 'staff_inactivity_timeout', 
-            value: inactivityTimeout,
-            description: 'Duration in seconds before staff code lock activates due to inactivity'
-          });
-      }
+      await updateSetting.mutateAsync({ 
+        key: 'staff_inactivity_timeout', 
+        value: inactivityTimeout,
+        description: 'Duration in seconds before staff code lock activates due to inactivity'
+      });
       
       toast({ title: 'Inactivity timeout updated!' });
     } catch (error) {
