@@ -9,6 +9,7 @@ import { User, Mail, Phone, MapPin, UserPlus, Pencil, Save, X, MessageSquare, Be
 import { ClientPortalLayout } from '@/components/client/ClientPortalLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { normalizePhone } from '@/lib/phoneUtils';
 
 const ClientProfile = () => {
   const { clientData, shopifyCustomer, fetchClientData } = useClientAuth();
