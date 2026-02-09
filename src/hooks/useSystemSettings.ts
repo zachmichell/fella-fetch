@@ -43,12 +43,12 @@ export function useSystemSettings() {
 
   const updateSetting = useMutation({
     mutationFn: async ({ key, value, description }: { key: string; value: string | number | boolean | object; description?: string }) => {
+      const payload: any = { key, value };
+      if (description) payload.description = description;
+      
       const { data, error } = await supabase
         .from('system_settings')
-        .upsert(
-          { key, value: JSON.stringify(value) as any, description: description || null },
-          { onConflict: 'key' }
-        )
+        .upsert(payload, { onConflict: 'key' })
         .select()
         .single();
       
