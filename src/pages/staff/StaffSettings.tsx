@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Settings, AlertTriangle, Save, Loader2, Clock, Building2 } from 'lucide-react';
 import { EarlyLateFeeSettings } from '@/components/staff/EarlyLateFeeSettings';
+import { SmsReminderSettings } from '@/components/staff/SmsReminderSettings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const TIMEZONES = [
@@ -268,6 +269,9 @@ const StaffSettings = () => {
 
         {/* Early/Late Fee Settings */}
         <EarlyLateFeeSettings />
+
+        {/* SMS Reminder Settings */}
+        <SmsReminderSettings />
 
         {/* Business Timezone Settings */}
         <Card>
