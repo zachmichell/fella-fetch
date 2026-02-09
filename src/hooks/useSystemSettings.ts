@@ -28,17 +28,7 @@ export function useSystemSettings() {
   const getSetting = <T = string>(key: string, defaultValue: T): T => {
     const setting = settings?.find(s => s.key === key);
     if (!setting) return defaultValue;
-    
-    // Parse the JSONB value
-    const value = setting.value;
-    if (typeof value === 'string') {
-      try {
-        return JSON.parse(value) as T;
-      } catch {
-        return value as unknown as T;
-      }
-    }
-    return value as T;
+    return setting.value as T;
   };
 
   const updateSetting = useMutation({
