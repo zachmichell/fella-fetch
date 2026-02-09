@@ -271,7 +271,7 @@ Deno.serve(async (req) => {
             type: "appointment_reminder",
             client_id: clientId,
             client_name: `${client.first_name} ${client.last_name}`,
-            client_phone: client.phone,
+            client_phone: normalizePhone(client.phone),
             pet_names: petNames,
             service_type: serviceType.display_name,
             appointment_date: reservation.start_date,
