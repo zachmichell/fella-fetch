@@ -30,12 +30,14 @@ Deno.serve(async (req) => {
     // Check if this is a test request
     let isTest = false;
     let testServiceTypeId = "";
+    let testOverride: Record<string, string> | null = null;
     if (req.method === "POST") {
       try {
         const body = await req.json();
         if (body?.test === true) {
           isTest = true;
           testServiceTypeId = body.service_type_id || "";
+          testOverride = body.override || null;
         }
       } catch { /* no body or invalid JSON, proceed normally */ }
     }
