@@ -232,6 +232,7 @@ export type Database = {
           daycare_credits: number
           email: string | null
           email_opt_in: boolean | null
+          email_reminders_opt_in: boolean | null
           emergency_contact_name: string | null
           emergency_contact_phone: string | null
           emergency_contact_relationship: string | null
@@ -244,6 +245,7 @@ export type Database = {
           postal_code: string | null
           province: string | null
           sms_opt_in: boolean | null
+          sms_reminders_opt_in: boolean | null
           subscribed: boolean
           thread_id: string | null
           updated_at: string
@@ -257,6 +259,7 @@ export type Database = {
           daycare_credits?: number
           email?: string | null
           email_opt_in?: boolean | null
+          email_reminders_opt_in?: boolean | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
           emergency_contact_relationship?: string | null
@@ -269,6 +272,7 @@ export type Database = {
           postal_code?: string | null
           province?: string | null
           sms_opt_in?: boolean | null
+          sms_reminders_opt_in?: boolean | null
           subscribed?: boolean
           thread_id?: string | null
           updated_at?: string
@@ -282,6 +286,7 @@ export type Database = {
           daycare_credits?: number
           email?: string | null
           email_opt_in?: boolean | null
+          email_reminders_opt_in?: boolean | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
           emergency_contact_relationship?: string | null
@@ -294,6 +299,7 @@ export type Database = {
           postal_code?: string | null
           province?: string | null
           sms_opt_in?: boolean | null
+          sms_reminders_opt_in?: boolean | null
           subscribed?: boolean
           thread_id?: string | null
           updated_at?: string
