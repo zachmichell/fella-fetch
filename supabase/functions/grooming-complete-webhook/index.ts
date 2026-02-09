@@ -5,6 +5,16 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/** Normalize phone to +1XXXXXXXXXX format for SMS delivery */
+function normalizePhone(phone: string | null | undefined): string {
+  if (!phone) return '';
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 0) return '';
+  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
+  if (digits.length === 10) return `+1${digits}`;
+  return `+${digits}`;
+}
+
 interface GroomingCompletePayload {
   reservationId: string;
   petName: string;
@@ -22,17 +32,60 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const webhookUrl = Deno.env.get('MAKE_WEBHOOK_URL');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    // Get webhook URL: prefer UI-configured, fall back to env secret
+    let webhookUrl = Deno.env.get('MAKE_WEBHOOK_URL') || '';
+    const { data: webhookSettings } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'webhook_urls')
+      .maybeSingle();
+
+    if (webhookSettings?.value) {
+      const urls = webhookSettings.value as Record<string, string>;
+      if (urls.grooming_pickup) {
+        webhookUrl = urls.grooming_pickup;
+      }
+    }
+
     if (!webhookUrl) {
-      console.log('MAKE_WEBHOOK_URL not configured, skipping webhook');
+      console.log('Grooming pickup webhook URL not configured, skipping');
       return new Response(
         JSON.stringify({ success: true, message: 'Webhook URL not configured, skipped' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    // Get grooming pickup SMS settings
+    const { data: pickupSettings } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'grooming_pickup_sms')
+      .maybeSingle();
+
+    const settings = pickupSettings?.value as { enabled: boolean; message: string } | null;
+
+    if (!settings?.enabled) {
+      console.log('Grooming pickup SMS is disabled, skipping');
+      return new Response(
+        JSON.stringify({ success: true, message: 'Grooming pickup SMS disabled, skipped' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const payload: GroomingCompletePayload = await req.json();
-    console.log('Sending grooming complete webhook:', payload);
+    console.log('Processing grooming complete webhook:', payload);
+
+    // Render message template
+    let message = settings.message || '';
+    message = message.replace(/\{\{client_name\}\}/g, payload.clientName || '');
+    message = message.replace(/\{\{pet_names\}\}/g, payload.petName || '');
+    message = message.replace(/\{\{service_type\}\}/g, payload.serviceType || '');
+    message = message.replace(/\{\{groomer_name\}\}/g, payload.groomerName || '');
+    message = message.replace(/\{\{business_name\}\}/g, 'Fella & Fetch');
 
     const webhookPayload = {
       event: 'grooming.completed',
@@ -41,19 +94,18 @@ Deno.serve(async (req) => {
         reservation_id: payload.reservationId,
         pet_name: payload.petName,
         client_name: payload.clientName,
-        client_phone: payload.clientPhone,
+        client_phone: normalizePhone(payload.clientPhone),
         groomer_name: payload.groomerName,
         service_type: payload.serviceType,
         completed_at: payload.completedAt,
         notes: payload.notes || null,
+        message,
       },
     };
 
     const response = await fetch(webhookUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(webhookPayload),
     });
 
@@ -65,9 +117,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log('Webhook sent successfully');
+    console.log('Grooming pickup webhook sent successfully');
     return new Response(
-      JSON.stringify({ success: true }),
+      JSON.stringify({ success: true, message: webhookPayload.data.message }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
