@@ -232,7 +232,7 @@ Deno.serve(async (req) => {
       for (const res of reservations) {
         const pet = (res as any).pets;
         const client = pet?.clients;
-        if (!client?.phone || client.sms_opt_in === false) continue;
+        if (!client?.phone || client.sms_reminders_opt_in === false) continue;
 
         const clientId = client.id;
         if (!clientReminders.has(clientId)) {
