@@ -45,7 +45,7 @@ const ClientProfile = () => {
         .update({
           first_name: formData.first_name,
           last_name: formData.last_name,
-          phone: formData.phone || null,
+          phone: normalizePhone(formData.phone) || null,
           address: formData.address || null,
           city: formData.city || null,
           province: formData.province || null,
