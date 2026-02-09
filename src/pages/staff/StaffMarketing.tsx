@@ -379,8 +379,13 @@ const StaffMarketing = () => {
         recipients: selectedData.map(client => ({
           clientId: client.id,
           clientName: `${client.firstName} ${client.lastName}`,
+          clientFirstName: client.firstName,
+          clientLastName: client.lastName,
           clientEmail: client.email,
           clientPhone: client.phone,
+          daycareCredits: client.daycareCredits,
+          halfDaycareCredits: client.halfDaycareCredits,
+          boardingCredits: client.boardingCredits,
           pets: client.pets.map(pet => ({
             petId: pet.id,
             petName: pet.name,
