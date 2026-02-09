@@ -42,11 +42,13 @@ export function useSystemSettings() {
   };
 
   const updateSetting = useMutation({
-    mutationFn: async ({ key, value }: { key: string; value: string | number | boolean | object }) => {
+    mutationFn: async ({ key, value, description }: { key: string; value: string | number | boolean | object; description?: string }) => {
       const { data, error } = await supabase
         .from('system_settings')
-        .update({ value: JSON.stringify(value) })
-        .eq('key', key)
+        .upsert(
+          { key, value: JSON.stringify(value) as any, description: description || null },
+          { onConflict: 'key' }
+        )
         .select()
         .single();
       
