@@ -54,10 +54,12 @@ const ClientProfile = () => {
           postal_code: formData.postal_code || null,
           sms_opt_in: formData.sms_opt_in,
           email_opt_in: formData.email_opt_in,
+          sms_reminders_opt_in: formData.sms_reminders_opt_in,
+          email_reminders_opt_in: formData.email_reminders_opt_in,
           emergency_contact_name: formData.emergency_contact_name || null,
           emergency_contact_phone: normalizePhone(formData.emergency_contact_phone) || null,
           emergency_contact_relationship: formData.emergency_contact_relationship || null,
-        })
+        } as any)
         .eq('id', clientData.id);
 
       if (error) throw error;
