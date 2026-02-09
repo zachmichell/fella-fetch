@@ -17,6 +17,7 @@ import {
   BedDouble,
   Scissors,
   MessageCircle,
+  MessageSquare,
   Repeat,
   Megaphone,
   Lock,
@@ -68,6 +69,7 @@ const adminOnlyOperationsItems = [
 const adminItems = [
   { title: 'Staff Codes', url: '/staff/staff-management', icon: KeyRound },
   { title: 'Marketing', url: '/staff/marketing', icon: Megaphone },
+  { title: 'SMS & Comms', url: '/staff/communications', icon: MessageSquare },
   { title: 'User Management', url: '/staff/users', icon: UserCog },
   { title: 'Suite Management', url: '/staff/suites', icon: BedDouble },
   { title: 'Groomer Management', url: '/staff/groomers', icon: Scissors },

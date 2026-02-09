@@ -45,6 +45,7 @@ import StaffMessages from "./pages/staff/StaffMessages";
 import StaffSubscriptions from "./pages/staff/StaffSubscriptions";
 import StaffMarketing from "./pages/staff/StaffMarketing";
 import StaffManagement from "./pages/staff/StaffManagement";
+import StaffCommunications from "./pages/staff/StaffCommunications";
 
 const queryClient = new QueryClient();
 
@@ -96,6 +97,7 @@ const App = () => (
               <Route path="/staff/subscriptions" element={<StaffSubscriptions />} />
               <Route path="/staff/marketing" element={<StaffMarketing />} />
               <Route path="/staff/staff-management" element={<StaffManagement />} />
+              <Route path="/staff/communications" element={<StaffCommunications />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
