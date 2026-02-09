@@ -30,12 +30,14 @@ Deno.serve(async (req) => {
     // Check if this is a test request
     let isTest = false;
     let testServiceTypeId = "";
+    let testOverride: Record<string, string> | null = null;
     if (req.method === "POST") {
       try {
         const body = await req.json();
         if (body?.test === true) {
           isTest = true;
           testServiceTypeId = body.service_type_id || "";
+          testOverride = body.override || null;
         }
       } catch { /* no body or invalid JSON, proceed normally */ }
     }
@@ -87,27 +89,33 @@ Deno.serve(async (req) => {
         .eq("id", serviceTypeId)
         .maybeSingle();
 
-      // Render with sample data
-      const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+      // Use override data if provided, otherwise sample data
+      const clientName = testOverride?.client_name || "Test Client";
+      const petNames = testOverride?.pet_names || "Buddy";
+      const clientPhone = normalizePhone(testOverride?.client_phone || "+15555555555");
+      const appointmentDate = testOverride?.date || new Date(Date.now() + 86400000).toISOString().split("T")[0];
+      const appointmentTime = testOverride?.time || "08:00";
+      const reservationId = testOverride?.reservation_id || "test-reservation-000";
+
       let message = config.message;
-      message = message.replace(/\{\{client_name\}\}/g, "Test Client");
-      message = message.replace(/\{\{pet_names\}\}/g, "Buddy");
+      message = message.replace(/\{\{client_name\}\}/g, clientName);
+      message = message.replace(/\{\{pet_names\}\}/g, petNames);
       message = message.replace(/\{\{service_type\}\}/g, st?.display_name || "Daycare");
-      message = message.replace(/\{\{date\}\}/g, tomorrow);
-      message = message.replace(/\{\{time\}\}/g, "08:00");
+      message = message.replace(/\{\{date\}\}/g, appointmentDate);
+      message = message.replace(/\{\{time\}\}/g, appointmentTime);
       message = message.replace(/\{\{business_name\}\}/g, "Fella & Fetch");
 
       const testPayload = {
-        type: "appointment_reminder_test",
-        client_id: "test-000",
-        client_name: "Test Client",
-        client_phone: "+15555555555",
-        pet_names: ["Buddy"],
+        type: "appointment_reminder",
+        client_id: testOverride?.client_id || "test-000",
+        client_name: clientName,
+        client_phone: clientPhone,
+        pet_names: [petNames],
         service_type: st?.display_name || "Daycare",
-        appointment_date: tomorrow,
-        appointment_time: "08:00",
+        appointment_date: appointmentDate,
+        appointment_time: appointmentTime,
         message,
-        reservation_id: "test-reservation-000",
+        reservation_id: reservationId,
       };
 
       const webhookResponse = await fetch(webhookUrl, {
