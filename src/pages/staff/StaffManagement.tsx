@@ -91,12 +91,14 @@ const StaffManagementContent = () => {
   });
 
   // Load inactivity timeout setting
+  const timeoutInitialized = useRef(false);
   useEffect(() => {
-    if (!settingsLoading) {
+    if (!settingsLoading && !timeoutInitialized.current) {
+      timeoutInitialized.current = true;
       const timeout = getSetting<number>('staff_inactivity_timeout', 60);
       setInactivityTimeout(timeout);
     }
-  }, [settingsLoading, getSetting]);
+  }, [settingsLoading]);
 
   const handleSaveTimeout = async () => {
     setSavingTimeout(true);
