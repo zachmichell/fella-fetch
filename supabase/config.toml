@@ -17,3 +17,9 @@ verify_jwt = false
 
 [functions.grooming-complete-webhook]
 verify_jwt = false
+
+[functions.client-calendar]
+verify_jwt = false
+
+[functions.send-appointment-reminders]
+verify_jwt = false
