@@ -5,11 +5,54 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { User, Mail, Phone, MapPin, UserPlus, Pencil, Save, X, MessageSquare, Bell } from 'lucide-react';
+import { User, Mail, Phone, MapPin, UserPlus, Pencil, Save, X, MessageSquare, Bell, CalendarPlus, Copy, Check } from 'lucide-react';
 import { ClientPortalLayout } from '@/components/client/ClientPortalLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { normalizePhone } from '@/lib/phoneUtils';
+
+const CalendarSubscriptionCard = ({ clientId }: { clientId: string }) => {
+  const [copied, setCopied] = useState(false);
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const token = clientId.split('').reverse().join('').substring(0, 16) + 'ical';
+  const calendarUrl = `${supabaseUrl}/functions/v1/client-calendar?client_id=${clientId}&token=${token}`;
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(calendarUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg flex items-center gap-2">
+          <CalendarPlus className="h-5 w-5" />
+          Calendar Subscription
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          Subscribe to your pet's appointment calendar in Google Calendar, Apple Calendar, or Outlook. 
+          The calendar updates automatically when appointments are added or changed.
+        </p>
+        <div className="flex gap-2">
+          <Input
+            readOnly
+            value={calendarUrl}
+            className="text-xs font-mono"
+          />
+          <Button variant="outline" size="icon" onClick={handleCopy} className="shrink-0">
+            {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Copy this URL and add it as a "Subscribe by URL" calendar in your preferred calendar app.
+        </p>
+      </CardContent>
+    </Card>
+  );
+};
 
 const ClientProfile = () => {
   const { clientData, shopifyCustomer, fetchClientData } = useClientAuth();
@@ -26,6 +69,8 @@ const ClientProfile = () => {
     postal_code: clientData?.postal_code || '',
     sms_opt_in: clientData?.sms_opt_in || false,
     email_opt_in: clientData?.email_opt_in || false,
+    sms_reminders_opt_in: (clientData as any)?.sms_reminders_opt_in ?? true,
+    email_reminders_opt_in: (clientData as any)?.email_reminders_opt_in ?? true,
     emergency_contact_name: clientData?.emergency_contact_name || '',
     emergency_contact_phone: clientData?.emergency_contact_phone || '',
     emergency_contact_relationship: clientData?.emergency_contact_relationship || '',
@@ -52,10 +97,12 @@ const ClientProfile = () => {
           postal_code: formData.postal_code || null,
           sms_opt_in: formData.sms_opt_in,
           email_opt_in: formData.email_opt_in,
+          sms_reminders_opt_in: formData.sms_reminders_opt_in,
+          email_reminders_opt_in: formData.email_reminders_opt_in,
           emergency_contact_name: formData.emergency_contact_name || null,
           emergency_contact_phone: normalizePhone(formData.emergency_contact_phone) || null,
           emergency_contact_relationship: formData.emergency_contact_relationship || null,
-        })
+        } as any)
         .eq('id', clientData.id);
 
       if (error) throw error;
@@ -82,6 +129,8 @@ const ClientProfile = () => {
       postal_code: clientData?.postal_code || '',
       sms_opt_in: clientData?.sms_opt_in || false,
       email_opt_in: clientData?.email_opt_in || false,
+      sms_reminders_opt_in: (clientData as any)?.sms_reminders_opt_in ?? true,
+      email_reminders_opt_in: (clientData as any)?.email_reminders_opt_in ?? true,
       emergency_contact_name: clientData?.emergency_contact_name || '',
       emergency_contact_phone: clientData?.emergency_contact_phone || '',
       emergency_contact_relationship: clientData?.emergency_contact_relationship || '',
@@ -100,6 +149,8 @@ const ClientProfile = () => {
       postal_code: clientData?.postal_code || '',
       sms_opt_in: clientData?.sms_opt_in || false,
       email_opt_in: clientData?.email_opt_in || false,
+      sms_reminders_opt_in: (clientData as any)?.sms_reminders_opt_in ?? true,
+      email_reminders_opt_in: (clientData as any)?.email_reminders_opt_in ?? true,
       emergency_contact_name: clientData?.emergency_contact_name || '',
       emergency_contact_phone: clientData?.emergency_contact_phone || '',
       emergency_contact_relationship: clientData?.emergency_contact_relationship || '',
@@ -369,42 +420,91 @@ const ClientProfile = () => {
               Communication Preferences
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-              <div className="flex items-center gap-3">
-                <MessageSquare className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">SMS Messages</p>
-                  <p className="text-sm text-muted-foreground">
-                    Receive appointment reminders and updates via text
-                  </p>
+          <CardContent className="space-y-5">
+            {/* Appointment Reminders */}
+            <div>
+              <p className="text-sm font-medium text-muted-foreground mb-2 uppercase tracking-wide">Appointment Reminders</p>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <div className="flex items-center gap-3">
+                    <MessageSquare className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">SMS Reminders</p>
+                      <p className="text-sm text-muted-foreground">
+                        Receive appointment reminders via text message
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={formData.sms_reminders_opt_in}
+                    onCheckedChange={(checked) => handleInputChange('sms_reminders_opt_in', checked)}
+                    disabled={!isEditing}
+                  />
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <div className="flex items-center gap-3">
+                    <Mail className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">Email Reminders</p>
+                      <p className="text-sm text-muted-foreground">
+                        Receive appointment reminders via email
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={formData.email_reminders_opt_in}
+                    onCheckedChange={(checked) => handleInputChange('email_reminders_opt_in', checked)}
+                    disabled={!isEditing}
+                  />
                 </div>
               </div>
-              <Switch
-                checked={formData.sms_opt_in}
-                onCheckedChange={(checked) => handleInputChange('sms_opt_in', checked)}
-                disabled={!isEditing}
-              />
             </div>
 
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-              <div className="flex items-center gap-3">
-                <Mail className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">Email Messages</p>
-                  <p className="text-sm text-muted-foreground">
-                    Receive newsletters, promotions, and updates via email
-                  </p>
+            {/* Marketing & Promotions */}
+            <div>
+              <p className="text-sm font-medium text-muted-foreground mb-2 uppercase tracking-wide">Marketing & Promotions</p>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <div className="flex items-center gap-3">
+                    <MessageSquare className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">SMS Marketing</p>
+                      <p className="text-sm text-muted-foreground">
+                        Receive promotions and updates via text
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={formData.sms_opt_in}
+                    onCheckedChange={(checked) => handleInputChange('sms_opt_in', checked)}
+                    disabled={!isEditing}
+                  />
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <div className="flex items-center gap-3">
+                    <Mail className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">Email Marketing</p>
+                      <p className="text-sm text-muted-foreground">
+                        Receive newsletters, promotions, and updates via email
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={formData.email_opt_in}
+                    onCheckedChange={(checked) => handleInputChange('email_opt_in', checked)}
+                    disabled={!isEditing}
+                  />
                 </div>
               </div>
-              <Switch
-                checked={formData.email_opt_in}
-                onCheckedChange={(checked) => handleInputChange('email_opt_in', checked)}
-                disabled={!isEditing}
-              />
             </div>
           </CardContent>
         </Card>
+
+        {/* Calendar Subscription */}
+        {clientData?.id && (
+          <CalendarSubscriptionCard clientId={clientData.id} />
+        )}
       </div>
     </ClientPortalLayout>
   );

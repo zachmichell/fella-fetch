@@ -205,7 +205,7 @@ Deno.serve(async (req) => {
       let query = supabase
         .from("reservations")
         .select(
-          "id, start_date, start_time, end_date, notes, status, pet_id, pets!inner(id, name, client_id, clients!inner(id, first_name, last_name, phone, sms_opt_in))"
+          "id, start_date, start_time, end_date, notes, status, pet_id, pets!inner(id, name, client_id, clients!inner(id, first_name, last_name, phone, sms_opt_in, sms_reminders_opt_in))"
         )
         .in("status", ["confirmed", "pending"])
         .gte("start_date", windowStartDate)
@@ -232,7 +232,7 @@ Deno.serve(async (req) => {
       for (const res of reservations) {
         const pet = (res as any).pets;
         const client = pet?.clients;
-        if (!client?.phone || client.sms_opt_in === false) continue;
+        if (!client?.phone || client.sms_reminders_opt_in === false) continue;
 
         const clientId = client.id;
         if (!clientReminders.has(clientId)) {
