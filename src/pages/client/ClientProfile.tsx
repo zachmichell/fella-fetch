@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { User, Mail, Phone, MapPin, UserPlus, Pencil, Save, X, MessageSquare, Bell } from 'lucide-react';
+import { User, Mail, Phone, MapPin, UserPlus, Pencil, Save, X, MessageSquare, Bell, CalendarPlus, Copy, Check } from 'lucide-react';
 import { ClientPortalLayout } from '@/components/client/ClientPortalLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
