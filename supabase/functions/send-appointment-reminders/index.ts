@@ -51,6 +51,73 @@ Deno.serve(async (req) => {
       );
     }
 
+    // TEST MODE: Send a sample rendered message to the webhook
+    if (isTest) {
+      const { data: settingsRow } = await supabase
+        .from("system_settings")
+        .select("value")
+        .eq("key", "sms_reminder_settings")
+        .maybeSingle();
+
+      const reminderSettings = settingsRow?.value as Record<string, any> || {};
+      const serviceTypeId = testServiceTypeId || Object.keys(reminderSettings)[0];
+      const config = reminderSettings[serviceTypeId];
+
+      if (!config?.message) {
+        return new Response(
+          JSON.stringify({ error: "No reminder template found for the specified service type" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Get service type name
+      const { data: st } = await supabase
+        .from("service_types")
+        .select("display_name")
+        .eq("id", serviceTypeId)
+        .maybeSingle();
+
+      // Render with sample data
+      const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+      let message = config.message;
+      message = message.replace(/\{\{client_name\}\}/g, "Test Client");
+      message = message.replace(/\{\{pet_names\}\}/g, "Buddy");
+      message = message.replace(/\{\{service_type\}\}/g, st?.display_name || "Daycare");
+      message = message.replace(/\{\{date\}\}/g, tomorrow);
+      message = message.replace(/\{\{time\}\}/g, "08:00");
+      message = message.replace(/\{\{business_name\}\}/g, "Fella & Fetch");
+
+      const testPayload = {
+        type: "appointment_reminder_test",
+        client_id: "test-000",
+        client_name: "Test Client",
+        client_phone: "+15555555555",
+        pet_names: ["Buddy"],
+        service_type: st?.display_name || "Daycare",
+        appointment_date: tomorrow,
+        appointment_time: "08:00",
+        message,
+        reservation_id: "test-reservation-000",
+      };
+
+      const webhookResponse = await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(testPayload),
+      });
+
+      const responseText = await webhookResponse.text();
+      return new Response(
+        JSON.stringify({
+          mode: "test",
+          webhookStatus: webhookResponse.status,
+          webhookResponse: responseText,
+          sentPayload: testPayload,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // 1. Load reminder settings
     const { data: settingsRow, error: settingsError } = await supabase
       .from("system_settings")
