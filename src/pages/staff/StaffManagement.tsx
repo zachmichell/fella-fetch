@@ -101,24 +101,11 @@ const StaffManagementContent = () => {
   const handleSaveTimeout = async () => {
     setSavingTimeout(true);
     try {
-      // First check if setting exists, if not create it
-      const { data: existing } = await supabase
-        .from('system_settings')
-        .select('id')
-        .eq('key', 'staff_inactivity_timeout')
-        .single();
-
-      if (existing) {
-        await updateSetting.mutateAsync({ key: 'staff_inactivity_timeout', value: inactivityTimeout });
-      } else {
-        await supabase
-          .from('system_settings')
-          .insert({ 
-            key: 'staff_inactivity_timeout', 
-            value: inactivityTimeout,
-            description: 'Duration in seconds before staff code lock activates due to inactivity'
-          });
-      }
+      await updateSetting.mutateAsync({ 
+        key: 'staff_inactivity_timeout', 
+        value: inactivityTimeout,
+        description: 'Duration in seconds before staff code lock activates due to inactivity'
+      });
       
       toast({ title: 'Inactivity timeout updated!' });
     } catch (error) {
