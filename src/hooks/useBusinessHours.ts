@@ -60,37 +60,17 @@ export function useBusinessHours() {
 
   const updateBusinessHours = useMutation({
     mutationFn: async (hours: BusinessHours) => {
-      // First check if the setting exists
-      const { data: existing } = await supabase
+      const { data, error } = await supabase
         .from('system_settings')
-        .select('id')
-        .eq('key', 'business_hours')
-        .maybeSingle();
-
-      if (existing) {
-        const { data, error } = await supabase
-          .from('system_settings')
-          .update({ value: JSON.stringify(hours) })
-          .eq('key', 'business_hours')
-          .select()
-          .single();
-        
-        if (error) throw error;
-        return data;
-      } else {
-        const { data, error } = await supabase
-          .from('system_settings')
-          .insert({ 
-            key: 'business_hours', 
-            value: JSON.stringify(hours),
-            description: 'Business operating hours for weekdays and weekends'
-          })
-          .select()
-          .single();
-        
-        if (error) throw error;
-        return data;
-      }
+        .upsert(
+          { key: 'business_hours', value: hours as any, description: 'Business operating hours for weekdays and weekends' },
+          { onConflict: 'key' }
+        )
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['business-hours'] });
