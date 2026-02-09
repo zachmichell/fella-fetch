@@ -26,6 +26,8 @@ const ClientProfile = () => {
     postal_code: clientData?.postal_code || '',
     sms_opt_in: clientData?.sms_opt_in || false,
     email_opt_in: clientData?.email_opt_in || false,
+    sms_reminders_opt_in: (clientData as any)?.sms_reminders_opt_in ?? true,
+    email_reminders_opt_in: (clientData as any)?.email_reminders_opt_in ?? true,
     emergency_contact_name: clientData?.emergency_contact_name || '',
     emergency_contact_phone: clientData?.emergency_contact_phone || '',
     emergency_contact_relationship: clientData?.emergency_contact_relationship || '',
