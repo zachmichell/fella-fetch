@@ -11,6 +11,49 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { normalizePhone } from '@/lib/phoneUtils';
 
+const CalendarSubscriptionCard = ({ clientId }: { clientId: string }) => {
+  const [copied, setCopied] = useState(false);
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const token = clientId.split('').reverse().join('').substring(0, 16) + 'ical';
+  const calendarUrl = `${supabaseUrl}/functions/v1/client-calendar?client_id=${clientId}&token=${token}`;
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(calendarUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg flex items-center gap-2">
+          <CalendarPlus className="h-5 w-5" />
+          Calendar Subscription
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          Subscribe to your pet's appointment calendar in Google Calendar, Apple Calendar, or Outlook. 
+          The calendar updates automatically when appointments are added or changed.
+        </p>
+        <div className="flex gap-2">
+          <Input
+            readOnly
+            value={calendarUrl}
+            className="text-xs font-mono"
+          />
+          <Button variant="outline" size="icon" onClick={handleCopy} className="shrink-0">
+            {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Copy this URL and add it as a "Subscribe by URL" calendar in your preferred calendar app.
+        </p>
+      </CardContent>
+    </Card>
+  );
+};
+
 const ClientProfile = () => {
   const { clientData, shopifyCustomer, fetchClientData } = useClientAuth();
   const [isEditing, setIsEditing] = useState(false);
