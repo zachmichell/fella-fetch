@@ -9,6 +9,7 @@ import { User, Mail, Phone, MapPin, UserPlus, Pencil, Save, X, MessageSquare, Be
 import { ClientPortalLayout } from '@/components/client/ClientPortalLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { normalizePhone } from '@/lib/phoneUtils';
 
 const ClientProfile = () => {
   const { clientData, shopifyCustomer, fetchClientData } = useClientAuth();
@@ -44,7 +45,7 @@ const ClientProfile = () => {
         .update({
           first_name: formData.first_name,
           last_name: formData.last_name,
-          phone: formData.phone || null,
+          phone: normalizePhone(formData.phone) || null,
           address: formData.address || null,
           city: formData.city || null,
           province: formData.province || null,
@@ -52,7 +53,7 @@ const ClientProfile = () => {
           sms_opt_in: formData.sms_opt_in,
           email_opt_in: formData.email_opt_in,
           emergency_contact_name: formData.emergency_contact_name || null,
-          emergency_contact_phone: formData.emergency_contact_phone || null,
+          emergency_contact_phone: normalizePhone(formData.emergency_contact_phone) || null,
           emergency_contact_relationship: formData.emergency_contact_relationship || null,
         })
         .eq('id', clientData.id);
@@ -190,8 +191,12 @@ const ClientProfile = () => {
                     id="phone"
                     value={formData.phone}
                     onChange={(e) => handleInputChange('phone', e.target.value)}
-                    placeholder="Enter phone number"
+                    placeholder="+1 (306) 540-4461"
+                    type="tel"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Format: +1 followed by area code and number (e.g., +13065404461)
+                  </p>
                 </div>
 
                 <div className="space-y-2">
