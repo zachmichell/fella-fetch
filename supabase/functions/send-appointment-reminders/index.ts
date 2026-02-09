@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
           testServiceTypeId = body.service_type_id || "";
         }
       } catch { /* no body or invalid JSON, proceed normally */ }
-
+    }
     // Try to get webhook URL from system_settings first, fall back to env secret
     let webhookUrl = Deno.env.get("REMINDER_SMS_WEBHOOK_URL") || "";
     const { data: webhookSettings } = await supabase
