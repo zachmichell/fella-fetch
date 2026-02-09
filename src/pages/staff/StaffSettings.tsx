@@ -269,8 +269,6 @@ const StaffSettings = () => {
         {/* Early/Late Fee Settings */}
         <EarlyLateFeeSettings />
 
-        {/* SMS Reminder Settings */}
-        <SmsReminderSettings />
 
         {/* Business Timezone Settings */}
         <Card>
