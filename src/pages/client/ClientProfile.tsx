@@ -53,7 +53,7 @@ const ClientProfile = () => {
           sms_opt_in: formData.sms_opt_in,
           email_opt_in: formData.email_opt_in,
           emergency_contact_name: formData.emergency_contact_name || null,
-          emergency_contact_phone: formData.emergency_contact_phone || null,
+          emergency_contact_phone: normalizePhone(formData.emergency_contact_phone) || null,
           emergency_contact_relationship: formData.emergency_contact_relationship || null,
         })
         .eq('id', clientData.id);
