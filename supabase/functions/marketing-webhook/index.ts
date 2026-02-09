@@ -47,10 +47,30 @@ Deno.serve(async (req) => {
       recipientCount: payload.recipients.length,
     });
 
-    // Get the appropriate webhook URL based on channel
-    const webhookUrl = payload.channel === 'sms'
-      ? Deno.env.get('MARKETING_SMS_WEBHOOK_URL')
-      : Deno.env.get('MARKETING_EMAIL_WEBHOOK_URL');
+    // Get webhook URL from system_settings table first, fall back to env vars
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseClient = createClient(supabaseUrl, supabaseKey);
+
+    let webhookUrl: string | undefined;
+
+    const { data: settingsData } = await supabaseClient
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'webhook_urls')
+      .single();
+
+    if (settingsData?.value) {
+      const urls = settingsData.value as Record<string, string>;
+      webhookUrl = payload.channel === 'sms' ? urls.marketing_sms : urls.marketing_email;
+    }
+
+    // Fall back to env vars if not found in settings
+    if (!webhookUrl) {
+      webhookUrl = payload.channel === 'sms'
+        ? Deno.env.get('MARKETING_SMS_WEBHOOK_URL')
+        : Deno.env.get('MARKETING_EMAIL_WEBHOOK_URL');
+    }
 
     if (!webhookUrl) {
       console.log(`${payload.channel.toUpperCase()} webhook URL not configured, skipping`);
