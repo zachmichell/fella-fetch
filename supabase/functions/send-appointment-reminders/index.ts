@@ -14,16 +14,30 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const webhookUrl = Deno.env.get("REMINDER_SMS_WEBHOOK_URL");
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    // Try to get webhook URL from system_settings first, fall back to env secret
+    let webhookUrl = Deno.env.get("REMINDER_SMS_WEBHOOK_URL") || "";
+    const { data: webhookSettings } = await supabase
+      .from("system_settings")
+      .select("value")
+      .eq("key", "webhook_urls")
+      .maybeSingle();
+
+    if (webhookSettings?.value) {
+      const urls = webhookSettings.value as Record<string, string>;
+      if (urls.reminder_sms) {
+        webhookUrl = urls.reminder_sms;
+      }
+    }
 
     if (!webhookUrl) {
       return new Response(
-        JSON.stringify({ error: "REMINDER_SMS_WEBHOOK_URL not configured" }),
+        JSON.stringify({ error: "Reminder SMS webhook URL not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     // 1. Load reminder settings
     const { data: settingsRow, error: settingsError } = await supabase
