@@ -457,6 +457,11 @@ const ClientProfile = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Calendar Subscription */}
+        {clientData?.id && (
+          <CalendarSubscriptionCard clientId={clientData.id} />
+        )}
       </div>
     </ClientPortalLayout>
   );
