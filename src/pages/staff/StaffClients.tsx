@@ -154,11 +154,11 @@ const StaffClients = () => {
           first_name: newClient.first_name,
           last_name: newClient.last_name,
           email: newClient.email || null,
-          phone: newClient.phone || null,
-          address: newClient.address || null,
-          emergency_contact_name: newClient.emergency_contact_name || null,
-          emergency_contact_phone: newClient.emergency_contact_phone || null,
-          notes: newClient.notes || null,
+           phone: normalizePhone(newClient.phone) || null,
+           address: newClient.address || null,
+           emergency_contact_name: newClient.emergency_contact_name || null,
+           emergency_contact_phone: normalizePhone(newClient.emergency_contact_phone) || null,
+           notes: newClient.notes || null,
         }]);
 
       if (error) throw error;
