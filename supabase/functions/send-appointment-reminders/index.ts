@@ -17,6 +17,18 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
+    // Check if this is a test request
+    let isTest = false;
+    let testServiceTypeId = "";
+    if (req.method === "POST") {
+      try {
+        const body = await req.json();
+        if (body?.test === true) {
+          isTest = true;
+          testServiceTypeId = body.service_type_id || "";
+        }
+      } catch { /* no body or invalid JSON, proceed normally */ }
+    }
     // Try to get webhook URL from system_settings first, fall back to env secret
     let webhookUrl = Deno.env.get("REMINDER_SMS_WEBHOOK_URL") || "";
     const { data: webhookSettings } = await supabase
@@ -36,6 +48,73 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ error: "Reminder SMS webhook URL not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // TEST MODE: Send a sample rendered message to the webhook
+    if (isTest) {
+      const { data: settingsRow } = await supabase
+        .from("system_settings")
+        .select("value")
+        .eq("key", "sms_reminder_settings")
+        .maybeSingle();
+
+      const reminderSettings = settingsRow?.value as Record<string, any> || {};
+      const serviceTypeId = testServiceTypeId || Object.keys(reminderSettings)[0];
+      const config = reminderSettings[serviceTypeId];
+
+      if (!config?.message) {
+        return new Response(
+          JSON.stringify({ error: "No reminder template found for the specified service type" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Get service type name
+      const { data: st } = await supabase
+        .from("service_types")
+        .select("display_name")
+        .eq("id", serviceTypeId)
+        .maybeSingle();
+
+      // Render with sample data
+      const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+      let message = config.message;
+      message = message.replace(/\{\{client_name\}\}/g, "Test Client");
+      message = message.replace(/\{\{pet_names\}\}/g, "Buddy");
+      message = message.replace(/\{\{service_type\}\}/g, st?.display_name || "Daycare");
+      message = message.replace(/\{\{date\}\}/g, tomorrow);
+      message = message.replace(/\{\{time\}\}/g, "08:00");
+      message = message.replace(/\{\{business_name\}\}/g, "Fella & Fetch");
+
+      const testPayload = {
+        type: "appointment_reminder_test",
+        client_id: "test-000",
+        client_name: "Test Client",
+        client_phone: "+15555555555",
+        pet_names: ["Buddy"],
+        service_type: st?.display_name || "Daycare",
+        appointment_date: tomorrow,
+        appointment_time: "08:00",
+        message,
+        reservation_id: "test-reservation-000",
+      };
+
+      const webhookResponse = await fetch(webhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(testPayload),
+      });
+
+      const responseText = await webhookResponse.text();
+      return new Response(
+        JSON.stringify({
+          mode: "test",
+          webhookStatus: webhookResponse.status,
+          webhookResponse: responseText,
+          sentPayload: testPayload,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
