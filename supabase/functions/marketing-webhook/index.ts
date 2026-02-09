@@ -8,8 +8,13 @@ const corsHeaders = {
 interface MarketingRecipient {
   clientId: string;
   clientName: string;
+  clientFirstName: string;
+  clientLastName: string;
   clientEmail: string | null;
   clientPhone: string | null;
+  daycareCredits: number;
+  halfDaycareCredits: number;
+  boardingCredits: number;
   pets: Array<{
     petId: string;
     petName: string;
@@ -26,12 +31,49 @@ interface MarketingWebhookPayload {
   segmentName: string;
   segmentDescription?: string;
   filters: any[];
-  message?: string; // SMS message content
+  message?: string;
   emailSubject?: string;
-  emailContent?: string; // JSON stringified email blocks
+  emailContent?: string;
   recipients: MarketingRecipient[];
   sentAt: string;
   sentBy: string;
+}
+
+function resolveVariables(template: string, recipient: MarketingRecipient): string {
+  const petNames = recipient.pets.map(p => p.petName).join(', ');
+  const petBreeds = recipient.pets.map(p => p.petBreed).filter(Boolean).join(', ');
+  const firstPet = recipient.pets[0];
+
+  const vars: Record<string, string> = {
+    client_first_name: recipient.clientFirstName || '',
+    client_last_name: recipient.clientLastName || '',
+    client_name: recipient.clientName || '',
+    client_email: recipient.clientEmail || '',
+    client_phone: recipient.clientPhone || '',
+    pet_names: petNames,
+    first_pet_name: firstPet?.petName || '',
+    pet_breeds: petBreeds,
+    daycare_credits: String(recipient.daycareCredits ?? 0),
+    half_daycare_credits: String(recipient.halfDaycareCredits ?? 0),
+    boarding_credits: String(recipient.boardingCredits ?? 0),
+    days_since_last_visit: firstPet?.daysSinceLastVisit != null ? String(firstPet.daysSinceLastVisit) : 'N/A',
+    days_since_last_groom: firstPet?.daysSinceLastGroom != null ? String(firstPet.daysSinceLastGroom) : 'N/A',
+    last_visit_date: firstPet?.lastVisitDate || 'N/A',
+    last_groom_date: firstPet?.lastGroomDate || 'N/A',
+    business_name: 'Fella Fetch',
+    business_phone: '',
+    booking_link: '',
+  };
+
+  return template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? '');
+}
+
+function normalizePhone(phone: string | null): string | null {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
+  return phone;
 }
 
 Deno.serve(async (req) => {
@@ -65,7 +107,6 @@ Deno.serve(async (req) => {
       webhookUrl = payload.channel === 'sms' ? urls.marketing_sms : urls.marketing_email;
     }
 
-    // Fall back to env vars if not found in settings
     if (!webhookUrl) {
       webhookUrl = payload.channel === 'sms'
         ? Deno.env.get('MARKETING_SMS_WEBHOOK_URL')
@@ -83,7 +124,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Build the webhook payload
+    // Build per-recipient payloads with resolved variables
+    const messageTemplate = payload.message || '';
+    const subjectTemplate = payload.emailSubject || '';
+
     const webhookPayload = {
       event: `marketing.${payload.channel}`,
       timestamp: new Date().toISOString(),
@@ -92,8 +136,8 @@ Deno.serve(async (req) => {
         segment_name: payload.segmentName,
         segment_description: payload.segmentDescription || null,
         filters: payload.filters,
-        message: payload.message || null,
-        email_subject: payload.emailSubject || null,
+        message_template: messageTemplate,
+        email_subject_template: subjectTemplate,
         email_content: payload.emailContent || null,
         sent_at: payload.sentAt,
         sent_by: payload.sentBy,
@@ -101,8 +145,15 @@ Deno.serve(async (req) => {
         recipients: payload.recipients.map(r => ({
           client_id: r.clientId,
           client_name: r.clientName,
+          client_first_name: r.clientFirstName,
+          client_last_name: r.clientLastName,
           client_email: r.clientEmail,
-          client_phone: r.clientPhone,
+          client_phone: normalizePhone(r.clientPhone),
+          resolved_message: resolveVariables(messageTemplate, r),
+          resolved_subject: subjectTemplate ? resolveVariables(subjectTemplate, r) : null,
+          daycare_credits: r.daycareCredits,
+          half_daycare_credits: r.halfDaycareCredits,
+          boarding_credits: r.boardingCredits,
           pets: r.pets.map(p => ({
             pet_id: p.petId,
             pet_name: p.petName,
