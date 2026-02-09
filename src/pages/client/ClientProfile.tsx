@@ -377,39 +377,83 @@ const ClientProfile = () => {
               Communication Preferences
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-              <div className="flex items-center gap-3">
-                <MessageSquare className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">SMS Messages</p>
-                  <p className="text-sm text-muted-foreground">
-                    Receive appointment reminders and updates via text
-                  </p>
+          <CardContent className="space-y-5">
+            {/* Appointment Reminders */}
+            <div>
+              <p className="text-sm font-medium text-muted-foreground mb-2 uppercase tracking-wide">Appointment Reminders</p>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <div className="flex items-center gap-3">
+                    <MessageSquare className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">SMS Reminders</p>
+                      <p className="text-sm text-muted-foreground">
+                        Receive appointment reminders via text message
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={formData.sms_reminders_opt_in}
+                    onCheckedChange={(checked) => handleInputChange('sms_reminders_opt_in', checked)}
+                    disabled={!isEditing}
+                  />
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <div className="flex items-center gap-3">
+                    <Mail className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">Email Reminders</p>
+                      <p className="text-sm text-muted-foreground">
+                        Receive appointment reminders via email
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={formData.email_reminders_opt_in}
+                    onCheckedChange={(checked) => handleInputChange('email_reminders_opt_in', checked)}
+                    disabled={!isEditing}
+                  />
                 </div>
               </div>
-              <Switch
-                checked={formData.sms_opt_in}
-                onCheckedChange={(checked) => handleInputChange('sms_opt_in', checked)}
-                disabled={!isEditing}
-              />
             </div>
 
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-              <div className="flex items-center gap-3">
-                <Mail className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">Email Messages</p>
-                  <p className="text-sm text-muted-foreground">
-                    Receive newsletters, promotions, and updates via email
-                  </p>
+            {/* Marketing & Promotions */}
+            <div>
+              <p className="text-sm font-medium text-muted-foreground mb-2 uppercase tracking-wide">Marketing & Promotions</p>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <div className="flex items-center gap-3">
+                    <MessageSquare className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">SMS Marketing</p>
+                      <p className="text-sm text-muted-foreground">
+                        Receive promotions and updates via text
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={formData.sms_opt_in}
+                    onCheckedChange={(checked) => handleInputChange('sms_opt_in', checked)}
+                    disabled={!isEditing}
+                  />
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <div className="flex items-center gap-3">
+                    <Mail className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">Email Marketing</p>
+                      <p className="text-sm text-muted-foreground">
+                        Receive newsletters, promotions, and updates via email
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={formData.email_opt_in}
+                    onCheckedChange={(checked) => handleInputChange('email_opt_in', checked)}
+                    disabled={!isEditing}
+                  />
                 </div>
               </div>
-              <Switch
-                checked={formData.email_opt_in}
-                onCheckedChange={(checked) => handleInputChange('email_opt_in', checked)}
-                disabled={!isEditing}
-              />
             </div>
           </CardContent>
         </Card>
