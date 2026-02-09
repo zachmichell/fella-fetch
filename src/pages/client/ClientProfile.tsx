@@ -191,8 +191,12 @@ const ClientProfile = () => {
                     id="phone"
                     value={formData.phone}
                     onChange={(e) => handleInputChange('phone', e.target.value)}
-                    placeholder="Enter phone number"
+                    placeholder="+1 (306) 540-4461"
+                    type="tel"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Format: +1 followed by area code and number (e.g., +13065404461)
+                  </p>
                 </div>
 
                 <div className="space-y-2">
