@@ -206,7 +206,7 @@ export function MobileControlCenter({
                       <p className="text-xs text-muted-foreground truncate">{res.client_name}</p>
                       {res.pet_traits && res.pet_traits.length > 0 && (
                         <div className="mt-1">
-                          <PetTraitBadges traits={res.pet_traits} compact />
+                          <PetTraitBadges traits={res.pet_traits} />
                         </div>
                       )}
                       <div className="flex items-center gap-3 mt-1 text-[11px] text-muted-foreground">
