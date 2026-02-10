@@ -279,6 +279,8 @@ export function MobileControlCenter({
           onOpenChange={setCancelDialogOpen}
           petName={selectedReservation.pet_name}
           serviceType={selectedReservation.service_type}
+          daycareCredits={selectedReservation.daycare_credits}
+          boardingCredits={selectedReservation.boarding_credits}
           onConfirm={(useCredit) => {
             onCancelReservation(selectedReservation, useCredit);
             setCancelDialogOpen(false);
