@@ -1,11 +1,9 @@
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CalendarIcon, ChevronLeft, ChevronRight, Scissors, User } from 'lucide-react';
-import { format, addDays, subDays, addWeeks, subWeeks } from 'date-fns';
-import { GroomingViewMode } from '@/pages/staff/StaffGroomingCalendar';
+import { format, addDays, subDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 interface Groomer {
@@ -15,8 +13,6 @@ interface Groomer {
 }
 
 interface GroomingCalendarHeaderProps {
-  viewMode: GroomingViewMode;
-  onViewModeChange: (mode: GroomingViewMode) => void;
   currentDate: Date;
   onDateChange: (date: Date) => void;
   groomers?: Groomer[];
@@ -25,55 +21,28 @@ interface GroomingCalendarHeaderProps {
 }
 
 export const GroomingCalendarHeader = ({
-  viewMode,
-  onViewModeChange,
   currentDate,
   onDateChange,
   groomers = [],
   selectedGroomerId,
   onGroomerFilterChange,
 }: GroomingCalendarHeaderProps) => {
-  const handlePrevious = () => {
-    if (viewMode === 'day') {
-      onDateChange(subDays(currentDate, 1));
-    } else {
-      onDateChange(subWeeks(currentDate, 1));
-    }
-  };
-
-  const handleNext = () => {
-    if (viewMode === 'day') {
-      onDateChange(addDays(currentDate, 1));
-    } else {
-      onDateChange(addWeeks(currentDate, 1));
-    }
-  };
-
-  const handleToday = () => {
-    onDateChange(new Date());
-  };
+  const handlePrevious = () => onDateChange(subDays(currentDate, 1));
+  const handleNext = () => onDateChange(addDays(currentDate, 1));
+  const handleToday = () => onDateChange(new Date());
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Scissors className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-lg sm:text-2xl font-bold">Grooming</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-              Manage grooming and add-on appointments
-            </p>
-          </div>
+      <div className="flex items-center gap-2">
+        <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+          <Scissors className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
         </div>
-
-        <Tabs value={viewMode} onValueChange={(v) => onViewModeChange(v as GroomingViewMode)}>
-          <TabsList>
-            <TabsTrigger value="day">Day</TabsTrigger>
-            <TabsTrigger value="week">Week</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div>
+          <h1 className="text-lg sm:text-2xl font-bold">Grooming</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
+            Manage grooming and add-on appointments
+          </p>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
