@@ -28,7 +28,7 @@ export function MobileBottomNav() {
 
   // Check if current route is one of the "more" routes
   const moreRoutes = [
-    '/staff/lodging', '/staff/grooming', '/staff/clients', '/staff/pet-care',
+    '/staff/messages', '/staff/clients', '/staff/pets', '/staff/pet-care',
     '/staff/report-cards', '/staff/subscriptions', '/staff/trait-templates',
     '/staff/time-clock', '/staff/analytics', '/staff/staff-management',
     '/staff/marketing', '/staff/communications', '/staff/users', '/staff/suites',
