@@ -19,15 +19,9 @@ import {
   format, 
   addDays, 
   startOfWeek, 
-  startOfMonth,
-  endOfMonth,
   addWeeks, 
   subWeeks, 
-  addMonths,
-  subMonths,
   isSameDay,
-  isSameMonth,
-  eachDayOfInterval,
 } from 'date-fns';
 
 type ViewMode = 'weekly';
