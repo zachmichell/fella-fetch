@@ -76,11 +76,9 @@ const parseTimesFromNotes = (notes: string | null): { dropOff: string | null; pi
   };
 };
 
-function PetAvatar({ photoUrl, petName }: { photoUrl: string | null; petName: string }) {
-  const resolvedUrl = usePetPhotoUrl(photoUrl);
+function PetAvatar({ petName }: { petName: string }) {
   return (
     <Avatar className="h-10 w-10">
-      <AvatarImage src={resolvedUrl || undefined} alt={petName} />
       <AvatarFallback><Dog className="h-4 w-4" /></AvatarFallback>
     </Avatar>
   );
