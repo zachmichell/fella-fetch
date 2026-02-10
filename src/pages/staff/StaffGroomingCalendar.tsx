@@ -32,6 +32,7 @@ export interface GroomingAppointment {
 
 const StaffGroomingCalendar = () => {
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   const [viewMode, setViewMode] = useState<GroomingViewMode>('day');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedAppointment, setSelectedAppointment] = useState<GroomingAppointment | null>(null);

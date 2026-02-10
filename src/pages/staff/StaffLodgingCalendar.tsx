@@ -36,6 +36,7 @@ export interface BoardingReservation {
 const StaffLodgingCalendar = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   const [viewMode, setViewMode] = useState<ViewMode>('weekly');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedReservation, setSelectedReservation] = useState<BoardingReservation | null>(null);
