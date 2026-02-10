@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { StaffLayout } from '@/components/staff/StaffLayout';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { LodgingCalendarHeader } from '@/components/staff/lodging/LodgingCalendarHeader';
 import { LodgingWeeklyView } from '@/components/staff/lodging/LodgingWeeklyView';
 import { LodgingMonthlyView } from '@/components/staff/lodging/LodgingMonthlyView';
