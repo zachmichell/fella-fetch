@@ -79,6 +79,7 @@ interface Client {
 const StaffClients = () => {
   const { isStaffOrAdmin } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
