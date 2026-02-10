@@ -29,7 +29,6 @@ import { ControlCenterReservation } from '@/components/staff/ControlCenterTable'
 import { PetTraitBadges } from '@/components/staff/PetTraitBadges';
 import { CancelReservationDialog } from '@/components/staff/CancelReservationDialog';
 import { DeclineReservationDialog } from '@/components/staff/DeclineReservationDialog';
-import { usePetPhotoUrl } from '@/hooks/usePetPhotoUrl';
 
 type TabValue = 'expected' | 'going_home' | 'checked_in' | 'requested';
 
