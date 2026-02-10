@@ -181,37 +181,27 @@ Deno.serve(async (req) => {
       const serviceType = serviceTypeMap.get(serviceTypeId);
       if (!serviceType) continue;
 
-      // Calculate the target window: reservations starting in exactly timing_value hours/days
-      // We check a 30-minute window to avoid missing any
+      // Calculate the offset in milliseconds
       const offsetMs =
         config.timing_unit === "days"
           ? config.timing_value * 24 * 60 * 60 * 1000
           : config.timing_value * 60 * 60 * 1000;
 
-      const windowStart = new Date(now.getTime() + offsetMs - 15 * 60 * 1000);
-      const windowEnd = new Date(now.getTime() + offsetMs + 15 * 60 * 1000);
+      // Widen the date query to cover possible dates, then filter precisely using start_time
+      const earliestApptTime = new Date(now.getTime() + offsetMs - 15 * 60 * 1000);
+      const latestApptTime = new Date(now.getTime() + offsetMs + 15 * 60 * 1000);
 
-      const windowStartDate = windowStart.toISOString().split("T")[0];
-      const windowEndDate = windowEnd.toISOString().split("T")[0];
+      const queryStartDate = earliestApptTime.toISOString().split("T")[0];
+      const queryEndDate = latestApptTime.toISOString().split("T")[0];
 
-      // Query reservations in the window with matching service category
-      // Map service type category to reservation service_type enum
-      const categoryToEnum: Record<string, string> = {
-        reservation: serviceType.name,
-        service: serviceType.name,
-        "add-on": serviceType.name,
-      };
-
-      let query = supabase
+      const { data: reservations, error: resError } = await supabase
         .from("reservations")
         .select(
           "id, start_date, start_time, end_date, notes, status, pet_id, pets!inner(id, name, client_id, clients!inner(id, first_name, last_name, phone, sms_opt_in, sms_reminders_opt_in))"
         )
         .in("status", ["confirmed", "pending"])
-        .gte("start_date", windowStartDate)
-        .lte("start_date", windowEndDate);
-
-      const { data: reservations, error: resError } = await query;
+        .gte("start_date", queryStartDate)
+        .lte("start_date", queryEndDate);
 
       if (resError) {
         console.error(
@@ -223,8 +213,20 @@ Deno.serve(async (req) => {
 
       if (!reservations || reservations.length === 0) continue;
 
+      // Precisely filter: combine start_date + start_time into a real datetime
+      // and check if NOW is within the 30-min window around (appointment - offset)
+      const filteredReservations = reservations.filter((res: any) => {
+        const timeStr = res.start_time || "09:00"; // default to 9am if no time set
+        const appointmentDt = new Date(`${res.start_date}T${timeStr}:00`);
+        const reminderDt = new Date(appointmentDt.getTime() - offsetMs);
+        const diffMs = Math.abs(now.getTime() - reminderDt.getTime());
+        return diffMs <= 15 * 60 * 1000; // within ±15 minutes of ideal send time
+      });
+
+      if (filteredReservations.length === 0) continue;
+
       // Filter out reservations that already had a reminder sent
-      const reservationIds = reservations.map((r: any) => r.id);
+      const reservationIds = filteredReservations.map((r: any) => r.id);
       const { data: alreadySent } = await supabase
         .from("sent_reminders")
         .select("reservation_id")
@@ -239,7 +241,7 @@ Deno.serve(async (req) => {
         { client: any; petNames: string[]; reservation: any; reservationIds: string[] }
       >();
 
-      for (const res of reservations) {
+      for (const res of filteredReservations) {
         if (sentSet.has(res.id)) continue; // Already sent
 
         const pet = (res as any).pets;
@@ -259,7 +261,6 @@ Deno.serve(async (req) => {
         entry.petNames.push(pet.name);
         entry.reservationIds.push(res.id);
       }
-
       // Send webhook for each client
       for (const [clientId, data] of clientReminders) {
         const { client, petNames, reservation, reservationIds: resIds } = data;
