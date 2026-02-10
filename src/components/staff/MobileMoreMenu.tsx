@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import {
   BedDouble,
+  Dog,
   Scissors,
   Users,
   HeartPulse,
