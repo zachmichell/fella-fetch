@@ -14,7 +14,6 @@ import {
   ChevronRight, 
   Loader2,
   Calendar as CalendarIcon,
-  CalendarDays,
 } from 'lucide-react';
 import { 
   format, 
