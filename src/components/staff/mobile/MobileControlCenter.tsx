@@ -295,6 +295,7 @@ export function MobileControlCenter({
           open={declineDialogOpen}
           onOpenChange={setDeclineDialogOpen}
           petName={selectedReservation.pet_name}
+          serviceType={selectedReservation.service_type}
           onConfirm={(reason) => {
             onDeclineReservation(selectedReservation, reason);
             setDeclineDialogOpen(false);
