@@ -599,17 +599,17 @@ const StaffPetCare = () => {
 
   return (
     <StaffLayout>
-      <div className="p-6 space-y-6">
+      <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-hidden sm:p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Pet Care</h1>
-            <p className="text-muted-foreground">
-              Manage medications and feedings for today's pets
+            <h1 className="text-lg sm:text-2xl font-bold">Pet Care</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              Medications and feedings for today's pets
             </p>
           </div>
           <Button variant="outline" size="sm" onClick={fetchCareItems}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
+            <RefreshCw className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Refresh</span>
           </Button>
         </div>
 
