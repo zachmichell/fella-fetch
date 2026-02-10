@@ -3,7 +3,7 @@ import { StaffLayout } from '@/components/staff/StaffLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ServiceTypeIcon } from '@/components/ui/service-type-icon';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ServiceTypeIcon } from '@/components/ui/service-type-icon';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
