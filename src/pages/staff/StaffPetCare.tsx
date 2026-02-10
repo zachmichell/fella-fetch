@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { StaffLayout } from '@/components/staff/StaffLayout';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -82,6 +83,7 @@ interface SortLevel {
 const StaffPetCare = () => {
   const { isStaffOrAdmin, user } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [careItems, setCareItems] = useState<CareItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -597,25 +599,25 @@ const StaffPetCare = () => {
 
   return (
     <StaffLayout>
-      <div className="p-6 space-y-6">
+      <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-hidden sm:p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Pet Care</h1>
-            <p className="text-muted-foreground">
-              Manage medications and feedings for today's pets
+            <h1 className="text-lg sm:text-2xl font-bold">Pet Care</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              Medications and feedings for today's pets
             </p>
           </div>
           <Button variant="outline" size="sm" onClick={fetchCareItems}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
+            <RefreshCw className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Refresh</span>
           </Button>
         </div>
 
         {/* Filters */}
         <Card>
           <CardContent className="pt-4">
-            <div className="flex items-center gap-4 flex-wrap">
-              <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 flex-wrap">
+              <div className="relative flex-1 w-full sm:min-w-[200px] sm:max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search pet, owner, suite, or item..."
@@ -672,28 +674,93 @@ const StaffPetCare = () => {
                   Pets arriving, checked in, or departing today with medications or feeding schedules will appear here
                 </p>
               </div>
+            ) : isMobile ? (
+              /* Mobile: card-based list */
+              <div className="divide-y">
+                {displayedItems.map((item) => {
+                  const isPrepared = preparedItems.has(item.id);
+                  return (
+                    <div
+                      key={`${item.care_type}-${item.id}`}
+                      className={`p-3 ${getRowClassName(item, isPrepared)}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <Button
+                          size="sm"
+                          variant={isPrepared ? 'default' : 'outline'}
+                          className={`h-8 w-8 p-0 shrink-0 mt-0.5 ${
+                            isPrepared ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'border-dashed'
+                          }`}
+                          onClick={() => togglePrepared(item.id)}
+                        >
+                          {isPrepared ? <CheckCircle2 className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
+                        </Button>
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Avatar className="h-6 w-6 shrink-0">
+                                <AvatarImage src={item.pet_photo_url || undefined} />
+                                <AvatarFallback><Dog className="h-3 w-3" /></AvatarFallback>
+                              </Avatar>
+                              <span className="font-medium text-sm truncate">{item.pet_name}</span>
+                            </div>
+                            <Badge
+                              variant="secondary"
+                              className={`shrink-0 text-[10px] ${
+                                item.care_type === 'medication'
+                                  ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                                  : 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+                              }`}
+                            >
+                              {item.care_type === 'medication' ? <Pill className="h-3 w-3 mr-0.5" /> : <UtensilsCrossed className="h-3 w-3 mr-0.5" />}
+                              {item.care_type === 'medication' ? 'Med' : 'Feed'}
+                            </Badge>
+                          </div>
+                          <p className="text-sm font-medium">{item.care_name}</p>
+                          <p className="text-xs text-muted-foreground">{item.care_details}</p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {item.suite_name && (
+                              <Badge variant="outline" className="text-[10px] h-5 gap-0.5">
+                                <Home className="h-2.5 w-2.5" />{item.suite_name}
+                              </Badge>
+                            )}
+                            {item.timing && (
+                              <Badge variant="outline" className="text-[10px] h-5 gap-0.5">
+                                <Clock className="h-2.5 w-2.5" />{item.timing}
+                              </Badge>
+                            )}
+                            {item.last_administered_at && (
+                              <span className="text-[10px] text-muted-foreground">
+                                Last: {format(new Date(item.last_administered_at), 'h:mm a')}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 pt-1">
+                            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openAdminDialog(item)}>
+                              Partial
+                            </Button>
+                            <Button size="sm" className="h-7 text-xs" onClick={() => handleQuickAdminister(item)} disabled={saving}>
+                              <CheckCircle2 className="h-3 w-3 mr-1" />Full
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead className="w-[60px]">Prepared</TableHead>
-                      <TableHead>
-                        <SortButton field="pet_name">Pet</SortButton>
-                      </TableHead>
-                      <TableHead>
-                        <SortButton field="suite_name">Suite</SortButton>
-                      </TableHead>
-                      <TableHead>
-                        <SortButton field="care_type">Type</SortButton>
-                      </TableHead>
-                      <TableHead>
-                        <SortButton field="care_name">Item</SortButton>
-                      </TableHead>
+                      <TableHead><SortButton field="pet_name">Pet</SortButton></TableHead>
+                      <TableHead><SortButton field="suite_name">Suite</SortButton></TableHead>
+                      <TableHead><SortButton field="care_type">Type</SortButton></TableHead>
+                      <TableHead><SortButton field="care_name">Item</SortButton></TableHead>
                       <TableHead>Details</TableHead>
-                      <TableHead>
-                        <SortButton field="timing">Timing</SortButton>
-                      </TableHead>
+                      <TableHead><SortButton field="timing">Timing</SortButton></TableHead>
                       <TableHead>Last Given</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -701,40 +768,23 @@ const StaffPetCare = () => {
                   <TableBody>
                     {displayedItems.map((item) => {
                       const isPrepared = preparedItems.has(item.id);
-
                       return (
-                        <TableRow
-                          key={`${item.care_type}-${item.id}`}
-                          className={getRowClassName(item, isPrepared)}
-                        >
-                          {/* Prepared Toggle */}
+                        <TableRow key={`${item.care_type}-${item.id}`} className={getRowClassName(item, isPrepared)}>
                           <TableCell>
                             <Button
                               size="sm"
                               variant={isPrepared ? 'default' : 'outline'}
-                              className={`h-8 w-8 p-0 ${
-                                isPrepared
-                                  ? 'bg-amber-500 hover:bg-amber-600 text-white'
-                                  : 'border-dashed'
-                              }`}
+                              className={`h-8 w-8 p-0 ${isPrepared ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'border-dashed'}`}
                               onClick={() => togglePrepared(item.id)}
                             >
-                              {isPrepared ? (
-                                <CheckCircle2 className="h-4 w-4" />
-                              ) : (
-                                <Clock className="h-4 w-4" />
-                              )}
+                              {isPrepared ? <CheckCircle2 className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
                             </Button>
                           </TableCell>
-
-                          {/* Pet */}
                           <TableCell>
                             <div className="flex items-center gap-3">
                               <Avatar className="h-9 w-9">
                                 <AvatarImage src={item.pet_photo_url || undefined} />
-                                <AvatarFallback>
-                                  <Dog className="h-4 w-4" />
-                                </AvatarFallback>
+                                <AvatarFallback><Dog className="h-4 w-4" /></AvatarFallback>
                               </Avatar>
                               <div>
                                 <p className="font-medium text-sm">{item.pet_name}</p>
@@ -742,93 +792,37 @@ const StaffPetCare = () => {
                               </div>
                             </div>
                           </TableCell>
-
-                          {/* Suite */}
                           <TableCell>
                             {item.suite_name ? (
-                              <Badge variant="outline" className="gap-1">
-                                <Home className="h-3 w-3" />
-                                {item.suite_name}
-                              </Badge>
-                            ) : (
-                              <span className="text-muted-foreground text-sm">—</span>
-                            )}
+                              <Badge variant="outline" className="gap-1"><Home className="h-3 w-3" />{item.suite_name}</Badge>
+                            ) : <span className="text-muted-foreground text-sm">—</span>}
                           </TableCell>
-
-                          {/* Type */}
                           <TableCell>
-                            <Badge
-                              variant="secondary"
-                              className={
-                                item.care_type === 'medication'
-                                  ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
-                                  : 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
-                              }
-                            >
-                              {item.care_type === 'medication' ? (
-                                <Pill className="h-3 w-3 mr-1" />
-                              ) : (
-                                <UtensilsCrossed className="h-3 w-3 mr-1" />
-                              )}
+                            <Badge variant="secondary" className={item.care_type === 'medication' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' : 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'}>
+                              {item.care_type === 'medication' ? <Pill className="h-3 w-3 mr-1" /> : <UtensilsCrossed className="h-3 w-3 mr-1" />}
                               {item.care_type === 'medication' ? 'Medication' : 'Feeding'}
                             </Badge>
                           </TableCell>
-
-                          {/* Item Name */}
                           <TableCell>
                             <p className="font-medium text-sm">{item.care_name}</p>
-                            {item.instructions && (
-                              <p className="text-xs text-muted-foreground italic truncate max-w-[200px]">
-                                {item.instructions}
-                              </p>
-                            )}
+                            {item.instructions && <p className="text-xs text-muted-foreground italic truncate max-w-[200px]">{item.instructions}</p>}
                           </TableCell>
-
-                          {/* Details */}
-                          <TableCell>
-                            <p className="text-sm text-muted-foreground">{item.care_details}</p>
-                          </TableCell>
-
-                          {/* Timing */}
+                          <TableCell><p className="text-sm text-muted-foreground">{item.care_details}</p></TableCell>
                           <TableCell>
                             {item.timing ? (
-                              <Badge variant="outline" className="text-xs">
-                                <Clock className="h-3 w-3 mr-1" />
-                                {item.timing}
-                              </Badge>
-                            ) : (
-                              <span className="text-muted-foreground text-sm">—</span>
-                            )}
+                              <Badge variant="outline" className="text-xs"><Clock className="h-3 w-3 mr-1" />{item.timing}</Badge>
+                            ) : <span className="text-muted-foreground text-sm">—</span>}
                           </TableCell>
-
-                          {/* Last Administered */}
                           <TableCell>
                             {item.last_administered_at ? (
-                              <span className="text-sm text-muted-foreground">
-                                {format(new Date(item.last_administered_at), 'h:mm a')}
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground text-sm">—</span>
-                            )}
+                              <span className="text-sm text-muted-foreground">{format(new Date(item.last_administered_at), 'h:mm a')}</span>
+                            ) : <span className="text-muted-foreground text-sm">—</span>}
                           </TableCell>
-
-                          {/* Actions */}
                           <TableCell>
                             <div className="flex items-center justify-end gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => openAdminDialog(item)}
-                              >
-                                Partial
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => handleQuickAdminister(item)}
-                                disabled={saving}
-                              >
-                                <CheckCircle2 className="h-4 w-4 mr-1" />
-                                Full
+                              <Button size="sm" variant="outline" onClick={() => openAdminDialog(item)}>Partial</Button>
+                              <Button size="sm" onClick={() => handleQuickAdminister(item)} disabled={saving}>
+                                <CheckCircle2 className="h-4 w-4 mr-1" />Full
                               </Button>
                             </div>
                           </TableCell>
