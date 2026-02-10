@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { StaffLayout } from '@/components/staff/StaffLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
