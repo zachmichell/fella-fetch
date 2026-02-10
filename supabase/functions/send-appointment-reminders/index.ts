@@ -223,13 +223,25 @@ Deno.serve(async (req) => {
 
       if (!reservations || reservations.length === 0) continue;
 
+      // Filter out reservations that already had a reminder sent
+      const reservationIds = reservations.map((r: any) => r.id);
+      const { data: alreadySent } = await supabase
+        .from("sent_reminders")
+        .select("reservation_id")
+        .eq("service_type_id", serviceTypeId)
+        .in("reservation_id", reservationIds);
+
+      const sentSet = new Set((alreadySent || []).map((r: any) => r.reservation_id));
+
       // Group by client to avoid sending duplicate reminders
       const clientReminders = new Map<
         string,
-        { client: any; petNames: string[]; reservation: any }
+        { client: any; petNames: string[]; reservation: any; reservationIds: string[] }
       >();
 
       for (const res of reservations) {
+        if (sentSet.has(res.id)) continue; // Already sent
+
         const pet = (res as any).pets;
         const client = pet?.clients;
         if (!client?.phone || client.sms_reminders_opt_in === false) continue;
@@ -240,14 +252,17 @@ Deno.serve(async (req) => {
             client,
             petNames: [],
             reservation: res,
+            reservationIds: [],
           });
         }
-        clientReminders.get(clientId)!.petNames.push(pet.name);
+        const entry = clientReminders.get(clientId)!;
+        entry.petNames.push(pet.name);
+        entry.reservationIds.push(res.id);
       }
 
       // Send webhook for each client
       for (const [clientId, data] of clientReminders) {
-        const { client, petNames, reservation } = data;
+        const { client, petNames, reservation, reservationIds: resIds } = data;
 
         // Replace dynamic variables in the message
         let message = config.message;
@@ -295,6 +310,13 @@ Deno.serve(async (req) => {
           });
 
           if (webhookResponse.ok) {
+            // Record all reservation IDs as sent so they won't be sent again
+            for (const rid of resIds) {
+              await supabase.from("sent_reminders").upsert(
+                { reservation_id: rid, service_type_id: serviceTypeId, client_id: clientId },
+                { onConflict: "reservation_id,service_type_id" }
+              );
+            }
             totalSent++;
             results.push({
               client: `${client.first_name} ${client.last_name}`,
