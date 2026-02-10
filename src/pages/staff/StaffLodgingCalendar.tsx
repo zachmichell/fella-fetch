@@ -4,19 +4,16 @@ import { StaffLayout } from '@/components/staff/StaffLayout';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { LodgingCalendarHeader } from '@/components/staff/lodging/LodgingCalendarHeader';
 import { LodgingWeeklyView } from '@/components/staff/lodging/LodgingWeeklyView';
-import { LodgingMonthlyView } from '@/components/staff/lodging/LodgingMonthlyView';
 import { LodgingPetDetailsDialog } from '@/components/staff/lodging/LodgingPetDetailsDialog';
 import { LodgingAssignSuiteDialog } from '@/components/staff/lodging/LodgingAssignSuiteDialog';
 import { CreateBoardingDialog } from '@/components/staff/lodging/CreateBoardingDialog';
-import { startOfWeek, startOfMonth, parseISO, format } from 'date-fns';
+import { startOfWeek, parseISO, format } from 'date-fns';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { X, Info } from 'lucide-react';
 import { toast } from 'sonner';
-
-export type ViewMode = 'weekly' | 'monthly';
 
 export interface BoardingReservation {
   id: string;
@@ -37,7 +34,6 @@ const StaffLodgingCalendar = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
-  const [viewMode, setViewMode] = useState<ViewMode>('weekly');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedReservation, setSelectedReservation] = useState<BoardingReservation | null>(null);
   const [petDetailsOpen, setPetDetailsOpen] = useState(false);
@@ -112,7 +108,6 @@ const StaffLodgingCalendar = () => {
     if (urlReservation && reservationIdFromUrl) {
       setPendingAssignment(urlReservation);
       
-      // Navigate calendar to the reservation's start date
       if (startDateFromUrl) {
         setCurrentDate(parseISO(startDateFromUrl));
       }
@@ -145,7 +140,7 @@ const StaffLodgingCalendar = () => {
     };
   }, [queryClient]);
 
-  // 30-second polling fallback for data consistency
+  // 30-second polling fallback
   useEffect(() => {
     const pollInterval = setInterval(() => {
       queryClient.invalidateQueries({ queryKey: ['boarding-reservations'] });
@@ -156,7 +151,6 @@ const StaffLodgingCalendar = () => {
     return () => clearInterval(pollInterval);
   }, [queryClient]);
 
-  // Handle clicking "Assign Now" from the banner
   const handleAssignFromBanner = () => {
     if (pendingAssignment) {
       setReservationToAssign(pendingAssignment);
@@ -164,13 +158,11 @@ const StaffLodgingCalendar = () => {
     }
   };
 
-  // Dismiss the banner
   const handleDismissBanner = () => {
     setPendingAssignment(null);
     setSearchParams({});
   };
 
-  // Directly assign pending reservation to a suite (when clicking a cell)
   const handleQuickAssignToSuite = async (suiteId: string, suiteName: string) => {
     if (!pendingAssignment) return;
     
@@ -184,12 +176,8 @@ const StaffLodgingCalendar = () => {
       if (error) throw error;
       
       toast.success(`${pendingAssignment.pet_name} assigned to ${suiteName}`);
-      
-      // Clear pending assignment and URL params
       setPendingAssignment(null);
       setSearchParams({});
-      
-      // Refresh reservations data
       queryClient.invalidateQueries({ queryKey: ['boarding-reservations'] });
     } catch (error) {
       console.error('Error assigning suite:', error);
@@ -199,18 +187,15 @@ const StaffLodgingCalendar = () => {
     }
   };
 
-  // Clear URL params when assign dialog closes
   const handleAssignDialogClose = (open: boolean) => {
     setAssignSuiteOpen(open);
     if (!open) {
-      // Clear pending assignment and URL params after closing
       setPendingAssignment(null);
       setSearchParams({});
       setReservationToAssign(null);
     }
   };
 
-  // Fetch suites for name lookup
   const { data: suites } = useQuery({
     queryKey: ['suites'],
     queryFn: async () => {
@@ -234,14 +219,12 @@ const StaffLodgingCalendar = () => {
   };
 
   const handleCreateBooking = (suiteId: string, date: Date) => {
-    // If there's a pending assignment, assign to this suite instead of creating new booking
     if (pendingAssignment) {
       const suiteName = suites?.find(s => s.id === suiteId)?.name || 'Suite';
       handleQuickAssignToSuite(suiteId, suiteName);
       return;
     }
     
-    // Otherwise, open the create booking dialog
     setCreateBookingSuiteId(suiteId);
     setCreateBookingDate(date);
     setCreateBookingOpen(true);
@@ -255,7 +238,6 @@ const StaffLodgingCalendar = () => {
   return (
     <StaffLayout>
       <div className="space-y-4">
-        {/* Assignment banner when navigating from Control Center */}
         {pendingAssignment && (
           <Alert className="bg-primary/10 border-primary">
             <Info className="h-4 w-4" />
@@ -288,27 +270,16 @@ const StaffLodgingCalendar = () => {
         )}
 
         <LodgingCalendarHeader
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
           currentDate={currentDate}
           onDateChange={setCurrentDate}
         />
 
-        {viewMode === 'weekly' ? (
-          <LodgingWeeklyView
-            startDate={startOfWeek(currentDate, { weekStartsOn: 0 })}
-            onPetClick={handlePetClick}
-            onAssignSuite={handleAssignSuite}
-            onCreateBooking={handleCreateBooking}
-          />
-        ) : (
-          <LodgingMonthlyView
-            startDate={startOfMonth(currentDate)}
-            onPetClick={handlePetClick}
-            onAssignSuite={handleAssignSuite}
-            onCreateBooking={handleCreateBooking}
-          />
-        )}
+        <LodgingWeeklyView
+          startDate={startOfWeek(currentDate, { weekStartsOn: 0 })}
+          onPetClick={handlePetClick}
+          onAssignSuite={handleAssignSuite}
+          onCreateBooking={handleCreateBooking}
+        />
 
         <LodgingPetDetailsDialog
           open={petDetailsOpen}
