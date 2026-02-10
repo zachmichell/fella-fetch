@@ -179,10 +179,9 @@ const StaffMessages = () => {
   // Scroll to bottom helper
   const scrollToBottom = useCallback(() => {
     if (scrollAreaRef.current) {
-      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-      if (scrollContainer) {
-        scrollContainer.scrollTop = scrollContainer.scrollHeight;
-      }
+      // Try Radix ScrollArea viewport first (desktop), then plain div (mobile)
+      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]') || scrollAreaRef.current;
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
     }
   }, []);
 
@@ -672,17 +671,17 @@ const StaffMessages = () => {
   if (isMobile) {
     return (
       <StaffLayout>
-        <div className="h-[calc(100vh-7rem)] flex flex-col">
+        <div className="flex flex-col h-full w-full max-w-full overflow-hidden" style={{ height: 'calc(100dvh - 7rem)' }}>
           {!selectedClient ? (
             // Conversation list
             <>
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-3 shrink-0">
                 <h1 className="text-lg font-bold">Messages</h1>
                 {totalUnread > 0 && (
                   <Badge variant="destructive">{totalUnread}</Badge>
                 )}
               </div>
-              <div className="relative mb-3">
+              <div className="relative mb-3 shrink-0">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search clients or pets..."
@@ -691,7 +690,7 @@ const StaffMessages = () => {
                   className="pl-9 h-9 text-sm"
                 />
               </div>
-              <div className="flex-1 overflow-auto -mx-3">
+              <div className="flex-1 overflow-y-auto overflow-x-hidden -mx-3 min-h-0">
                 {isFetchingConversations ? (
                   <div className="flex items-center justify-center h-32">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -739,9 +738,9 @@ const StaffMessages = () => {
               </div>
             </>
           ) : (
-            // Full-screen chat
+            // Full-screen chat — flex column with input pinned to bottom
             <>
-              <div className="flex items-center gap-2 mb-2 -mx-1">
+              <div className="flex items-center gap-2 shrink-0 pb-2 -mx-1">
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedClient(null)}>
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
@@ -758,7 +757,7 @@ const StaffMessages = () => {
                   <ShoppingCart className="h-4 w-4" />
                 </Button>
               </div>
-              <div className="flex-1 overflow-auto -mx-3 px-3" ref={scrollAreaRef}>
+              <div className="flex-1 overflow-y-auto overflow-x-hidden -mx-3 px-3 min-h-0" ref={scrollAreaRef}>
                 {isFetchingMessages ? (
                   <div className="flex items-center justify-center h-32">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -802,7 +801,7 @@ const StaffMessages = () => {
                               <div className={`rounded-lg px-3 py-2 text-sm ${
                                 message.role === 'assistant' ? 'bg-primary text-primary-foreground' : 'bg-muted'
                               }`}>
-                                <p className="whitespace-pre-wrap">{displayContent}</p>
+                                <p className="whitespace-pre-wrap break-words">{displayContent}</p>
                                 <div className={`flex items-center gap-1 text-[10px] mt-1 ${
                                   message.role === 'assistant' ? 'text-primary-foreground/70' : 'text-muted-foreground'
                                 }`}>
@@ -829,7 +828,7 @@ const StaffMessages = () => {
                   </div>
                 )}
               </div>
-              <div className="flex gap-2 pt-2">
+              <div className="flex gap-2 pt-2 shrink-0">
                 <Input
                   ref={inputRef}
                   value={input}
