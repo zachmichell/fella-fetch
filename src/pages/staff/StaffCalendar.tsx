@@ -31,7 +31,7 @@ import {
   eachDayOfInterval,
 } from 'date-fns';
 
-type ViewMode = 'weekly' | 'monthly';
+type ViewMode = 'weekly';
 
 interface Reservation {
   id: string;
