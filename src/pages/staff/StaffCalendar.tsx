@@ -77,6 +77,7 @@ const colorMap: Record<string, { bg: string; text: string }> = {
 
 const StaffCalendar = () => {
   const { isStaffOrAdmin } = useAuth();
+  const isMobile = useIsMobile();
   const [viewMode, setViewMode] = useState<ViewMode>('weekly');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [reservations, setReservations] = useState<Reservation[]>([]);
