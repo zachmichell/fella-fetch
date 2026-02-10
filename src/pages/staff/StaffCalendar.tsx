@@ -370,7 +370,8 @@ const StaffCalendar = () => {
             ) : (
               /* Monthly View */
               <TooltipProvider delayDuration={200}>
-                <div className="grid grid-cols-7 gap-1">
+                <div className="overflow-x-auto">
+                <div className="grid grid-cols-7 gap-1 min-w-[700px]">
                 {/* Day of Week Headers */}
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
                   <div key={day} className="text-center p-2 text-xs font-medium text-muted-foreground">
