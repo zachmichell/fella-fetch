@@ -82,12 +82,6 @@ const StaffCalendar = () => {
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
-  // Monthly view calculations
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(currentDate);
-  const calendarStart = startOfWeek(monthStart, { weekStartsOn: 0 });
-  const calendarEnd = addDays(startOfWeek(monthEnd, { weekStartsOn: 0 }), 6);
-  const monthDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
   const fetchData = async () => {
     if (!isStaffOrAdmin) {
