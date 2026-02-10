@@ -277,7 +277,7 @@ const StaffCalendar = () => {
                 <p>No service types configured</p>
                 <p className="text-sm">Add service types in Settings → Service Types</p>
               </div>
-            ) : viewMode === 'weekly' ? (
+            ) : (
               /* Weekly View */
               isMobile ? (
                 /* Mobile: vertical list of days */
@@ -300,11 +300,11 @@ const StaffCalendar = () => {
                               key={service.id}
                               className={`flex items-center justify-between px-2 py-1 rounded ${service.bgColor} ${service.count === 0 ? 'opacity-40' : ''}`}
                             >
-                              <div className={`flex items-center gap-1 ${service.color}`}>
+                              <div className={`flex items-center gap-1 ${service.color} min-w-0`}>
                                 <ServiceTypeIcon iconName={service.iconName} className="h-3 w-3 flex-shrink-0" />
                                 <span className="text-[10px] font-medium truncate">{service.displayName}</span>
                               </div>
-                              <span className={`text-xs font-semibold ${service.color}`}>{service.count}</span>
+                              <span className={`text-xs font-semibold flex-shrink-0 ${service.color}`}>{service.count}</span>
                             </div>
                           ))}
                         </div>
@@ -315,7 +315,6 @@ const StaffCalendar = () => {
               ) : (
                 /* Desktop: 7-column grid */
                 <div className="grid grid-cols-7 gap-2">
-                  {/* Day Headers */}
                   {weekDays.map((day, index) => (
                     <div 
                       key={index}
@@ -329,8 +328,6 @@ const StaffCalendar = () => {
                       <p className="text-lg font-semibold">{format(day, 'd')}</p>
                     </div>
                   ))}
-
-                  {/* Day Content */}
                   {weekDays.map((day, index) => {
                     const serviceCounts = getServiceCountsForDay(day);
                     const total = getTotalForDay(day);
@@ -365,7 +362,6 @@ const StaffCalendar = () => {
                   })}
                 </div>
               )
-              null
             )}
           </CardContent>
         </Card>
