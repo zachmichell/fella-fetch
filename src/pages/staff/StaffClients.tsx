@@ -200,12 +200,12 @@ const StaffClients = () => {
 
   return (
     <StaffLayout>
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6 w-full max-w-full overflow-hidden">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Clients</h1>
-            <p className="text-muted-foreground">Manage client profiles and information</p>
+            <h1 className="text-lg sm:text-2xl font-semibold tracking-tight">Clients</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground">Manage client profiles and information</p>
           </div>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
