@@ -179,10 +179,9 @@ const StaffMessages = () => {
   // Scroll to bottom helper
   const scrollToBottom = useCallback(() => {
     if (scrollAreaRef.current) {
-      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-      if (scrollContainer) {
-        scrollContainer.scrollTop = scrollContainer.scrollHeight;
-      }
+      // Try Radix ScrollArea viewport first (desktop), then plain div (mobile)
+      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]') || scrollAreaRef.current;
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
     }
   }, []);
 
