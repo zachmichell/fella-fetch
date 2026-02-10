@@ -19,7 +19,6 @@ const bottomNavItems = [
 
 export function MobileBottomNav() {
   const location = useLocation();
-  const { unreadCount } = useUnreadMessages();
   const [moreOpen, setMoreOpen] = useState(false);
 
   const isActive = (path: string) => {
