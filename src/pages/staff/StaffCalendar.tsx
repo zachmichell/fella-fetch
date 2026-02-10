@@ -278,65 +278,92 @@ const StaffCalendar = () => {
               </div>
             ) : viewMode === 'weekly' ? (
               /* Weekly View */
-              <div className="grid grid-cols-7 gap-2">
-                {/* Day Headers */}
-                {weekDays.map((day, index) => (
-                  <div 
-                    key={index}
-                    className={`text-center p-2 rounded-lg ${
-                      isSameDay(day, new Date()) 
-                        ? 'bg-primary text-primary-foreground' 
-                        : 'bg-muted'
-                    }`}
-                  >
-                    <p className="text-xs font-medium">{format(day, 'EEE')}</p>
-                    <p className="text-lg font-semibold">{format(day, 'd')}</p>
-                  </div>
-                ))}
-
-                {/* Day Content */}
-                {weekDays.map((day, index) => {
-                  const serviceCounts = getServiceCountsForDay(day);
-                  const total = getTotalForDay(day);
-                  
-                  return (
-                    <div 
-                      key={`content-${index}`}
-                      className="min-h-[160px] border rounded-lg p-2 space-y-1"
-                    >
-                      {/* Service type counts - always show all types */}
-                      <div className="space-y-1">
-                        {serviceCounts.map((service) => {
-                          return (
+              isMobile ? (
+                /* Mobile: vertical list of days */
+                <div className="space-y-3">
+                  {weekDays.map((day, index) => {
+                    const serviceCounts = getServiceCountsForDay(day);
+                    const total = getTotalForDay(day);
+                    
+                    return (
+                      <div key={index} className="border rounded-lg p-3">
+                        <div className={`flex items-center justify-between mb-2 pb-2 border-b ${
+                          isSameDay(day, new Date()) ? 'text-primary font-bold' : ''
+                        }`}>
+                          <span className="text-sm font-medium">{format(day, 'EEE, MMM d')}</span>
+                          <Badge variant="secondary" className="text-xs">{total} total</Badge>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1">
+                          {serviceCounts.map((service) => (
                             <div 
                               key={service.id}
                               className={`flex items-center justify-between px-2 py-1 rounded ${service.bgColor} ${service.count === 0 ? 'opacity-40' : ''}`}
                             >
                               <div className={`flex items-center gap-1 ${service.color}`}>
                                 <ServiceTypeIcon iconName={service.iconName} className="h-3 w-3 flex-shrink-0" />
-                                <span className="text-[10px] font-medium truncate max-w-[60px]">
-                                  {service.displayName}
-                                </span>
+                                <span className="text-[10px] font-medium truncate">{service.displayName}</span>
                               </div>
-                              <span className={`text-xs font-semibold ${service.color}`}>
-                                {service.count}
-                              </span>
+                              <span className={`text-xs font-semibold ${service.color}`}>{service.count}</span>
                             </div>
-                          );
-                        })}
-                      </div>
-                      
-                      {/* Total */}
-                      <div className="pt-1 border-t">
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span>Total</span>
-                          <span className="font-semibold text-foreground">{total}</span>
+                          ))}
                         </div>
                       </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* Desktop: 7-column grid */
+                <div className="grid grid-cols-7 gap-2">
+                  {/* Day Headers */}
+                  {weekDays.map((day, index) => (
+                    <div 
+                      key={index}
+                      className={`text-center p-2 rounded-lg ${
+                        isSameDay(day, new Date()) 
+                          ? 'bg-primary text-primary-foreground' 
+                          : 'bg-muted'
+                      }`}
+                    >
+                      <p className="text-xs font-medium">{format(day, 'EEE')}</p>
+                      <p className="text-lg font-semibold">{format(day, 'd')}</p>
                     </div>
-                  );
-                })}
-              </div>
+                  ))}
+
+                  {/* Day Content */}
+                  {weekDays.map((day, index) => {
+                    const serviceCounts = getServiceCountsForDay(day);
+                    const total = getTotalForDay(day);
+                    
+                    return (
+                      <div 
+                        key={`content-${index}`}
+                        className="min-h-[160px] border rounded-lg p-2 space-y-1"
+                      >
+                        <div className="space-y-1">
+                          {serviceCounts.map((service) => (
+                            <div 
+                              key={service.id}
+                              className={`flex items-center justify-between px-2 py-1 rounded ${service.bgColor} ${service.count === 0 ? 'opacity-40' : ''}`}
+                            >
+                              <div className={`flex items-center gap-1 ${service.color}`}>
+                                <ServiceTypeIcon iconName={service.iconName} className="h-3 w-3 flex-shrink-0" />
+                                <span className="text-[10px] font-medium truncate max-w-[60px]">{service.displayName}</span>
+                              </div>
+                              <span className={`text-xs font-semibold ${service.color}`}>{service.count}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="pt-1 border-t">
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>Total</span>
+                            <span className="font-semibold text-foreground">{total}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )
             ) : (
               /* Monthly View */
               <TooltipProvider delayDuration={200}>
