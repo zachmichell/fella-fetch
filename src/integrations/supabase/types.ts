@@ -1229,6 +1229,30 @@ export type Database = {
           },
         ]
       }
+      sent_reminders: {
+        Row: {
+          client_id: string
+          id: string
+          reservation_id: string
+          sent_at: string
+          service_type_id: string
+        }
+        Insert: {
+          client_id: string
+          id?: string
+          reservation_id: string
+          sent_at?: string
+          service_type_id: string
+        }
+        Update: {
+          client_id?: string
+          id?: string
+          reservation_id?: string
+          sent_at?: string
+          service_type_id?: string
+        }
+        Relationships: []
+      }
       service_type_products: {
         Row: {
           created_at: string
