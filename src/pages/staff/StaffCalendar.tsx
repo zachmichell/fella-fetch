@@ -475,6 +475,7 @@ const StaffCalendar = () => {
                   );
                 })}
                 </div>
+                </div>
               </TooltipProvider>
             )}
           </CardContent>
