@@ -50,15 +50,19 @@ const StaffSettings = () => {
   const [weekendOpen, setWeekendOpen] = useState('8:00 AM');
   const [weekendClose, setWeekendClose] = useState('5:00 PM');
 
+  const { settings } = useSystemSettings();
+  
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && settings) {
       const currentInactivity = getSetting<number>('pet_inactivity_days', 90);
       setInactivityDays(String(currentInactivity));
       
       const currentTimezone = getSetting<string>('business_timezone', 'America/New_York');
       setTimezone(currentTimezone);
     }
-  }, [isLoading, getSetting]);
+    // Only re-run when settings data actually changes, not on every render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, settings]);
 
   useEffect(() => {
     if (!isLoadingHours && businessHours) {
