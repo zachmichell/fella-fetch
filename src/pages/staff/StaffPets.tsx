@@ -113,6 +113,7 @@ const StaffPets = () => {
   const { isStaffOrAdmin } = useAuth();
   const { toast } = useToast();
   const { logActivity } = usePetActivityLog();
+  const isMobile = useIsMobile();
   const [pets, setPets] = useState<Pet[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
