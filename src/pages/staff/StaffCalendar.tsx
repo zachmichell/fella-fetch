@@ -222,48 +222,50 @@ const StaffCalendar = () => {
     <StaffLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Calendar</h1>
-            <p className="text-muted-foreground">
-              {viewMode === 'weekly' ? 'Weekly' : 'Monthly'} overview of reservations
-            </p>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-lg sm:text-2xl font-semibold tracking-tight">Calendar</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
+                {viewMode === 'weekly' ? 'Weekly' : 'Monthly'} overview of reservations
+              </p>
+            </div>
+            
+            <ToggleGroup
+              type="single"
+              value={viewMode}
+              onValueChange={(value) => value && setViewMode(value as ViewMode)}
+            >
+              <ToggleGroupItem value="weekly" aria-label="Weekly view">
+                <CalendarIcon className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Week</span>
+              </ToggleGroupItem>
+              <ToggleGroupItem value="monthly" aria-label="Monthly view">
+                <CalendarDays className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Month</span>
+              </ToggleGroupItem>
+            </ToggleGroup>
           </div>
-          
-          <ToggleGroup
-            type="single"
-            value={viewMode}
-            onValueChange={(value) => value && setViewMode(value as ViewMode)}
-          >
-            <ToggleGroupItem value="weekly" aria-label="Weekly view">
-              <CalendarIcon className="h-4 w-4 mr-2" />
-              Week
-            </ToggleGroupItem>
-            <ToggleGroupItem value="monthly" aria-label="Monthly view">
-              <CalendarDays className="h-4 w-4 mr-2" />
-              Month
-            </ToggleGroupItem>
-          </ToggleGroup>
         </div>
 
         {/* Calendar */}
         <Card>
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1">
-                  <Button variant="outline" size="icon" onClick={goToPrevious}>
+                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={goToPrevious}>
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="icon" onClick={goToNext}>
+                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={goToNext}>
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
-                <CardTitle className="text-lg">
+                <CardTitle className="text-sm sm:text-lg">
                   {getHeaderText()}
                 </CardTitle>
               </div>
-              <Button variant="outline" onClick={goToToday}>Today</Button>
+              <Button variant="outline" size="sm" onClick={goToToday}>Today</Button>
             </div>
           </CardHeader>
           <CardContent>
