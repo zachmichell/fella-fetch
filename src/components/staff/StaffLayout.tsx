@@ -2,9 +2,11 @@ import { ReactNode, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { StaffSidebar } from './StaffSidebar';
+import { MobileBottomNav } from './MobileBottomNav';
 import { StaffCodeLock } from './StaffCodeLock';
 import { useAuth } from '@/contexts/AuthContext';
 import { StaffCodeProvider } from '@/contexts/StaffCodeContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Loader2 } from 'lucide-react';
 
 interface StaffLayoutProps {
