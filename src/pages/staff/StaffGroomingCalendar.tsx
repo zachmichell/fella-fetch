@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { StaffLayout } from '@/components/staff/StaffLayout';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { GroomingCalendarHeader } from '@/components/staff/grooming/GroomingCalendarHeader';
 import { GroomingDayView } from '@/components/staff/grooming/GroomingDayView';
 import { GroomingWeekView } from '@/components/staff/grooming/GroomingWeekView';
