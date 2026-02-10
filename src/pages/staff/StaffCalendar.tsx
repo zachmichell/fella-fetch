@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { StaffLayout } from '@/components/staff/StaffLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ServiceTypeIcon } from '@/components/ui/service-type-icon';

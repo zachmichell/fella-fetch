@@ -38,49 +38,47 @@ export const LodgingCalendarHeader = ({
   };
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-      <div className="flex items-center gap-4">
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <BedDouble className="h-6 w-6" />
-          <h1 className="text-2xl font-semibold tracking-tight">Lodging Calendar</h1>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-4">
-        {/* Date Navigation */}
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={handlePrevious}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" onClick={handleToday}>
-            Today
-          </Button>
-          <Button variant="outline" size="icon" onClick={handleNext}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+          <BedDouble className="h-5 w-5 sm:h-6 sm:w-6" />
+          <h1 className="text-lg sm:text-2xl font-semibold tracking-tight">Lodging</h1>
         </div>
 
-        <span className="text-lg font-medium min-w-[180px] text-center">
-          {viewMode === 'weekly'
-            ? format(currentDate, 'MMM d, yyyy')
-            : format(currentDate, 'MMMM yyyy')}
-        </span>
-
-        {/* View Toggle */}
         <ToggleGroup
           type="single"
           value={viewMode}
           onValueChange={(value) => value && onViewModeChange(value as ViewMode)}
         >
           <ToggleGroupItem value="weekly" aria-label="Weekly view">
-            <Calendar className="h-4 w-4 mr-2" />
-            Week
+            <Calendar className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Week</span>
           </ToggleGroupItem>
           <ToggleGroupItem value="monthly" aria-label="Monthly view">
-            <CalendarDays className="h-4 w-4 mr-2" />
-            Month
+            <CalendarDays className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Month</span>
           </ToggleGroupItem>
         </ToggleGroup>
+      </div>
+
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1">
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePrevious}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleToday}>
+            Today
+          </Button>
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNext}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <span className="text-sm sm:text-lg font-medium text-center">
+          {viewMode === 'weekly'
+            ? format(currentDate, 'MMM d, yyyy')
+            : format(currentDate, 'MMMM yyyy')}
+        </span>
       </div>
     </div>
   );

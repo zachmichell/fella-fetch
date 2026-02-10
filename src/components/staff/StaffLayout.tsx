@@ -51,7 +51,7 @@ export function StaffLayout({ children }: StaffLayoutProps) {
           <header className="h-12 border-b border-border flex items-center px-4 bg-card shrink-0">
             <h1 className="font-medium text-sm">Fella & Fetch</h1>
           </header>
-          <div className="flex-1 overflow-auto p-3 pb-20">
+          <div className="flex-1 overflow-x-hidden overflow-y-auto p-3 pb-20">
             {children}
           </div>
           <MobileBottomNav />
