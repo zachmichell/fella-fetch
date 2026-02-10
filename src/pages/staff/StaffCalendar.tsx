@@ -91,6 +91,9 @@ const StaffCalendar = () => {
 
     const startDate = format(weekDays[0], 'yyyy-MM-dd');
     const endDate = format(weekDays[6], 'yyyy-MM-dd');
+
+    try {
+      const [serviceTypesRes, reservationsRes] = await Promise.all([
         supabase
           .from('service_types')
           .select('*')
