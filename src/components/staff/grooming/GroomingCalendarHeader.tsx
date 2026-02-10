@@ -54,17 +54,26 @@ export const GroomingCalendarHeader = ({
   };
 
   return (
-    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-      <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-          <Scissors className="h-5 w-5 text-primary" />
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Scissors className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-lg sm:text-2xl font-bold">Grooming</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
+              Manage grooming and add-on appointments
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold">Grooming Calendar</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage grooming and add-on appointments
-          </p>
-        </div>
+
+        <Tabs value={viewMode} onValueChange={(v) => onViewModeChange(v as GroomingViewMode)}>
+          <TabsList>
+            <TabsTrigger value="day">Day</TabsTrigger>
+            <TabsTrigger value="week">Week</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -73,9 +82,9 @@ export const GroomingCalendarHeader = ({
           value={selectedGroomerId || 'all'}
           onValueChange={(v) => onGroomerFilterChange(v === 'all' ? null : v)}
         >
-          <SelectTrigger className="w-[180px]">
-            <User className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Filter by groomer" />
+          <SelectTrigger className="w-[140px] sm:w-[180px]">
+            <User className="h-4 w-4 mr-1" />
+            <SelectValue placeholder="Filter" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Groomers</SelectItem>
@@ -93,22 +102,15 @@ export const GroomingCalendarHeader = ({
           </SelectContent>
         </Select>
 
-        <Tabs value={viewMode} onValueChange={(v) => onViewModeChange(v as GroomingViewMode)}>
-          <TabsList>
-            <TabsTrigger value="day">Day</TabsTrigger>
-            <TabsTrigger value="week">Week</TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        <div className="flex items-center gap-1">
-          <Button variant="outline" size="icon" onClick={handlePrevious}>
+        <div className="flex items-center gap-1 ml-auto">
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePrevious}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="min-w-[180px]">
-                <CalendarIcon className="h-4 w-4 mr-2" />
+              <Button variant="outline" className="min-w-[120px] sm:min-w-[180px] h-8 text-xs sm:text-sm">
+                <CalendarIcon className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
                 {format(currentDate, 'MMM d, yyyy')}
               </Button>
             </PopoverTrigger>
@@ -123,14 +125,14 @@ export const GroomingCalendarHeader = ({
             </PopoverContent>
           </Popover>
 
-          <Button variant="outline" size="icon" onClick={handleNext}>
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNext}>
             <ChevronRight className="h-4 w-4" />
           </Button>
-        </div>
 
-        <Button variant="outline" onClick={handleToday}>
-          Today
-        </Button>
+          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleToday}>
+            Today
+          </Button>
+        </div>
       </div>
     </div>
   );

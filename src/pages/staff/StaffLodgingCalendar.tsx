@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { StaffLayout } from '@/components/staff/StaffLayout';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { LodgingCalendarHeader } from '@/components/staff/lodging/LodgingCalendarHeader';
 import { LodgingWeeklyView } from '@/components/staff/lodging/LodgingWeeklyView';
 import { LodgingMonthlyView } from '@/components/staff/lodging/LodgingMonthlyView';
@@ -35,6 +36,7 @@ export interface BoardingReservation {
 const StaffLodgingCalendar = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   const [viewMode, setViewMode] = useState<ViewMode>('weekly');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedReservation, setSelectedReservation] = useState<BoardingReservation | null>(null);

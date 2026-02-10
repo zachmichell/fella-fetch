@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { StaffLayout } from '@/components/staff/StaffLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ServiceTypeIcon } from '@/components/ui/service-type-icon';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -76,6 +78,7 @@ const colorMap: Record<string, { bg: string; text: string }> = {
 
 const StaffCalendar = () => {
   const { isStaffOrAdmin } = useAuth();
+  const isMobile = useIsMobile();
   const [viewMode, setViewMode] = useState<ViewMode>('weekly');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [reservations, setReservations] = useState<Reservation[]>([]);
@@ -219,48 +222,50 @@ const StaffCalendar = () => {
     <StaffLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Calendar</h1>
-            <p className="text-muted-foreground">
-              {viewMode === 'weekly' ? 'Weekly' : 'Monthly'} overview of reservations
-            </p>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-lg sm:text-2xl font-semibold tracking-tight">Calendar</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
+                {viewMode === 'weekly' ? 'Weekly' : 'Monthly'} overview of reservations
+              </p>
+            </div>
+            
+            <ToggleGroup
+              type="single"
+              value={viewMode}
+              onValueChange={(value) => value && setViewMode(value as ViewMode)}
+            >
+              <ToggleGroupItem value="weekly" aria-label="Weekly view">
+                <CalendarIcon className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Week</span>
+              </ToggleGroupItem>
+              <ToggleGroupItem value="monthly" aria-label="Monthly view">
+                <CalendarDays className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Month</span>
+              </ToggleGroupItem>
+            </ToggleGroup>
           </div>
-          
-          <ToggleGroup
-            type="single"
-            value={viewMode}
-            onValueChange={(value) => value && setViewMode(value as ViewMode)}
-          >
-            <ToggleGroupItem value="weekly" aria-label="Weekly view">
-              <CalendarIcon className="h-4 w-4 mr-2" />
-              Week
-            </ToggleGroupItem>
-            <ToggleGroupItem value="monthly" aria-label="Monthly view">
-              <CalendarDays className="h-4 w-4 mr-2" />
-              Month
-            </ToggleGroupItem>
-          </ToggleGroup>
         </div>
 
         {/* Calendar */}
         <Card>
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1">
-                  <Button variant="outline" size="icon" onClick={goToPrevious}>
+                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={goToPrevious}>
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="icon" onClick={goToNext}>
+                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={goToNext}>
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
-                <CardTitle className="text-lg">
+                <CardTitle className="text-sm sm:text-lg">
                   {getHeaderText()}
                 </CardTitle>
               </div>
-              <Button variant="outline" onClick={goToToday}>Today</Button>
+              <Button variant="outline" size="sm" onClick={goToToday}>Today</Button>
             </div>
           </CardHeader>
           <CardContent>
@@ -276,69 +281,97 @@ const StaffCalendar = () => {
               </div>
             ) : viewMode === 'weekly' ? (
               /* Weekly View */
-              <div className="grid grid-cols-7 gap-2">
-                {/* Day Headers */}
-                {weekDays.map((day, index) => (
-                  <div 
-                    key={index}
-                    className={`text-center p-2 rounded-lg ${
-                      isSameDay(day, new Date()) 
-                        ? 'bg-primary text-primary-foreground' 
-                        : 'bg-muted'
-                    }`}
-                  >
-                    <p className="text-xs font-medium">{format(day, 'EEE')}</p>
-                    <p className="text-lg font-semibold">{format(day, 'd')}</p>
-                  </div>
-                ))}
-
-                {/* Day Content */}
-                {weekDays.map((day, index) => {
-                  const serviceCounts = getServiceCountsForDay(day);
-                  const total = getTotalForDay(day);
-                  
-                  return (
-                    <div 
-                      key={`content-${index}`}
-                      className="min-h-[160px] border rounded-lg p-2 space-y-1"
-                    >
-                      {/* Service type counts - always show all types */}
-                      <div className="space-y-1">
-                        {serviceCounts.map((service) => {
-                          return (
+              isMobile ? (
+                /* Mobile: vertical list of days */
+                <div className="space-y-3">
+                  {weekDays.map((day, index) => {
+                    const serviceCounts = getServiceCountsForDay(day);
+                    const total = getTotalForDay(day);
+                    
+                    return (
+                      <div key={index} className="border rounded-lg p-3">
+                        <div className={`flex items-center justify-between mb-2 pb-2 border-b ${
+                          isSameDay(day, new Date()) ? 'text-primary font-bold' : ''
+                        }`}>
+                          <span className="text-sm font-medium">{format(day, 'EEE, MMM d')}</span>
+                          <Badge variant="secondary" className="text-xs">{total} total</Badge>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1">
+                          {serviceCounts.map((service) => (
                             <div 
                               key={service.id}
                               className={`flex items-center justify-between px-2 py-1 rounded ${service.bgColor} ${service.count === 0 ? 'opacity-40' : ''}`}
                             >
                               <div className={`flex items-center gap-1 ${service.color}`}>
                                 <ServiceTypeIcon iconName={service.iconName} className="h-3 w-3 flex-shrink-0" />
-                                <span className="text-[10px] font-medium truncate max-w-[60px]">
-                                  {service.displayName}
-                                </span>
+                                <span className="text-[10px] font-medium truncate">{service.displayName}</span>
                               </div>
-                              <span className={`text-xs font-semibold ${service.color}`}>
-                                {service.count}
-                              </span>
+                              <span className={`text-xs font-semibold ${service.color}`}>{service.count}</span>
                             </div>
-                          );
-                        })}
-                      </div>
-                      
-                      {/* Total */}
-                      <div className="pt-1 border-t">
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span>Total</span>
-                          <span className="font-semibold text-foreground">{total}</span>
+                          ))}
                         </div>
                       </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* Desktop: 7-column grid */
+                <div className="grid grid-cols-7 gap-2">
+                  {/* Day Headers */}
+                  {weekDays.map((day, index) => (
+                    <div 
+                      key={index}
+                      className={`text-center p-2 rounded-lg ${
+                        isSameDay(day, new Date()) 
+                          ? 'bg-primary text-primary-foreground' 
+                          : 'bg-muted'
+                      }`}
+                    >
+                      <p className="text-xs font-medium">{format(day, 'EEE')}</p>
+                      <p className="text-lg font-semibold">{format(day, 'd')}</p>
                     </div>
-                  );
-                })}
-              </div>
+                  ))}
+
+                  {/* Day Content */}
+                  {weekDays.map((day, index) => {
+                    const serviceCounts = getServiceCountsForDay(day);
+                    const total = getTotalForDay(day);
+                    
+                    return (
+                      <div 
+                        key={`content-${index}`}
+                        className="min-h-[160px] border rounded-lg p-2 space-y-1"
+                      >
+                        <div className="space-y-1">
+                          {serviceCounts.map((service) => (
+                            <div 
+                              key={service.id}
+                              className={`flex items-center justify-between px-2 py-1 rounded ${service.bgColor} ${service.count === 0 ? 'opacity-40' : ''}`}
+                            >
+                              <div className={`flex items-center gap-1 ${service.color}`}>
+                                <ServiceTypeIcon iconName={service.iconName} className="h-3 w-3 flex-shrink-0" />
+                                <span className="text-[10px] font-medium truncate max-w-[60px]">{service.displayName}</span>
+                              </div>
+                              <span className={`text-xs font-semibold ${service.color}`}>{service.count}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="pt-1 border-t">
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>Total</span>
+                            <span className="font-semibold text-foreground">{total}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )
             ) : (
               /* Monthly View */
               <TooltipProvider delayDuration={200}>
-                <div className="grid grid-cols-7 gap-1">
+                <div className="overflow-x-auto">
+                <div className="grid grid-cols-7 gap-1 min-w-[700px]">
                 {/* Day of Week Headers */}
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
                   <div key={day} className="text-center p-2 text-xs font-medium text-muted-foreground">
@@ -441,6 +474,7 @@ const StaffCalendar = () => {
                     </Tooltip>
                   );
                 })}
+                </div>
                 </div>
               </TooltipProvider>
             )}

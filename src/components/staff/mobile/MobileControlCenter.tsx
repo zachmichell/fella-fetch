@@ -135,30 +135,30 @@ export function MobileControlCenter({
     <div className="space-y-3">
       {/* Tabs - scrollable horizontally */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabValue)}>
-        <TabsList className="w-full grid grid-cols-4 h-auto p-0 bg-transparent gap-0">
+        <TabsList className="w-full h-auto p-0 bg-transparent gap-0 flex overflow-x-auto">
           <TabsTrigger
             value="expected"
-            className="rounded-none text-xs px-1 py-2 data-[state=active]:bg-green-500 data-[state=active]:text-white bg-green-600 text-white"
+            className="flex-1 min-w-0 rounded-none text-[11px] px-1 py-2 data-[state=active]:bg-green-500 data-[state=active]:text-white bg-green-600 text-white whitespace-nowrap"
           >
             Expected ({expectedCount})
           </TabsTrigger>
           <TabsTrigger
             value="going_home"
-            className="rounded-none text-xs px-1 py-2 data-[state=active]:bg-cyan-500 data-[state=active]:text-white bg-cyan-600 text-white"
+            className="flex-1 min-w-0 rounded-none text-[11px] px-1 py-2 data-[state=active]:bg-cyan-500 data-[state=active]:text-white bg-cyan-600 text-white whitespace-nowrap"
           >
-            Going Home ({goingHomeCount})
+            Home ({goingHomeCount})
           </TabsTrigger>
           <TabsTrigger
             value="checked_in"
-            className="rounded-none text-xs px-1 py-2 data-[state=active]:bg-slate-500 data-[state=active]:text-white bg-slate-600 text-white"
+            className="flex-1 min-w-0 rounded-none text-[11px] px-1 py-2 data-[state=active]:bg-slate-500 data-[state=active]:text-white bg-slate-600 text-white whitespace-nowrap"
           >
-            Checked In ({goingHomeCount})
+            In ({goingHomeCount})
           </TabsTrigger>
           <TabsTrigger
             value="requested"
-            className="rounded-none text-xs px-1 py-2 data-[state=active]:bg-rose-500 data-[state=active]:text-white bg-rose-600 text-white"
+            className="flex-1 min-w-0 rounded-none text-[11px] px-1 py-2 data-[state=active]:bg-rose-500 data-[state=active]:text-white bg-rose-600 text-white whitespace-nowrap"
           >
-            Requested ({requestedCount})
+            Requests ({requestedCount})
           </TabsTrigger>
         </TabsList>
       </Tabs>
