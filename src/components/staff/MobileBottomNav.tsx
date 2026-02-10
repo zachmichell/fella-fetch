@@ -51,11 +51,6 @@ export function MobileBottomNav() {
               >
                 <div className="relative">
                   <item.icon className={`h-5 w-5 ${active ? 'text-primary' : 'text-muted-foreground'}`} />
-                  {item.showUnread && unreadCount > 0 && (
-                    <Badge variant="destructive" className="absolute -top-2 -right-3 h-4 min-w-4 px-1 text-[10px]">
-                      {unreadCount > 99 ? '99+' : unreadCount}
-                    </Badge>
-                  )}
                 </div>
                 <span className={`text-[10px] ${active ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
                   {item.title}
