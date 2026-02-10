@@ -170,27 +170,11 @@ const StaffCalendar = () => {
 
   const goToToday = () => setCurrentDate(new Date());
   
-  const goToPrevious = () => {
-    if (viewMode === 'weekly') {
-      setCurrentDate(subWeeks(currentDate, 1));
-    } else {
-      setCurrentDate(subMonths(currentDate, 1));
-    }
-  };
-  
-  const goToNext = () => {
-    if (viewMode === 'weekly') {
-      setCurrentDate(addWeeks(currentDate, 1));
-    } else {
-      setCurrentDate(addMonths(currentDate, 1));
-    }
-  };
+  const goToPrevious = () => setCurrentDate(subWeeks(currentDate, 1));
+  const goToNext = () => setCurrentDate(addWeeks(currentDate, 1));
 
   const getHeaderText = () => {
-    if (viewMode === 'weekly') {
-      return `${format(weekDays[0], 'MMM d')} - ${format(weekDays[6], 'MMM d, yyyy')}`;
-    }
-    return format(currentDate, 'MMMM yyyy');
+    return `${format(weekDays[0], 'MMM d')} - ${format(weekDays[6], 'MMM d, yyyy')}`;
   };
 
   return (
