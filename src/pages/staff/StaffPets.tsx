@@ -553,6 +553,42 @@ const StaffPets = () => {
                 <Dog className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>{searchTerm ? 'No pets found matching your search' : 'No pets yet'}</p>
               </div>
+            ) : isMobile ? (
+              /* Mobile: card-based list */
+              <div className="divide-y">
+                {filteredPets.map((pet) => (
+                  <button
+                    key={pet.id}
+                    className="w-full p-3 text-left hover:bg-muted/50 active:bg-muted transition-colors"
+                    onClick={() => handleViewPet(pet)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <Dog className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{pet.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {pet.breed || 'Unknown breed'} • {getAge(pet.date_of_birth)}
+                        </p>
+                        {pet.client && (
+                          <p className="text-xs text-muted-foreground truncate mt-0.5">
+                            Owner: {pet.client.first_name} {pet.client.last_name}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <div className="flex gap-0.5">
+                          <Badge variant={isVaccinationExpired(pet.vaccination_rabies) ? 'destructive' : 'secondary'} className="text-[10px] px-1 h-4">R</Badge>
+                          <Badge variant={isVaccinationExpired(pet.vaccination_bordetella) ? 'destructive' : 'secondary'} className="text-[10px] px-1 h-4">B</Badge>
+                          <Badge variant={isVaccinationExpired(pet.vaccination_distemper) ? 'destructive' : 'secondary'} className="text-[10px] px-1 h-4">D</Badge>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
             ) : (
               <Table>
                 <TableHeader>
@@ -606,24 +642,9 @@ const StaffPets = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          <Badge 
-                            variant={isVaccinationExpired(pet.vaccination_rabies) ? 'destructive' : 'secondary'}
-                            className="text-xs"
-                          >
-                            R
-                          </Badge>
-                          <Badge 
-                            variant={isVaccinationExpired(pet.vaccination_bordetella) ? 'destructive' : 'secondary'}
-                            className="text-xs"
-                          >
-                            B
-                          </Badge>
-                          <Badge 
-                            variant={isVaccinationExpired(pet.vaccination_distemper) ? 'destructive' : 'secondary'}
-                            className="text-xs"
-                          >
-                            D
-                          </Badge>
+                          <Badge variant={isVaccinationExpired(pet.vaccination_rabies) ? 'destructive' : 'secondary'} className="text-xs">R</Badge>
+                          <Badge variant={isVaccinationExpired(pet.vaccination_bordetella) ? 'destructive' : 'secondary'} className="text-xs">B</Badge>
+                          <Badge variant={isVaccinationExpired(pet.vaccination_distemper) ? 'destructive' : 'secondary'} className="text-xs">D</Badge>
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
