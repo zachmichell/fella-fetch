@@ -83,6 +83,7 @@ interface SortLevel {
 const StaffPetCare = () => {
   const { isStaffOrAdmin, user } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [careItems, setCareItems] = useState<CareItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
