@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ServiceTypeIcon } from '@/components/ui/service-type-icon';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,24 +13,17 @@ import {
   ChevronRight, 
   Loader2,
   Calendar as CalendarIcon,
-  CalendarDays,
 } from 'lucide-react';
 import { 
   format, 
   addDays, 
   startOfWeek, 
-  startOfMonth,
-  endOfMonth,
   addWeeks, 
   subWeeks, 
-  addMonths,
-  subMonths,
   isSameDay,
-  isSameMonth,
-  eachDayOfInterval,
 } from 'date-fns';
 
-type ViewMode = 'weekly' | 'monthly';
+type ViewMode = 'weekly';
 
 interface Reservation {
   id: string;
@@ -89,12 +81,6 @@ const StaffCalendar = () => {
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
-  // Monthly view calculations
-  const monthStart = startOfMonth(currentDate);
-  const monthEnd = endOfMonth(currentDate);
-  const calendarStart = startOfWeek(monthStart, { weekStartsOn: 0 });
-  const calendarEnd = addDays(startOfWeek(monthEnd, { weekStartsOn: 0 }), 6);
-  const monthDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
   const fetchData = async () => {
     if (!isStaffOrAdmin) {
@@ -102,19 +88,10 @@ const StaffCalendar = () => {
       return;
     }
 
-    let startDate: string;
-    let endDate: string;
-
-    if (viewMode === 'weekly') {
-      startDate = format(weekDays[0], 'yyyy-MM-dd');
-      endDate = format(weekDays[6], 'yyyy-MM-dd');
-    } else {
-      startDate = format(calendarStart, 'yyyy-MM-dd');
-      endDate = format(calendarEnd, 'yyyy-MM-dd');
-    }
+    const startDate = format(weekDays[0], 'yyyy-MM-dd');
+    const endDate = format(weekDays[6], 'yyyy-MM-dd');
 
     try {
-      // Fetch service types and reservations in parallel
       const [serviceTypesRes, reservationsRes] = await Promise.all([
         supabase
           .from('service_types')
@@ -195,56 +172,38 @@ const StaffCalendar = () => {
 
   const goToToday = () => setCurrentDate(new Date());
   
-  const goToPrevious = () => {
-    if (viewMode === 'weekly') {
-      setCurrentDate(subWeeks(currentDate, 1));
-    } else {
-      setCurrentDate(subMonths(currentDate, 1));
-    }
-  };
-  
-  const goToNext = () => {
-    if (viewMode === 'weekly') {
-      setCurrentDate(addWeeks(currentDate, 1));
-    } else {
-      setCurrentDate(addMonths(currentDate, 1));
-    }
-  };
+  const goToPrevious = () => setCurrentDate(subWeeks(currentDate, 1));
+  const goToNext = () => setCurrentDate(addWeeks(currentDate, 1));
 
   const getHeaderText = () => {
-    if (viewMode === 'weekly') {
-      return `${format(weekDays[0], 'MMM d')} - ${format(weekDays[6], 'MMM d, yyyy')}`;
-    }
-    return format(currentDate, 'MMMM yyyy');
+    return `${format(weekDays[0], 'MMM d')} - ${format(weekDays[6], 'MMM d, yyyy')}`;
   };
 
   return (
     <StaffLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 w-full max-w-full overflow-hidden">
         {/* Header */}
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-lg sm:text-2xl font-semibold tracking-tight">Calendar</h1>
               <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-                {viewMode === 'weekly' ? 'Weekly' : 'Monthly'} overview of reservations
+                Weekly overview of reservations
               </p>
             </div>
             
-            <ToggleGroup
-              type="single"
-              value={viewMode}
-              onValueChange={(value) => value && setViewMode(value as ViewMode)}
-            >
-              <ToggleGroupItem value="weekly" aria-label="Weekly view">
-                <CalendarIcon className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Week</span>
-              </ToggleGroupItem>
-              <ToggleGroupItem value="monthly" aria-label="Monthly view">
-                <CalendarDays className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Month</span>
-              </ToggleGroupItem>
-            </ToggleGroup>
+            {!isMobile && (
+              <ToggleGroup
+                type="single"
+                value={viewMode}
+                onValueChange={(value) => value && setViewMode(value as ViewMode)}
+              >
+                <ToggleGroupItem value="weekly" aria-label="Weekly view">
+                  <CalendarIcon className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Week</span>
+                </ToggleGroupItem>
+              </ToggleGroup>
+            )}
           </div>
         </div>
 
@@ -279,7 +238,7 @@ const StaffCalendar = () => {
                 <p>No service types configured</p>
                 <p className="text-sm">Add service types in Settings → Service Types</p>
               </div>
-            ) : viewMode === 'weekly' ? (
+            ) : (
               /* Weekly View */
               isMobile ? (
                 /* Mobile: vertical list of days */
@@ -302,11 +261,11 @@ const StaffCalendar = () => {
                               key={service.id}
                               className={`flex items-center justify-between px-2 py-1 rounded ${service.bgColor} ${service.count === 0 ? 'opacity-40' : ''}`}
                             >
-                              <div className={`flex items-center gap-1 ${service.color}`}>
+                              <div className={`flex items-center gap-1 ${service.color} min-w-0`}>
                                 <ServiceTypeIcon iconName={service.iconName} className="h-3 w-3 flex-shrink-0" />
                                 <span className="text-[10px] font-medium truncate">{service.displayName}</span>
                               </div>
-                              <span className={`text-xs font-semibold ${service.color}`}>{service.count}</span>
+                              <span className={`text-xs font-semibold flex-shrink-0 ${service.color}`}>{service.count}</span>
                             </div>
                           ))}
                         </div>
@@ -317,7 +276,6 @@ const StaffCalendar = () => {
               ) : (
                 /* Desktop: 7-column grid */
                 <div className="grid grid-cols-7 gap-2">
-                  {/* Day Headers */}
                   {weekDays.map((day, index) => (
                     <div 
                       key={index}
@@ -331,8 +289,6 @@ const StaffCalendar = () => {
                       <p className="text-lg font-semibold">{format(day, 'd')}</p>
                     </div>
                   ))}
-
-                  {/* Day Content */}
                   {weekDays.map((day, index) => {
                     const serviceCounts = getServiceCountsForDay(day);
                     const total = getTotalForDay(day);
@@ -367,116 +323,6 @@ const StaffCalendar = () => {
                   })}
                 </div>
               )
-            ) : (
-              /* Monthly View */
-              <TooltipProvider delayDuration={200}>
-                <div className="overflow-x-auto">
-                <div className="grid grid-cols-7 gap-1 min-w-[700px]">
-                {/* Day of Week Headers */}
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                  <div key={day} className="text-center p-2 text-xs font-medium text-muted-foreground">
-                    {day}
-                  </div>
-                ))}
-
-                {/* Calendar Days */}
-                {monthDays.map((day, index) => {
-                  const serviceCounts = getServiceCountsForDay(day);
-                  const total = getTotalForDay(day);
-                  const isCurrentMonth = isSameMonth(day, currentDate);
-                  const isToday = isSameDay(day, new Date());
-                  
-                  return (
-                    <Tooltip key={index}>
-                      <TooltipTrigger asChild>
-                        <div 
-                          className={`min-h-[140px] border rounded-lg p-1.5 cursor-pointer hover:border-primary/50 transition-colors ${
-                            !isCurrentMonth ? 'bg-muted/30 opacity-50' : ''
-                          }`}
-                        >
-                          {/* Date header */}
-                          <div className={`text-right mb-1 ${
-                            isToday 
-                              ? 'flex justify-end'
-                              : ''
-                          }`}>
-                            <span className={`text-xs font-medium ${
-                              isToday 
-                                ? 'bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center' 
-                                : 'text-muted-foreground'
-                            }`}>
-                              {format(day, 'd')}
-                            </span>
-                          </div>
-                          
-                          {/* Compact service counts */}
-                          <div className="space-y-0.5">
-                            {serviceCounts.filter(s => s.count > 0).slice(0, 8).map((service) => {
-                              return (
-                                <div 
-                                  key={service.id}
-                                  className={`flex items-center justify-between gap-1 px-1 py-0.5 rounded ${service.bgColor}`}
-                                >
-                                  <div className={`flex items-center gap-0.5 min-w-0 ${service.color}`}>
-                                    <ServiceTypeIcon iconName={service.iconName} className="h-2.5 w-2.5 flex-shrink-0" />
-                                    <span className="text-[8px] font-medium truncate">
-                                      {service.displayName}
-                                    </span>
-                                  </div>
-                                  <span className={`text-[9px] font-semibold flex-shrink-0 ${service.color}`}>
-                                    {service.count}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                            {serviceCounts.filter(s => s.count > 0).length > 8 && (
-                              <div className="text-[9px] text-muted-foreground text-center">
-                                +{serviceCounts.filter(s => s.count > 0).length - 8} more
-                              </div>
-                            )}
-                            {total === 0 && isCurrentMonth && (
-                              <div className="text-[9px] text-muted-foreground text-center py-1">—</div>
-                            )}
-                          </div>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent side="right" className="p-3 max-w-[220px]">
-                        <div className="space-y-2">
-                          <p className="font-semibold text-sm border-b pb-1">
-                            {format(day, 'EEEE, MMM d')}
-                          </p>
-                          <div className="space-y-1">
-                            {serviceCounts.map((service) => {
-                              return (
-                                <div 
-                                  key={service.id}
-                                  className={`flex items-center justify-between gap-2 px-2 py-1 rounded ${service.bgColor} ${service.count === 0 ? 'opacity-40' : ''}`}
-                                >
-                                  <div className={`flex items-center gap-1.5 ${service.color}`}>
-                                    <ServiceTypeIcon iconName={service.iconName} className="h-3 w-3 flex-shrink-0" />
-                                    <span className="text-xs font-medium">
-                                      {service.displayName}
-                                    </span>
-                                  </div>
-                                  <span className={`text-xs font-semibold ${service.color}`}>
-                                    {service.count}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                          <div className="pt-1 border-t flex items-center justify-between text-xs">
-                            <span className="text-muted-foreground">Total</span>
-                            <span className="font-semibold">{total}</span>
-                          </div>
-                        </div>
-                      </TooltipContent>
-                    </Tooltip>
-                  );
-                })}
-                </div>
-                </div>
-              </TooltipProvider>
             )}
           </CardContent>
         </Card>
