@@ -220,31 +220,29 @@ const StaffCalendar = () => {
 
   return (
     <StaffLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 w-full max-w-full overflow-hidden">
         {/* Header */}
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-lg sm:text-2xl font-semibold tracking-tight">Calendar</h1>
               <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-                {viewMode === 'weekly' ? 'Weekly' : 'Monthly'} overview of reservations
+                Weekly overview of reservations
               </p>
             </div>
             
-            <ToggleGroup
-              type="single"
-              value={viewMode}
-              onValueChange={(value) => value && setViewMode(value as ViewMode)}
-            >
-              <ToggleGroupItem value="weekly" aria-label="Weekly view">
-                <CalendarIcon className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Week</span>
-              </ToggleGroupItem>
-              <ToggleGroupItem value="monthly" aria-label="Monthly view">
-                <CalendarDays className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Month</span>
-              </ToggleGroupItem>
-            </ToggleGroup>
+            {!isMobile && (
+              <ToggleGroup
+                type="single"
+                value={viewMode}
+                onValueChange={(value) => value && setViewMode(value as ViewMode)}
+              >
+                <ToggleGroupItem value="weekly" aria-label="Weekly view">
+                  <CalendarIcon className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Week</span>
+                </ToggleGroupItem>
+              </ToggleGroup>
+            )}
           </div>
         </div>
 
