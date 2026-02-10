@@ -89,20 +89,8 @@ const StaffCalendar = () => {
       return;
     }
 
-    let startDate: string;
-    let endDate: string;
-
-    if (viewMode === 'weekly') {
-      startDate = format(weekDays[0], 'yyyy-MM-dd');
-      endDate = format(weekDays[6], 'yyyy-MM-dd');
-    } else {
-      startDate = format(calendarStart, 'yyyy-MM-dd');
-      endDate = format(calendarEnd, 'yyyy-MM-dd');
-    }
-
-    try {
-      // Fetch service types and reservations in parallel
-      const [serviceTypesRes, reservationsRes] = await Promise.all([
+    const startDate = format(weekDays[0], 'yyyy-MM-dd');
+    const endDate = format(weekDays[6], 'yyyy-MM-dd');
         supabase
           .from('service_types')
           .select('*')
