@@ -332,6 +332,35 @@ const StaffClients = () => {
                 <User className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>{searchTerm ? 'No clients found matching your search' : 'No clients yet'}</p>
               </div>
+            ) : isMobile ? (
+              /* Mobile: card-based list */
+              <div className="divide-y">
+                {filteredClients.map((client) => (
+                  <button
+                    key={client.id}
+                    className="w-full p-3 text-left hover:bg-muted/50 active:bg-muted transition-colors"
+                    onClick={() => setSelectedClient(client)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <User className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">
+                          {client.first_name} {client.last_name}
+                        </p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                          {client.phone && <span className="truncate">{client.phone}</span>}
+                          <span className="flex items-center gap-0.5">
+                            <Dog className="h-3 w-3" /> {client.pet_count}
+                          </span>
+                        </div>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                    </div>
+                  </button>
+                ))}
+              </div>
             ) : (
               <Table>
                 <TableHeader>
