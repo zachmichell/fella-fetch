@@ -32,6 +32,7 @@ const StaffDashboard = () => {
   const { isStaffOrAdmin } = useAuth();
   const { toast } = useToast();
   const { logActivity } = usePetActivityLog();
+  const isMobile = useIsMobile();
   const [reservations, setReservations] = useState<ControlCenterReservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [addServiceOpen, setAddServiceOpen] = useState(false);
