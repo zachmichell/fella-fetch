@@ -192,7 +192,7 @@ export function MobileControlCenter({
               <Card key={res.id} className="overflow-hidden">
                 <CardContent className="p-3">
                   <div className="flex items-start gap-3">
-                    <PetAvatar photoUrl={res.pet_photo_url} petName={res.pet_name} />
+                    <PetAvatar petName={res.pet_name} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-sm truncate">{res.pet_name}</span>
