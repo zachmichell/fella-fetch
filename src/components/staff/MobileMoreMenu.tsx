@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import {
   BedDouble,
+  Dog,
   Scissors,
   Users,
   HeartPulse,
@@ -30,9 +31,9 @@ interface MobileMoreMenuProps {
 }
 
 const mainItems = [
-  { title: 'Lodging', url: '/staff/lodging', icon: BedDouble },
-  { title: 'Grooming', url: '/staff/grooming', icon: Scissors },
+  { title: 'Messages', url: '/staff/messages', icon: MessageSquare },
   { title: 'Clients', url: '/staff/clients', icon: Users },
+  { title: 'Pets', url: '/staff/pets', icon: Dog },
 ];
 
 const operationsItems = [

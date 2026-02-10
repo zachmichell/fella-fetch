@@ -8,9 +8,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { useMessageNotificationSound } from '@/hooks/useMessageNotificationSound';
-import { MessageCircle, Send, Loader2, User, Users, Clock, Search, Calendar, Plus, ShoppingCart } from 'lucide-react';
+import { MessageCircle, Send, Loader2, User, Users, Clock, Search, Calendar, Plus, ShoppingCart, ArrowLeft } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ChatCalendarDrawer } from '@/components/staff/messages/ChatCalendarDrawer';
 import { SendReservationProposal, type ReservationProposalData } from '@/components/staff/messages/SendReservationProposal';
@@ -158,6 +159,7 @@ interface StaffProfile {
 const StaffMessages = () => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -666,6 +668,209 @@ const StaffMessages = () => {
 
   const totalUnread = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
 
+  // Mobile: full-screen conversation list or chat
+  if (isMobile) {
+    return (
+      <StaffLayout>
+        <div className="h-[calc(100vh-7rem)] flex flex-col">
+          {!selectedClient ? (
+            // Conversation list
+            <>
+              <div className="flex items-center justify-between mb-3">
+                <h1 className="text-lg font-bold">Messages</h1>
+                {totalUnread > 0 && (
+                  <Badge variant="destructive">{totalUnread}</Badge>
+                )}
+              </div>
+              <div className="relative mb-3">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search clients or pets..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 h-9 text-sm"
+                />
+              </div>
+              <div className="flex-1 overflow-auto -mx-3">
+                {isFetchingConversations ? (
+                  <div className="flex items-center justify-center h-32">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : filteredConversations.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
+                    <MessageCircle className="h-10 w-10 mb-2 opacity-50" />
+                    <p className="text-sm">No conversations</p>
+                  </div>
+                ) : (
+                  <div className="divide-y">
+                    {filteredConversations.map((conv) => (
+                      <button
+                        key={conv.client.id}
+                        onClick={() => { setSelectedClient(conv.client); enableSound(); }}
+                        className="w-full p-3 text-left hover:bg-muted/50 active:bg-muted transition-colors"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-sm truncate">
+                                {conv.client.first_name} {conv.client.last_name}
+                              </p>
+                              {conv.unreadCount > 0 && (
+                                <Badge variant="destructive" className="h-5 px-1.5 text-xs">{conv.unreadCount}</Badge>
+                              )}
+                            </div>
+                            {conv.lastMessage && (
+                              <p className="text-xs text-muted-foreground truncate mt-0.5">
+                                {conv.lastMessage.role === 'assistant' && 'You: '}
+                                {getPreviewText(conv.lastMessage.content)}
+                              </p>
+                            )}
+                          </div>
+                          {conv.lastMessage && (
+                            <span className="text-[10px] text-muted-foreground flex-shrink-0">
+                              {formatDistanceToNow(new Date(conv.lastMessage.created_at), { addSuffix: true })}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            // Full-screen chat
+            <>
+              <div className="flex items-center gap-2 mb-2 -mx-1">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSelectedClient(null)}>
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm truncate">{selectedClient.first_name} {selectedClient.last_name}</p>
+                </div>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCalendarDrawerOpen(true)}>
+                  <Calendar className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setProposalDialogOpen(true)}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setCreditPurchaseDialogOpen(true)}>
+                  <ShoppingCart className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="flex-1 overflow-auto -mx-3 px-3" ref={scrollAreaRef}>
+                {isFetchingMessages ? (
+                  <div className="flex items-center justify-center h-32">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : messages.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
+                    <MessageCircle className="h-10 w-10 mb-2 opacity-50" />
+                    <p className="text-sm">No messages yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 py-2">
+                    {messages.map((message) => {
+                      const proposal = parseProposalFromContent(message.content);
+                      const creditPurchase = parseCreditPurchaseFromContent(message.content);
+                      const displayContent = getDisplayContent(message.content);
+                      const staffName = message.role === 'assistant' ? getStaffName(message.staff_id) : null;
+                      const proposalWithDerivedStatus = proposal 
+                        ? { ...proposal, status: getProposalStatus(proposal) } 
+                        : null;
+
+                      return (
+                        <div
+                          key={message.id}
+                          className={`flex gap-2 ${message.role === 'assistant' ? 'justify-end' : 'justify-start'}`}
+                        >
+                          <div className={`max-w-[85%] space-y-1 ${message.role === 'assistant' ? 'flex flex-col items-end' : ''}`}>
+                            {message.role === 'assistant' && staffName && (
+                              <p className="text-[10px] text-muted-foreground font-medium mr-1">{staffName}</p>
+                            )}
+                            {proposalWithDerivedStatus && (
+                              <ReservationProposalCard 
+                                proposal={proposalWithDerivedStatus} 
+                                isClientView={false} 
+                                reservationStatus={proposalWithDerivedStatus.reservationId ? reservationStatuses[proposalWithDerivedStatus.reservationId] as any : undefined}
+                              />
+                            )}
+                            {creditPurchase && (
+                              <CreditPurchaseCard data={creditPurchase} isClientView={false} />
+                            )}
+                            {displayContent && (
+                              <div className={`rounded-lg px-3 py-2 text-sm ${
+                                message.role === 'assistant' ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                              }`}>
+                                <p className="whitespace-pre-wrap">{displayContent}</p>
+                                <div className={`flex items-center gap-1 text-[10px] mt-1 ${
+                                  message.role === 'assistant' ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                                }`}>
+                                  <Clock className="h-3 w-3" />
+                                  {format(new Date(message.created_at), 'h:mm a')}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {isOtherTyping && (
+                      <div className="flex gap-2 justify-start">
+                        <div className="bg-muted rounded-lg px-3 py-2">
+                          <div className="flex gap-1">
+                            <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                            <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                            <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Input
+                  ref={inputRef}
+                  value={input}
+                  onChange={handleInputChange}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Type your reply..."
+                  disabled={isLoading}
+                  className="flex-1 h-9 text-sm"
+                />
+                <Button size="icon" className="h-9 w-9" onClick={sendMessage} disabled={!input.trim() || isLoading}>
+                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+
+        <ChatCalendarDrawer open={calendarDrawerOpen} onOpenChange={setCalendarDrawerOpen} />
+        {selectedClient && (
+          <>
+            <SendReservationProposal
+              open={proposalDialogOpen}
+              onOpenChange={setProposalDialogOpen}
+              clientId={selectedClient.id}
+              clientName={`${selectedClient.first_name} ${selectedClient.last_name}`}
+              onSend={handleSendProposal}
+            />
+            <SendCreditPurchase
+              open={creditPurchaseDialogOpen}
+              onOpenChange={setCreditPurchaseDialogOpen}
+              clientId={selectedClient.id}
+              clientName={`${selectedClient.first_name} ${selectedClient.last_name}`}
+              onSend={handleSendCreditPurchase}
+            />
+          </>
+        )}
+      </StaffLayout>
+    );
+  }
+
+  // Desktop layout
   return (
     <StaffLayout>
       <div className="h-[calc(100vh-4rem)] flex flex-col">

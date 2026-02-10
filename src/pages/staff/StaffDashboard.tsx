@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { StaffLayout } from '@/components/staff/StaffLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ControlCenterTable, ControlCenterReservation } from '@/components/staff/ControlCenterTable';
+import { MobileControlCenter } from '@/components/staff/mobile/MobileControlCenter';
+import { MobileDailySummary } from '@/components/staff/mobile/MobileDailySummary';
 import { AddServiceDialog } from '@/components/staff/AddServiceDialog';
 import { InactivityAlertDialog } from '@/components/staff/InactivityAlertDialog';
 import { TraitAlertDialog } from '@/components/staff/TraitAlertDialog';
@@ -11,6 +13,7 @@ import { QuickCheckInDialog } from '@/components/staff/QuickCheckInDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePetActivityLog } from '@/hooks/usePetActivityLog';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
@@ -29,6 +32,7 @@ const StaffDashboard = () => {
   const { isStaffOrAdmin } = useAuth();
   const { toast } = useToast();
   const { logActivity } = usePetActivityLog();
+  const isMobile = useIsMobile();
   const [reservations, setReservations] = useState<ControlCenterReservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [addServiceOpen, setAddServiceOpen] = useState(false);
@@ -632,46 +636,62 @@ const StaffDashboard = () => {
         {/* Header with Quick Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Control Center</h1>
-            <p className="text-muted-foreground">
-              {format(new Date(), 'EEEE, MMMM d, yyyy')}
+            <h1 className={`font-semibold tracking-tight ${isMobile ? 'text-lg' : 'text-2xl'}`}>Control Center</h1>
+            <p className="text-muted-foreground text-sm">
+              {format(new Date(), isMobile ? 'EEE, MMM d' : 'EEEE, MMMM d, yyyy')}
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" className="gap-2" onClick={() => setQuickCheckInOpen(true)}>
-              <UserCheck className="h-4 w-4" />
-              Quick Check In
-            </Button>
-          </div>
+          {!isMobile && (
+            <div className="flex gap-2">
+              <Button variant="outline" className="gap-2" onClick={() => setQuickCheckInOpen(true)}>
+                <UserCheck className="h-4 w-4" />
+                Quick Check In
+              </Button>
+            </div>
+          )}
         </div>
 
-        {/* Daily Summary Table */}
-        <DailySummaryTable />
+        {/* Daily Summary */}
+        {isMobile ? <MobileDailySummary /> : <DailySummaryTable />}
 
-        {/* Control Center Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Today's Schedule</CardTitle>
-            <CardDescription>
-              Manage check-ins, check-outs, and reservations
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ControlCenterTable
-              reservations={reservations}
-              loading={loading}
-              onCheckIn={handleCheckIn}
-              onCheckOut={handleCheckOut}
-              onUndoCheckIn={handleUndoCheckIn}
-              onAcceptReservation={handleAcceptReservation}
-              onCancelReservation={handleCancelReservation}
-              onDeclineReservation={handleDeclineReservation}
-              onAddService={handleAddService}
-              onTraitsUpdated={fetchDashboardData}
-            />
-          </CardContent>
-        </Card>
-
+        {/* Control Center */}
+        {isMobile ? (
+          <MobileControlCenter
+            reservations={reservations}
+            loading={loading}
+            onCheckIn={handleCheckIn}
+            onCheckOut={handleCheckOut}
+            onUndoCheckIn={handleUndoCheckIn}
+            onAcceptReservation={handleAcceptReservation}
+            onCancelReservation={handleCancelReservation}
+            onDeclineReservation={handleDeclineReservation}
+            onAddService={handleAddService}
+            onTraitsUpdated={fetchDashboardData}
+          />
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Today's Schedule</CardTitle>
+              <CardDescription>
+                Manage check-ins, check-outs, and reservations
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ControlCenterTable
+                reservations={reservations}
+                loading={loading}
+                onCheckIn={handleCheckIn}
+                onCheckOut={handleCheckOut}
+                onUndoCheckIn={handleUndoCheckIn}
+                onAcceptReservation={handleAcceptReservation}
+                onCancelReservation={handleCancelReservation}
+                onDeclineReservation={handleDeclineReservation}
+                onAddService={handleAddService}
+                onTraitsUpdated={fetchDashboardData}
+              />
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Add Service Dialog */}

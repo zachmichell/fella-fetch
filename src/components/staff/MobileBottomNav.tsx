@@ -2,26 +2,23 @@ import { useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Calendar, 
-  MessageCircle, 
-  Dog, 
+  BedDouble,
+  Scissors,
   MoreHorizontal
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
-import { useUnreadMessages } from '@/hooks/useUnreadMessages';
-import { Badge } from '@/components/ui/badge';
 import { useState } from 'react';
 import { MobileMoreMenu } from './MobileMoreMenu';
 
 const bottomNavItems = [
   { title: 'Dashboard', url: '/staff', icon: LayoutDashboard },
-  { title: 'Messages', url: '/staff/messages', icon: MessageCircle, showUnread: true },
   { title: 'Calendar', url: '/staff/calendar', icon: Calendar },
-  { title: 'Pets', url: '/staff/pets', icon: Dog },
+  { title: 'Lodging', url: '/staff/lodging', icon: BedDouble },
+  { title: 'Grooming', url: '/staff/grooming', icon: Scissors },
 ];
 
 export function MobileBottomNav() {
   const location = useLocation();
-  const { unreadCount } = useUnreadMessages();
   const [moreOpen, setMoreOpen] = useState(false);
 
   const isActive = (path: string) => {
@@ -31,7 +28,7 @@ export function MobileBottomNav() {
 
   // Check if current route is one of the "more" routes
   const moreRoutes = [
-    '/staff/lodging', '/staff/grooming', '/staff/clients', '/staff/pet-care',
+    '/staff/messages', '/staff/clients', '/staff/pets', '/staff/pet-care',
     '/staff/report-cards', '/staff/subscriptions', '/staff/trait-templates',
     '/staff/time-clock', '/staff/analytics', '/staff/staff-management',
     '/staff/marketing', '/staff/communications', '/staff/users', '/staff/suites',
@@ -54,11 +51,6 @@ export function MobileBottomNav() {
               >
                 <div className="relative">
                   <item.icon className={`h-5 w-5 ${active ? 'text-primary' : 'text-muted-foreground'}`} />
-                  {item.showUnread && unreadCount > 0 && (
-                    <Badge variant="destructive" className="absolute -top-2 -right-3 h-4 min-w-4 px-1 text-[10px]">
-                      {unreadCount > 99 ? '99+' : unreadCount}
-                    </Badge>
-                  )}
                 </div>
                 <span className={`text-[10px] ${active ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
                   {item.title}
