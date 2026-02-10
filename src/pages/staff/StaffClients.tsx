@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { normalizePhone } from '@/lib/phoneUtils';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { StaffLayout } from '@/components/staff/StaffLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
