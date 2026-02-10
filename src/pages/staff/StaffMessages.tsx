@@ -159,6 +159,7 @@ interface StaffProfile {
 const StaffMessages = () => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
