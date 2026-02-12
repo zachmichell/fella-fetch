@@ -80,27 +80,35 @@ export const TurnAwayForm = () => {
           </Button>
         </div>
         {turnAways && turnAways.length > 0 && (
-          <div className="max-h-[200px] overflow-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Reason</TableHead>
-                  <TableHead className="text-right">Value</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {turnAways.map((ta: any) => (
-                  <TableRow key={ta.id}>
-                    <TableCell>{format(new Date(ta.date), 'MMM d')}</TableCell>
-                    <TableCell className="capitalize">{ta.service_type}</TableCell>
-                    <TableCell>{ta.reason}</TableCell>
-                    <TableCell className="text-right">{ta.estimated_value ? `$${ta.estimated_value}` : '—'}</TableCell>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-sm text-muted-foreground">{turnAways.length} turn-away{turnAways.length !== 1 ? 's' : ''}</span>
+              <span className="text-sm font-bold text-destructive">
+                Total Lost: ${turnAways.reduce((sum: number, ta: any) => sum + (ta.estimated_value || 0), 0).toFixed(2)}
+              </span>
+            </div>
+            <div className="max-h-[200px] overflow-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Reason</TableHead>
+                    <TableHead className="text-right">Value</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {turnAways.map((ta: any) => (
+                    <TableRow key={ta.id}>
+                      <TableCell>{format(new Date(ta.date), 'MMM d')}</TableCell>
+                      <TableCell className="capitalize">{ta.service_type}</TableCell>
+                      <TableCell>{ta.reason}</TableCell>
+                      <TableCell className="text-right">{ta.estimated_value ? `$${ta.estimated_value}` : '—'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </div>
         )}
       </CardContent>

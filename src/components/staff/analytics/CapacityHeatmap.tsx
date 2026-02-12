@@ -99,16 +99,15 @@ export const CapacityHeatmap = () => {
             const count = dayCounts[key] || 0;
             const pct = Math.round((count / maxCap) * 100);
             return (
-              <Tooltip key={key}>
-                <TooltipTrigger asChild>
-                  <div className={`aspect-square flex items-center justify-center rounded text-xs font-medium cursor-default ${getColor(count)}`}>
-                    {format(day, 'd')}
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{format(day, 'MMM d')}: {count}/{maxCap} ({pct}%)</p>
-                </TooltipContent>
-              </Tooltip>
+              <div
+                key={key}
+                className={`aspect-square flex flex-col items-center justify-center rounded text-[10px] leading-tight font-medium cursor-default ${getColor(count)}`}
+              >
+                <span>{format(day, 'd')}</span>
+                {count > 0 && (
+                  <span className="font-bold">{count}/{maxCap}</span>
+                )}
+              </div>
             );
           })}
         </div>
