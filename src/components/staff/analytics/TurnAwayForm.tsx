@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, subMonths } from 'date-fns';
 import { Plus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -21,14 +21,17 @@ export const TurnAwayForm = () => {
   const [reason, setReason] = useState('');
   const [value, setValue] = useState('');
   const [notes, setNotes] = useState('');
+  const [filterStartDate, setFilterStartDate] = useState(format(subMonths(new Date(), 1), 'yyyy-MM-dd'));
+  const [filterEndDate, setFilterEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
   const { data: turnAways } = useQuery({
-    queryKey: ['turn-aways'],
+    queryKey: ['turn-aways', filterStartDate, filterEndDate],
     queryFn: async () => {
       const { data } = await supabase.from('turn_aways')
         .select('*')
-        .order('date', { ascending: false })
-        .limit(20);
+        .gte('date', filterStartDate)
+        .lte('date', filterEndDate)
+        .order('date', { ascending: false });
       return data || [];
     },
   });
@@ -78,6 +81,12 @@ export const TurnAwayForm = () => {
           <Button size="sm" className="h-9" disabled={!reason || addMutation.isPending} onClick={() => addMutation.mutate()}>
             <Plus className="h-4 w-4 mr-1" /> Add
           </Button>
+        </div>
+        <div className="flex gap-2 items-center px-1">
+          <span className="text-sm text-muted-foreground">Filter:</span>
+          <Input type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} className="h-8 w-32" />
+          <span className="text-sm text-muted-foreground">to</span>
+          <Input type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} className="h-8 w-32" />
         </div>
         {turnAways && turnAways.length > 0 && (
           <div className="space-y-2">
