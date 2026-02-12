@@ -217,23 +217,23 @@ export const GroomingDayView = ({
   return (
     <Card>
         <CardContent className="p-0 overflow-x-auto">
-          <table className="w-full border-collapse min-w-[800px]">
+        <table className="w-full border-collapse min-w-[400px] md:min-w-[800px]">
             <thead>
               <tr className="bg-muted/50">
-                <th className="border-b border-r p-3 text-left font-medium w-20 sticky left-0 bg-muted/50 z-10">
+                <th className="border-b border-r p-1.5 md:p-3 text-left font-medium w-14 md:w-20 sticky left-0 bg-muted/50 z-10 text-xs md:text-sm">
                   Time
                 </th>
                 {groomers?.map((groomer) => (
                   <th
                     key={groomer.id}
-                    className="border-b border-r p-3 text-center font-medium min-w-[150px]"
+                    className="border-b border-r p-1 md:p-3 text-center font-medium min-w-[100px] md:min-w-[150px]"
                   >
-                    <div className="flex items-center justify-center gap-2">
+                    <div className="flex items-center justify-center gap-1 md:gap-2 text-xs md:text-sm">
                       <div 
-                        className="w-3 h-3 rounded-full" 
+                        className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full flex-shrink-0" 
                         style={{ backgroundColor: groomer.color }}
                       />
-                      {groomer.name}
+                      <span className="truncate">{groomer.name}</span>
                     </div>
                   </th>
                 ))}
