@@ -671,7 +671,7 @@ const StaffMessages = () => {
   if (isMobile) {
     return (
       <StaffLayout>
-        <div className="flex flex-col h-full w-full max-w-full overflow-hidden" style={{ height: 'calc(100dvh - 7rem)' }}>
+        <div className="flex flex-col h-full w-full max-w-full overflow-hidden" style={{ height: 'calc(100dvh - 11rem)' }}>
           {!selectedClient ? (
             // Conversation list
             <>
