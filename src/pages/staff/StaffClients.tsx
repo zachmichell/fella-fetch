@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { normalizePhone } from '@/lib/phoneUtils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { StaffLayout } from '@/components/staff/StaffLayout';
@@ -81,6 +81,7 @@ const StaffClients = () => {
   const { isStaffOrAdmin } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isMobile = useIsMobile();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -138,6 +139,18 @@ const StaffClients = () => {
   useEffect(() => {
     fetchClients();
   }, [isStaffOrAdmin]);
+
+  // Auto-open client from URL param
+  useEffect(() => {
+    const clientId = searchParams.get('clientId');
+    if (clientId && clients.length > 0) {
+      const client = clients.find(c => c.id === clientId);
+      if (client) {
+        setSelectedClient(client);
+        setSearchParams({}, { replace: true });
+      }
+    }
+  }, [clients, searchParams]);
 
   const handleAddClient = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { usePetPhotoUrl } from '@/hooks/usePetPhotoUrl';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { StaffLayout } from '@/components/staff/StaffLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -111,11 +112,34 @@ interface Client {
   last_name: string;
 }
 
+const PetAvatar = ({ photoUrl, petId, name, size = 'md' }: { photoUrl: string | null; petId: string; name: string; size?: 'sm' | 'md' | 'lg' }) => {
+  const { signedUrl } = usePetPhotoUrl(photoUrl, petId);
+  const sizeClasses = size === 'lg' ? 'h-16 w-16' : size === 'md' ? 'h-10 w-10' : 'h-10 w-10';
+  const iconSize = size === 'lg' ? 'h-8 w-8' : 'h-5 w-5';
+  
+  if (signedUrl) {
+    return (
+      <img 
+        src={signedUrl} 
+        alt={name} 
+        className={`${sizeClasses} rounded-full object-cover flex-shrink-0`} 
+      />
+    );
+  }
+  
+  return (
+    <div className={`${sizeClasses} rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0`}>
+      <Dog className={`${iconSize} text-primary`} />
+    </div>
+  );
+};
+
 const StaffPets = () => {
   const { isStaffOrAdmin } = useAuth();
   const { toast } = useToast();
   const { logActivity } = usePetActivityLog();
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const [pets, setPets] = useState<Pet[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -578,9 +602,7 @@ const StaffPets = () => {
                     onClick={() => handleViewPet(pet)}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                        <Dog className="h-5 w-5 text-primary" />
-                      </div>
+                      <PetAvatar photoUrl={pet.photo_url} petId={pet.id} name={pet.name} />
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">{pet.name}</p>
                         <p className="text-xs text-muted-foreground truncate">
@@ -624,9 +646,7 @@ const StaffPets = () => {
                     >
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                            <Dog className="h-5 w-5 text-primary" />
-                          </div>
+                          <PetAvatar photoUrl={pet.photo_url} petId={pet.id} name={pet.name} />
                           <div>
                             <p className="font-medium">{pet.name}</p>
                             <p className="text-sm text-muted-foreground">
@@ -682,9 +702,7 @@ const StaffPets = () => {
               <>
                 <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
                   <div className="flex items-center gap-4">
-                    <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Dog className="h-8 w-8 text-primary" />
-                    </div>
+                    <PetAvatar photoUrl={selectedPet.photo_url} petId={selectedPet.id} name={selectedPet.name} size="lg" />
                     <div>
                       <DialogTitle className="text-2xl">{selectedPet.name}</DialogTitle>
                       <DialogDescription>
@@ -705,23 +723,31 @@ const StaffPets = () => {
                       </CardHeader>
                       <CardContent className="py-3">
                         {selectedPet.client ? (
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
+                          <div className="grid grid-cols-2 gap-4 min-w-0">
+                            <div className="min-w-0">
                               <p className="text-sm text-muted-foreground">Name</p>
-                              <p className="font-medium">{selectedPet.client.first_name} {selectedPet.client.last_name}</p>
+                              <button
+                                onClick={() => {
+                                  setSelectedPet(null);
+                                  navigate(`/staff/clients?clientId=${selectedPet.client!.id}`);
+                                }}
+                                className="font-medium text-primary hover:underline cursor-pointer text-left truncate block max-w-full"
+                              >
+                                {selectedPet.client.first_name} {selectedPet.client.last_name}
+                              </button>
                             </div>
-                            <div>
+                            <div className="min-w-0">
                               <p className="text-sm text-muted-foreground">Contact</p>
-                              <div className="space-y-1">
+                              <div className="space-y-1 min-w-0">
                                 {selectedPet.client.phone && (
-                                  <p className="flex items-center gap-1">
-                                    <Phone className="h-3 w-3" /> {selectedPet.client.phone}
-                                  </p>
+                                  <a href={`tel:${selectedPet.client.phone}`} className="flex items-center gap-1 text-sm text-primary hover:underline truncate">
+                                    <Phone className="h-3 w-3 flex-shrink-0" /> <span className="truncate">{selectedPet.client.phone}</span>
+                                  </a>
                                 )}
                                 {selectedPet.client.email && (
-                                  <p className="flex items-center gap-1">
-                                    <Mail className="h-3 w-3" /> {selectedPet.client.email}
-                                  </p>
+                                  <a href={`mailto:${selectedPet.client.email}`} className="flex items-center gap-1 text-sm text-primary hover:underline truncate">
+                                    <Mail className="h-3 w-3 flex-shrink-0" /> <span className="truncate">{selectedPet.client.email}</span>
+                                  </a>
                                 )}
                               </div>
                             </div>
@@ -733,10 +759,10 @@ const StaffPets = () => {
                     </Card>
 
                     {/* Pet Details */}
-                    <Card>
+                    <Card className="overflow-hidden">
                       <CardHeader className="py-3">
-                        <CardTitle className="text-sm font-medium flex items-center gap-2">
-                          <Dog className="h-4 w-4" /> Pet Details
+                        <CardTitle className="text-sm font-medium flex items-center gap-2 truncate">
+                          <Dog className="h-4 w-4 flex-shrink-0" /> Pet Details
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="py-3">
@@ -752,9 +778,9 @@ const StaffPets = () => {
                             <p className="text-sm text-muted-foreground">Color</p>
                             <p className="font-medium">{selectedPet.color || 'Unknown'}</p>
                           </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Spayed/Neutered</p>
-                            <p className="font-medium">{selectedPet.spayed_neutered ? 'Yes' : 'No'}</p>
+                          <div className="min-w-0">
+                            <p className="text-xs text-muted-foreground">Spayed/Neut.</p>
+                            <p className="font-medium truncate">{selectedPet.spayed_neutered ? 'Yes' : 'No'}</p>
                           </div>
                         </div>
                         {selectedPet.allergies && (
@@ -769,10 +795,10 @@ const StaffPets = () => {
                     </Card>
 
                     {/* Vaccinations */}
-                    <Card>
+                    <Card className="overflow-hidden">
                       <CardHeader className="py-3">
-                        <CardTitle className="text-sm font-medium flex items-center gap-2">
-                          <Syringe className="h-4 w-4" /> Vaccinations
+                        <CardTitle className="text-sm font-medium flex items-center gap-2 truncate">
+                          <Syringe className="h-4 w-4 flex-shrink-0" /> Vaccinations
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="py-3">
@@ -875,7 +901,8 @@ const StaffPets = () => {
                       entityName={selectedPet.name} 
                     />
 
-                    {/* Activity Log */}
+                    {/* Activity Log - hidden on mobile */}
+                    {!isMobile && (
                     <Card>
                       <CardHeader className="py-3">
                         <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -905,6 +932,7 @@ const StaffPets = () => {
                         )}
                       </CardContent>
                     </Card>
+                    )}
                   </div>
                 </ScrollArea>
               </>
