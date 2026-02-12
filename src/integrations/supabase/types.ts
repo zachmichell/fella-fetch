@@ -61,6 +61,153 @@ export type Database = {
           },
         ]
       }
+      class_enrollments: {
+        Row: {
+          class_session_id: string
+          client_id: string
+          created_at: string
+          enrolled_at: string | null
+          graduated_at: string | null
+          id: string
+          notes: string | null
+          pet_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          class_session_id: string
+          client_id: string
+          created_at?: string
+          enrolled_at?: string | null
+          graduated_at?: string | null
+          id?: string
+          notes?: string | null
+          pet_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          class_session_id?: string
+          client_id?: string
+          created_at?: string
+          enrolled_at?: string | null
+          graduated_at?: string | null
+          id?: string
+          notes?: string | null
+          pet_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_enrollments_class_session_id_fkey"
+            columns: ["class_session_id"]
+            isOneToOne: false
+            referencedRelation: "class_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_enrollments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "class_enrollments_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      class_sessions: {
+        Row: {
+          class_type_id: string
+          created_at: string
+          day_of_week: number
+          end_date: string | null
+          end_time: string
+          id: string
+          instructor: string | null
+          is_active: boolean
+          start_date: string
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          class_type_id: string
+          created_at?: string
+          day_of_week: number
+          end_date?: string | null
+          end_time: string
+          id?: string
+          instructor?: string | null
+          is_active?: boolean
+          start_date: string
+          start_time: string
+          updated_at?: string
+        }
+        Update: {
+          class_type_id?: string
+          created_at?: string
+          day_of_week?: number
+          end_date?: string | null
+          end_time?: string
+          id?: string
+          instructor?: string | null
+          is_active?: boolean
+          start_date?: string
+          start_time?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_sessions_class_type_id_fkey"
+            columns: ["class_type_id"]
+            isOneToOne: false
+            referencedRelation: "class_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      class_types: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          level: number
+          max_capacity: number
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          level?: number
+          max_capacity?: number
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          level?: number
+          max_capacity?: number
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       client_agreements: {
         Row: {
           client_id: string
@@ -508,6 +655,7 @@ export type Database = {
       groomers: {
         Row: {
           color: string | null
+          commission_rate: number
           created_at: string
           email: string | null
           id: string
@@ -519,6 +667,7 @@ export type Database = {
         }
         Insert: {
           color?: string | null
+          commission_rate?: number
           created_at?: string
           email?: string | null
           id?: string
@@ -530,6 +679,7 @@ export type Database = {
         }
         Update: {
           color?: string | null
+          commission_rate?: number
           created_at?: string
           email?: string | null
           id?: string
@@ -540,6 +690,60 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      incidents: {
+        Row: {
+          action_taken: string | null
+          category: string
+          created_at: string
+          date: string
+          description: string
+          id: string
+          pet_id: string
+          reported_by: string
+          reservation_id: string | null
+          severity: string
+        }
+        Insert: {
+          action_taken?: string | null
+          category: string
+          created_at?: string
+          date?: string
+          description: string
+          id?: string
+          pet_id: string
+          reported_by: string
+          reservation_id?: string | null
+          severity: string
+        }
+        Update: {
+          action_taken?: string | null
+          category?: string
+          created_at?: string
+          date?: string
+          description?: string
+          id?: string
+          pet_id?: string
+          reported_by?: string
+          reservation_id?: string | null
+          severity?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incidents_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incidents_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       marketing_segments: {
         Row: {
@@ -1546,6 +1750,39 @@ export type Database = {
           id?: string
           is_alert?: boolean
           title?: string
+        }
+        Relationships: []
+      }
+      turn_aways: {
+        Row: {
+          created_at: string
+          created_by: string
+          date: string
+          estimated_value: number | null
+          id: string
+          notes: string | null
+          reason: string
+          service_type: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          date?: string
+          estimated_value?: number | null
+          id?: string
+          notes?: string | null
+          reason: string
+          service_type: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          date?: string
+          estimated_value?: number | null
+          id?: string
+          notes?: string | null
+          reason?: string
+          service_type?: string
         }
         Relationships: []
       }
