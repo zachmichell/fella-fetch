@@ -467,18 +467,18 @@ const StaffClients = () => {
                       </CardHeader>
                       <CardContent className="py-3">
                         <div className="grid grid-cols-2 gap-4">
-                          <div>
+                          <div className="min-w-0">
                             <p className="text-sm text-muted-foreground">Email</p>
-                            <p className="font-medium flex items-center gap-1">
-                              <Mail className="h-4 w-4" />
-                              {selectedClient.email || 'Not provided'}
+                            <p className="font-medium flex items-center gap-1 truncate">
+                              <Mail className="h-4 w-4 flex-shrink-0" />
+                              <span className="truncate">{selectedClient.email || 'Not provided'}</span>
                             </p>
                           </div>
-                          <div>
+                          <div className="min-w-0">
                             <p className="text-sm text-muted-foreground">Phone</p>
-                            <p className="font-medium flex items-center gap-1">
-                              <Phone className="h-4 w-4" />
-                              {selectedClient.phone || 'Not provided'}
+                            <p className="font-medium flex items-center gap-1 truncate">
+                              <Phone className="h-4 w-4 flex-shrink-0" />
+                              <span className="truncate">{selectedClient.phone || 'Not provided'}</span>
                             </p>
                           </div>
                           <div className="col-span-2">
@@ -545,17 +545,17 @@ const StaffClients = () => {
                       </CardHeader>
                       <CardContent className="py-3">
                         <div className="grid grid-cols-3 gap-4">
-                          <div className="p-4 rounded-lg border bg-muted/30 text-center">
-                            <p className="text-sm text-muted-foreground">Daycare Credits</p>
-                            <p className="text-3xl font-bold text-primary">{selectedClient.daycare_credits}</p>
+                          <div className="p-3 rounded-lg border bg-muted/30 text-center flex flex-col justify-between">
+                            <p className="text-xs text-muted-foreground leading-tight">Daycare</p>
+                            <p className="text-3xl font-bold text-primary mt-1">{selectedClient.daycare_credits}</p>
                           </div>
-                          <div className="p-4 rounded-lg border bg-muted/30 text-center">
-                            <p className="text-sm text-muted-foreground">Half Day Credits</p>
-                            <p className="text-3xl font-bold text-primary">{selectedClient.half_daycare_credits}</p>
+                          <div className="p-3 rounded-lg border bg-muted/30 text-center flex flex-col justify-between">
+                            <p className="text-xs text-muted-foreground leading-tight">Half Day</p>
+                            <p className="text-3xl font-bold text-primary mt-1">{selectedClient.half_daycare_credits}</p>
                           </div>
-                          <div className="p-4 rounded-lg border bg-muted/30 text-center">
-                            <p className="text-sm text-muted-foreground">Boarding Credits</p>
-                            <p className="text-3xl font-bold text-primary">{selectedClient.boarding_credits}</p>
+                          <div className="p-3 rounded-lg border bg-muted/30 text-center flex flex-col justify-between">
+                            <p className="text-xs text-muted-foreground leading-tight">Boarding</p>
+                            <p className="text-3xl font-bold text-primary mt-1">{selectedClient.boarding_credits}</p>
                           </div>
                         </div>
                         <Button 
