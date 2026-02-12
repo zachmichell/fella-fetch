@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { X, Plus, Loader2, Sparkles } from 'lucide-react';
+import { X, Plus, Loader2, Sparkles, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import {
@@ -44,6 +44,8 @@ export function PetTraitsSection({ petId, petName }: PetTraitsSectionProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showCustomForm, setShowCustomForm] = useState(false);
+  const [templateSearch, setTemplateSearch] = useState('');
+  const [showAllTemplates, setShowAllTemplates] = useState(false);
 
   // Custom trait form state
   const [selectedIcon, setSelectedIcon] = useState<TraitIcon | null>(null);
@@ -234,40 +236,71 @@ export function PetTraitsSection({ petId, petName }: PetTraitsSectionProps) {
             <Label className="text-xs text-muted-foreground mb-2 block">
               Quick add from templates
             </Label>
-            <ScrollArea className="h-24">
-              <div className="flex flex-wrap gap-1">
-                {templates.map((template) => {
-                  const iconDef = getTraitIcon(template.icon_name);
-                  const colorDef = getTraitColor(template.color_key);
-                  if (!iconDef || !colorDef) return null;
-                  const IconComponent = iconDef.icon;
-
-                  const isAssigned = existingTraits.some(
-                    (t) =>
-                      t.icon_name === template.icon_name &&
-                      t.color_key === template.color_key &&
-                      t.title === template.title
-                  );
-
-                  return (
-                    <button
-                      key={template.id}
-                      onClick={() => !isAssigned && handleAddFromTemplate(template)}
-                      disabled={isAssigned || saving}
-                      className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-sm transition-colors ${
-                        isAssigned
-                          ? 'bg-muted/50 opacity-50 cursor-not-allowed'
-                          : 'bg-muted hover:bg-accent cursor-pointer'
-                      }`}
-                      title={isAssigned ? 'Already assigned' : `Add: ${template.title}`}
-                    >
-                      <IconComponent className={`h-3.5 w-3.5 ${colorDef.textClass}`} />
-                      <span className="truncate max-w-[120px]">{template.title}</span>
-                    </button>
-                  );
-                })}
+            {(showAllTemplates || templates.length > 5) && (
+              <div className="relative mb-2">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Search traits..."
+                  value={templateSearch}
+                  onChange={(e) => {
+                    setTemplateSearch(e.target.value);
+                    if (e.target.value) setShowAllTemplates(true);
+                  }}
+                  className="h-8 pl-8 text-sm"
+                />
               </div>
-            </ScrollArea>
+            )}
+            <div className="flex flex-wrap gap-1">
+              {(() => {
+                const filtered = templates.filter(t => 
+                  !templateSearch || t.title.toLowerCase().includes(templateSearch.toLowerCase())
+                );
+                const displayTemplates = showAllTemplates ? filtered : filtered.slice(0, 5);
+                
+                return (
+                  <>
+                    {displayTemplates.map((template) => {
+                      const iconDef = getTraitIcon(template.icon_name);
+                      const colorDef = getTraitColor(template.color_key);
+                      if (!iconDef || !colorDef) return null;
+                      const IconComponent = iconDef.icon;
+
+                      const isAssigned = existingTraits.some(
+                        (t) =>
+                          t.icon_name === template.icon_name &&
+                          t.color_key === template.color_key &&
+                          t.title === template.title
+                      );
+
+                      return (
+                        <button
+                          key={template.id}
+                          onClick={() => !isAssigned && handleAddFromTemplate(template)}
+                          disabled={isAssigned || saving}
+                          className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-sm transition-colors ${
+                            isAssigned
+                              ? 'bg-muted/50 opacity-50 cursor-not-allowed'
+                              : 'bg-muted hover:bg-accent cursor-pointer'
+                          }`}
+                          title={isAssigned ? 'Already assigned' : `Add: ${template.title}`}
+                        >
+                          <IconComponent className={`h-3.5 w-3.5 ${colorDef.textClass}`} />
+                          <span className="truncate max-w-[120px]">{template.title}</span>
+                        </button>
+                      );
+                    })}
+                    {!showAllTemplates && filtered.length > 5 && (
+                      <button
+                        onClick={() => setShowAllTemplates(true)}
+                        className="inline-flex items-center px-2 py-1 rounded-md text-sm text-primary hover:bg-accent transition-colors"
+                      >
+                        +{filtered.length - 5} more
+                      </button>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
           </div>
         )}
 
