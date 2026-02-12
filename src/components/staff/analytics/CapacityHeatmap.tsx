@@ -10,7 +10,29 @@ import { ChevronLeft, ChevronRight, CalendarDays, LayoutGrid } from 'lucide-reac
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 type ViewMode = 'month' | 'year';
-type ServiceFilter = 'all' | 'daycare' | 'boarding';
+type ServiceFilter = 'all' | 'daycare' | 'boarding' | 'grooming' | 'training';
+
+const SERVICE_OPTIONS: { value: ServiceFilter; label: string }[] = [
+  { value: 'all', label: 'All Services' },
+  { value: 'daycare', label: 'Daycare' },
+  { value: 'boarding', label: 'Boarding' },
+  { value: 'grooming', label: 'Grooming' },
+  { value: 'training', label: 'Training' },
+];
+
+const CAPACITY_KEYS = [
+  'daycare_max_capacity',
+  'boarding_max_capacity',
+  'grooming_max_capacity',
+  'training_max_capacity',
+] as const;
+
+const CAPACITY_DEFAULTS: Record<string, number> = {
+  daycare_max_capacity: 160,
+  boarding_max_capacity: 55,
+  grooming_max_capacity: 15,
+  training_max_capacity: 20,
+};
 
 const getColor = (count: number, maxCap: number) => {
   if (maxCap === 0) return 'bg-muted text-muted-foreground';
@@ -50,14 +72,17 @@ export const CapacityHeatmap = () => {
     queryFn: async () => {
       const { data } = await supabase.from('system_settings')
         .select('key, value')
-        .in('key', ['daycare_max_capacity', 'boarding_max_capacity']);
+        .in('key', [...CAPACITY_KEYS]);
       const map: Record<string, number> = {};
       data?.forEach(s => { map[s.key] = typeof s.value === 'number' ? s.value : parseInt(String(s.value), 10); });
       return map;
     },
   });
 
-  const typesToFetch: Array<'daycare' | 'boarding'> = serviceFilter === 'all' ? ['daycare', 'boarding'] : [serviceFilter as 'daycare' | 'boarding'];
+  const typesToFetch: Array<'daycare' | 'boarding' | 'grooming' | 'training'> =
+    serviceFilter === 'all'
+      ? ['daycare', 'boarding', 'grooming', 'training']
+      : [serviceFilter as 'daycare' | 'boarding' | 'grooming' | 'training'];
 
   const { data: reservations } = useQuery({
     queryKey: ['capacity-reservations', typesToFetch.join(','), format(fetchStart, 'yyyy-MM-dd'), format(fetchEnd, 'yyyy-MM-dd')],
@@ -72,9 +97,14 @@ export const CapacityHeatmap = () => {
     },
   });
 
-  const daycareCap = settings?.daycare_max_capacity || 160;
-  const boardingCap = settings?.boarding_max_capacity || 55;
-  const totalCap = serviceFilter === 'all' ? daycareCap + boardingCap : serviceFilter === 'daycare' ? daycareCap : boardingCap;
+  const getCap = (key: string) => settings?.[key] || CAPACITY_DEFAULTS[key] || 0;
+
+  const totalCap = useMemo(() => {
+    if (serviceFilter === 'all') {
+      return getCap('daycare_max_capacity') + getCap('boarding_max_capacity') + getCap('grooming_max_capacity') + getCap('training_max_capacity');
+    }
+    return getCap(`${serviceFilter}_max_capacity`);
+  }, [settings, serviceFilter]);
 
   const dayCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -102,11 +132,11 @@ export const CapacityHeatmap = () => {
         <CardTitle className="text-base">Capacity Heatmap</CardTitle>
         <div className="flex items-center gap-2 flex-wrap">
           <Select value={serviceFilter} onValueChange={(v) => setServiceFilter(v as ServiceFilter)}>
-            <SelectTrigger className="w-[130px] h-8"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-[140px] h-8"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Services</SelectItem>
-              <SelectItem value="daycare">Daycare</SelectItem>
-              <SelectItem value="boarding">Boarding</SelectItem>
+              {SERVICE_OPTIONS.map(opt => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <ToggleGroup type="single" value={viewMode} onValueChange={(v) => v && setViewMode(v as ViewMode)} size="sm">
@@ -159,7 +189,7 @@ const MonthGrid = ({ dayCounts, month, maxCap }: { dayCounts: Record<string, num
                 {count > 0 && <span className="ml-0.5 text-[10px] opacity-80">({count})</span>}
               </div>
             </TooltipTrigger>
-            <TooltipContent><p>{format(day, 'MMM d')}: {count}/{maxCap} ({Math.round((count / maxCap) * 100)}%)</p></TooltipContent>
+            <TooltipContent><p>{format(day, 'MMM d')}: {count}/{maxCap} ({maxCap > 0 ? Math.round((count / maxCap) * 100) : 0}%)</p></TooltipContent>
           </Tooltip>
         );
       })}
