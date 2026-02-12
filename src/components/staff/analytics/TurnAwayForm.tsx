@@ -6,23 +6,33 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { toast } from 'sonner';
 import { format, subMonths } from 'date-fns';
-import { Plus } from 'lucide-react';
+import { Plus, CalendarIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { cn } from '@/lib/utils';
 
 const REASONS = ['Capacity', 'Failed Assessment', 'Waitlisted', 'Vaccination Missing', 'Behavior Issue', 'Other'];
+
+const parseLocalDate = (dateStr: string) => {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
 
 export const TurnAwayForm = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [serviceType, setServiceType] = useState('daycare');
-  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [reason, setReason] = useState('');
   const [value, setValue] = useState('');
   const [notes, setNotes] = useState('');
-  const [filterStartDate, setFilterStartDate] = useState(format(subMonths(new Date(), 1), 'yyyy-MM-dd'));
-  const [filterEndDate, setFilterEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [filterStart, setFilterStart] = useState<Date>(subMonths(new Date(), 1));
+  const [filterEnd, setFilterEnd] = useState<Date>(new Date());
+
+  const filterStartDate = format(filterStart, 'yyyy-MM-dd');
+  const filterEndDate = format(filterEnd, 'yyyy-MM-dd');
 
   const { data: turnAways } = useQuery({
     queryKey: ['turn-aways', filterStartDate, filterEndDate],
@@ -40,7 +50,6 @@ export const TurnAwayForm = () => {
     mutationFn: async () => {
       const { error } = await supabase.from('turn_aways').insert({
         service_type: serviceType,
-        date,
         reason,
         estimated_value: value ? parseFloat(value) : null,
         notes: notes || null,
@@ -62,7 +71,7 @@ export const TurnAwayForm = () => {
     <Card>
       <CardHeader><CardTitle className="text-base">Log Turn-Away</CardTitle></CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <Select value={serviceType} onValueChange={setServiceType}>
             <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -70,7 +79,6 @@ export const TurnAwayForm = () => {
               <SelectItem value="boarding">Boarding</SelectItem>
             </SelectContent>
           </Select>
-          <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="h-9" />
           <Select value={reason} onValueChange={setReason}>
             <SelectTrigger className="h-9"><SelectValue placeholder="Reason" /></SelectTrigger>
             <SelectContent>
@@ -82,11 +90,11 @@ export const TurnAwayForm = () => {
             <Plus className="h-4 w-4 mr-1" /> Add
           </Button>
         </div>
-        <div className="flex gap-2 items-center px-1">
+        <div className="flex gap-2 items-center px-1 flex-wrap">
           <span className="text-sm text-muted-foreground">Filter:</span>
-          <Input type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} className="h-8 w-32" />
+          <DatePickerButton date={filterStart} onSelect={setFilterStart} />
           <span className="text-sm text-muted-foreground">to</span>
-          <Input type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} className="h-8 w-32" />
+          <DatePickerButton date={filterEnd} onSelect={setFilterEnd} />
         </div>
         {turnAways && turnAways.length > 0 && (
           <div className="space-y-2">
@@ -109,7 +117,7 @@ export const TurnAwayForm = () => {
                 <TableBody>
                   {turnAways.map((ta: any) => (
                     <TableRow key={ta.id}>
-                      <TableCell>{format(new Date(ta.date), 'MMM d')}</TableCell>
+                      <TableCell>{format(parseLocalDate(ta.date), 'MMM d')}</TableCell>
                       <TableCell className="capitalize">{ta.service_type}</TableCell>
                       <TableCell>{ta.reason}</TableCell>
                       <TableCell className="text-right">{ta.estimated_value ? `$${ta.estimated_value}` : '—'}</TableCell>
@@ -124,3 +132,23 @@ export const TurnAwayForm = () => {
     </Card>
   );
 };
+
+const DatePickerButton = ({ date, onSelect }: { date: Date; onSelect: (d: Date) => void }) => (
+  <Popover>
+    <PopoverTrigger asChild>
+      <Button variant="outline" size="sm" className={cn("h-8 w-[130px] justify-start text-left font-normal", !date && "text-muted-foreground")}>
+        <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
+        {date ? format(date, 'MMM d, yyyy') : 'Pick date'}
+      </Button>
+    </PopoverTrigger>
+    <PopoverContent className="w-auto p-0" align="start">
+      <Calendar
+        mode="single"
+        selected={date}
+        onSelect={(d) => d && onSelect(d)}
+        initialFocus
+        className={cn("p-3 pointer-events-auto")}
+      />
+    </PopoverContent>
+  </Popover>
+);
