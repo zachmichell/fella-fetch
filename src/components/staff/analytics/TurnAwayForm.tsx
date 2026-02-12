@@ -13,8 +13,7 @@ import { format, subMonths } from 'date-fns';
 import { Plus, CalendarIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
-
-const REASONS = ['Capacity', 'Failed Assessment', 'Waitlisted', 'Vaccination Missing', 'Behavior Issue', 'Other'];
+import { useTurnAwayReasons } from '@/hooks/useTurnAwayReasons';
 
 const parseLocalDate = (dateStr: string) => {
   const [y, m, d] = dateStr.split('-').map(Number);
@@ -23,6 +22,7 @@ const parseLocalDate = (dateStr: string) => {
 
 export const TurnAwayForm = () => {
   const { user } = useAuth();
+  const { reasons: REASONS } = useTurnAwayReasons();
   const queryClient = useQueryClient();
   const [serviceType, setServiceType] = useState('daycare');
   const [reason, setReason] = useState('');

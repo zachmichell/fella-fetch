@@ -9,7 +9,7 @@ import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useBusinessHours, BusinessHours } from '@/hooks/useBusinessHours';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { Settings, AlertTriangle, Save, Loader2, Clock, Building2, BarChart3 } from 'lucide-react';
+import { Settings, AlertTriangle, Save, Loader2, Clock, Building2, BarChart3, ListChecks, Plus, X } from 'lucide-react';
 import { EarlyLateFeeSettings } from '@/components/staff/EarlyLateFeeSettings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -44,6 +44,11 @@ const StaffSettings = () => {
   const [isSavingTimezone, setIsSavingTimezone] = useState(false);
   const [isSavingHours, setIsSavingHours] = useState(false);
   const [isSavingCapacity, setIsSavingCapacity] = useState(false);
+  const [isSavingReasons, setIsSavingReasons] = useState(false);
+  
+  // Turn-away reasons state
+  const [turnAwayReasons, setTurnAwayReasons] = useState<string[]>([]);
+  const [newReason, setNewReason] = useState('');
   
   // Capacity settings state
   const [daycareCapacity, setDaycareCapacity] = useState('160');
@@ -71,6 +76,12 @@ const StaffSettings = () => {
       setBoardingCapacity(String(getSetting<number>('boarding_max_capacity', 55)));
       setGroomingCapacity(String(getSetting<number>('grooming_max_capacity', 15)));
       setTrainingCapacity(String(getSetting<number>('training_max_capacity', 20)));
+
+      const savedReasons = getSetting<string[]>('turn_away_reasons', [
+        'Capacity Full', 'Failed Assessment', 'Waitlisted', 'Vaccination Missing',
+        'Behavior Issue', 'Client Cancelled', 'No Show', 'Schedule Conflict', 'Other',
+      ]);
+      setTurnAwayReasons(savedReasons);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, settings]);
@@ -109,6 +120,37 @@ const StaffSettings = () => {
     } finally {
       setIsSavingCapacity(false);
     }
+  };
+
+  const handleSaveReasons = async () => {
+    if (turnAwayReasons.length === 0) {
+      toast({ title: 'At least one reason is required', variant: 'destructive' });
+      return;
+    }
+    setIsSavingReasons(true);
+    try {
+      await updateSetting.mutateAsync({ key: 'turn_away_reasons', value: turnAwayReasons });
+      toast({ title: 'Settings saved', description: 'Turn-away reasons updated' });
+    } catch {
+      toast({ title: 'Error saving', variant: 'destructive' });
+    } finally {
+      setIsSavingReasons(false);
+    }
+  };
+
+  const handleAddReason = () => {
+    const trimmed = newReason.trim();
+    if (!trimmed) return;
+    if (turnAwayReasons.includes(trimmed)) {
+      toast({ title: 'Reason already exists', variant: 'destructive' });
+      return;
+    }
+    setTurnAwayReasons([...turnAwayReasons, trimmed]);
+    setNewReason('');
+  };
+
+  const handleRemoveReason = (index: number) => {
+    setTurnAwayReasons(turnAwayReasons.filter((_, i) => i !== index));
   };
 
   const handleSaveInactivityDays = async () => {
@@ -348,6 +390,50 @@ const StaffSettings = () => {
           </CardContent>
         </Card>
 
+
+        {/* Turn-Away Reasons */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ListChecks className="h-5 w-5 text-primary" />
+              Turn-Away Reasons
+            </CardTitle>
+            <CardDescription>
+              Manage the list of reasons available when declining or cancelling reservations. These appear in dropdown menus throughout the staff portal.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-2">
+              <Input
+                placeholder="Add a new reason..."
+                value={newReason}
+                onChange={e => setNewReason(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleAddReason()}
+                disabled={isLoading}
+              />
+              <Button variant="outline" size="icon" onClick={handleAddReason} disabled={!newReason.trim()}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {turnAwayReasons.map((r, i) => (
+                <div key={i} className="flex items-center gap-1 bg-muted rounded-md px-3 py-1.5 text-sm">
+                  <span>{r}</span>
+                  <button
+                    onClick={() => handleRemoveReason(i)}
+                    className="ml-1 text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <Button onClick={handleSaveReasons} disabled={isSavingReasons || isLoading}>
+              {isSavingReasons ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              <span className="ml-2">Save Reasons</span>
+            </Button>
+          </CardContent>
+        </Card>
 
         {/* Business Timezone Settings */}
         <Card>
