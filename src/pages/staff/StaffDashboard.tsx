@@ -29,7 +29,7 @@ interface AlertTrait {
 
 const StaffDashboard = () => {
   const navigate = useNavigate();
-  const { isStaffOrAdmin } = useAuth();
+  const { isStaffOrAdmin, user } = useAuth();
   const { toast } = useToast();
   const { logActivity } = usePetActivityLog();
   const isMobile = useIsMobile();
@@ -475,7 +475,7 @@ const StaffDashboard = () => {
     }
   };
 
-  const handleCancelReservation = async (reservation: ControlCenterReservation, useCredit: boolean) => {
+  const handleCancelReservation = async (reservation: ControlCenterReservation, useCredit: boolean, reason: string) => {
     try {
       const { error } = await supabase
         .from('reservations')
@@ -517,6 +517,14 @@ const StaffDashboard = () => {
         }
       }
 
+      // Log to turn-away table
+      await supabase.from('turn_aways').insert({
+        service_type: reservation.service_type,
+        reason: reason || 'Cancelled',
+        notes: `Cancelled reservation for ${reservation.pet_name} (${reservation.client_name})`,
+        created_by: user?.id || '',
+      });
+
       // Log the cancellation
       await logActivity({
         petId: reservation.pet_id,
@@ -527,6 +535,7 @@ const StaffDashboard = () => {
         details: {
           service_type: reservation.service_type,
           credit_used: useCredit,
+          cancel_reason: reason,
         }
       });
 
@@ -591,6 +600,14 @@ const StaffDashboard = () => {
         .eq('id', reservation.id);
 
       if (error) throw error;
+
+      // Log to turn-away table
+      await supabase.from('turn_aways').insert({
+        service_type: reservation.service_type,
+        reason: reason || 'Declined',
+        notes: `Declined reservation for ${reservation.pet_name} (${reservation.client_name})`,
+        created_by: user?.id || '',
+      });
 
       // Log the decline with reason
       await logActivity({

@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { AlertTriangle, CreditCard, Ban } from 'lucide-react';
 
 interface CancelReservationDialogProps {
@@ -19,7 +20,7 @@ interface CancelReservationDialogProps {
   serviceType: string;
   daycareCredits: number;
   boardingCredits: number;
-  onConfirm: (useCredit: boolean) => void;
+  onConfirm: (useCredit: boolean, reason: string) => void;
 }
 
 export function CancelReservationDialog({
@@ -32,20 +33,23 @@ export function CancelReservationDialog({
   onConfirm,
 }: CancelReservationDialogProps) {
   const [useCredit, setUseCredit] = useState<'yes' | 'no'>('no');
+  const [reason, setReason] = useState('');
 
   const relevantCredits = serviceType === 'boarding' ? boardingCredits : daycareCredits;
   const creditType = serviceType === 'boarding' ? 'boarding' : 'daycare';
   const hasCredits = relevantCredits > 0;
 
   const handleConfirm = () => {
-    onConfirm(useCredit === 'yes');
+    onConfirm(useCredit === 'yes', reason.trim());
     onOpenChange(false);
-    setUseCredit('no'); // Reset for next time
+    setUseCredit('no');
+    setReason('');
   };
 
   const handleCancel = () => {
     onOpenChange(false);
     setUseCredit('no');
+    setReason('');
   };
 
   return (
@@ -62,7 +66,19 @@ export function CancelReservationDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="py-4">
+        <div className="py-4 space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="cancel-reason">Reason for cancellation</Label>
+            <Textarea
+              id="cancel-reason"
+              placeholder="Enter the reason for cancelling this reservation..."
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={3}
+              className="resize-none"
+            />
+          </div>
+
           {(serviceType === 'daycare' || serviceType === 'boarding') && (
             <div className="space-y-4">
               <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
@@ -151,6 +167,7 @@ export function CancelReservationDialog({
           <Button 
             variant="destructive" 
             onClick={handleConfirm}
+            disabled={!reason.trim()}
           >
             Cancel Reservation
           </Button>

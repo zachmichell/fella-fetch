@@ -39,7 +39,7 @@ interface MobileControlCenterProps {
   onCheckOut: (reservation: ControlCenterReservation) => void;
   onUndoCheckIn: (reservation: ControlCenterReservation) => void;
   onAcceptReservation: (reservation: ControlCenterReservation) => void;
-  onCancelReservation: (reservation: ControlCenterReservation, useCredit: boolean) => void;
+  onCancelReservation: (reservation: ControlCenterReservation, useCredit: boolean, reason: string) => void;
   onDeclineReservation: (reservation: ControlCenterReservation, reason: string) => void;
   onAddService: (reservation: ControlCenterReservation) => void;
   onTraitsUpdated?: () => void;
@@ -281,8 +281,8 @@ export function MobileControlCenter({
           serviceType={selectedReservation.service_type}
           daycareCredits={selectedReservation.daycare_credits}
           boardingCredits={selectedReservation.boarding_credits}
-          onConfirm={(useCredit) => {
-            onCancelReservation(selectedReservation, useCredit);
+          onConfirm={(useCredit, reason) => {
+            onCancelReservation(selectedReservation, useCredit, reason);
             setCancelDialogOpen(false);
             setSelectedReservation(null);
           }}

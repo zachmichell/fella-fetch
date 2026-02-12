@@ -77,6 +77,8 @@ export const TurnAwayForm = () => {
             <SelectContent>
               <SelectItem value="daycare">Daycare</SelectItem>
               <SelectItem value="boarding">Boarding</SelectItem>
+              <SelectItem value="grooming">Grooming</SelectItem>
+              <SelectItem value="training">Training</SelectItem>
             </SelectContent>
           </Select>
           <Select value={reason} onValueChange={setReason}>
