@@ -209,23 +209,23 @@ export const LodgingWeeklyView = ({
   return (
     <Card>
       <CardContent className="p-0 overflow-x-auto">
-        <table className="w-full border-collapse min-w-[800px]">
+        <table className="w-full border-collapse min-w-[500px] md:min-w-[800px]">
           <thead>
             <tr className="bg-muted/50">
-              <th className="border-b border-r p-3 text-left font-medium w-32">
+              <th className="border-b border-r p-1.5 md:p-3 text-left font-medium w-16 md:w-32">
                 Suite
               </th>
               {weekDays.map((day) => (
                 <th
                   key={day.toISOString()}
                   className={cn(
-                    "border-b border-r p-3 text-center font-medium min-w-[120px]",
+                    "border-b border-r p-1 md:p-3 text-center font-medium min-w-[60px] md:min-w-[120px]",
                     isSameDay(day, new Date()) && "bg-primary/10"
                   )}
                 >
-                  <div className="text-sm">{format(day, 'EEE')}</div>
+                  <div className="text-xs md:text-sm">{format(day, 'EEE')}</div>
                   <div className={cn(
-                    "text-lg",
+                    "text-sm md:text-lg",
                     isSameDay(day, new Date()) && "text-primary font-bold"
                   )}>
                     {format(day, 'd')}
@@ -237,11 +237,9 @@ export const LodgingWeeklyView = ({
           <tbody>
             {suites?.map((suite) => (
               <tr key={suite.id} className="hover:bg-muted/30">
-                <td className="border-b border-r p-3 font-medium bg-muted/20">
+                <td className="border-b border-r p-1.5 md:p-3 font-medium bg-muted/20 text-xs md:text-sm">
                   <div>{suite.name}</div>
-                  {suite.description && (
-                    <div className="text-xs text-muted-foreground">{suite.description}</div>
-                  )}
+                  <div className="hidden md:block text-xs text-muted-foreground">{suite.description}</div>
                 </td>
                 {weekDays.map((day) => {
                   const cellReservations = getReservationsForCell(suite.id, day);
@@ -249,7 +247,7 @@ export const LodgingWeeklyView = ({
                     <td
                       key={day.toISOString()}
                       className={cn(
-                        "border-b border-r p-1 align-top min-h-[80px]",
+                        "border-b border-r p-0.5 md:p-1 align-top min-h-[40px] md:min-h-[80px]",
                         isSameDay(day, new Date()) && "bg-primary/5"
                       )}
                     >
@@ -274,7 +272,7 @@ export const LodgingWeeklyView = ({
             
             {/* Unassigned row */}
             <tr className="bg-amber-50/50 dark:bg-amber-950/20">
-              <td className="border-b border-r p-3 font-medium text-amber-700 dark:text-amber-400">
+              <td className="border-b border-r p-1.5 md:p-3 font-medium text-amber-700 dark:text-amber-400 text-xs md:text-sm">
                 Unassigned
               </td>
               {weekDays.map((day) => {
@@ -283,7 +281,7 @@ export const LodgingWeeklyView = ({
                   <td
                     key={day.toISOString()}
                     className={cn(
-                      "border-b border-r p-1 align-top",
+                      "border-b border-r p-0.5 md:p-1 align-top",
                       isSameDay(day, new Date()) && "bg-primary/5"
                     )}
                   >
