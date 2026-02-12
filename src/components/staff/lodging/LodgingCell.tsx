@@ -94,7 +94,7 @@ export const LodgingCell = ({
     if (suiteId) {
       return (
         <div
-          className="h-full min-h-[60px] flex items-center justify-center cursor-pointer hover:bg-muted/50 rounded transition-colors group"
+          className="h-full min-h-[30px] md:min-h-[60px] flex items-center justify-center cursor-pointer hover:bg-muted/50 rounded transition-colors group"
           onClick={() => onCreateBooking(suiteId, date)}
         >
           <Plus className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -110,7 +110,7 @@ export const LodgingCell = ({
   return (
     <div
       className={cn(
-        "p-2 rounded cursor-pointer transition-colors min-h-[60px]",
+        "p-1 md:p-2 rounded cursor-pointer transition-colors min-h-[30px] md:min-h-[60px]",
         reservation.status === 'checked_in' && "bg-green-100 dark:bg-green-900/30",
         reservation.status === 'confirmed' && "bg-blue-100 dark:bg-blue-900/30",
         reservation.status === 'checked_out' && "bg-gray-100 dark:bg-gray-800",
