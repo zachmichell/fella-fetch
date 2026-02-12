@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { StaffLayout } from '@/components/staff/StaffLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -208,10 +209,24 @@ const StaffPets = () => {
     }
   };
 
+  const [searchParams, setSearchParams] = useSearchParams();
+
   useEffect(() => {
     fetchPets();
     fetchClients();
   }, [isStaffOrAdmin]);
+
+  // Auto-open pet from URL param
+  useEffect(() => {
+    const petId = searchParams.get('petId');
+    if (petId && pets.length > 0) {
+      const pet = pets.find(p => p.id === petId);
+      if (pet) {
+        handleViewPet(pet);
+        setSearchParams({}, { replace: true });
+      }
+    }
+  }, [pets, searchParams]);
 
   useEffect(() => {
     if (selectedPet) {

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { normalizePhone } from '@/lib/phoneUtils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { StaffLayout } from '@/components/staff/StaffLayout';
@@ -79,6 +80,7 @@ interface Client {
 const StaffClients = () => {
   const { isStaffOrAdmin } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -590,7 +592,11 @@ const StaffClients = () => {
                             {selectedClient.pets.map((pet) => (
                               <div 
                                 key={pet.id} 
-                                className="flex items-center justify-between p-3 rounded-lg border bg-muted/30"
+                                className="flex items-center justify-between p-3 rounded-lg border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+                                onClick={() => {
+                                  setSelectedClient(null);
+                                  navigate(`/staff/pets?petId=${pet.id}`);
+                                }}
                               >
                                 <div className="flex items-center gap-3">
                                   <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
