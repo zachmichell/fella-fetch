@@ -104,7 +104,7 @@ interface ControlCenterTableProps {
   onCheckOut: (reservation: ControlCenterReservation) => void;
   onUndoCheckIn: (reservation: ControlCenterReservation) => void;
   onAcceptReservation: (reservation: ControlCenterReservation) => void;
-  onCancelReservation: (reservation: ControlCenterReservation, useCredit: boolean) => void;
+  onCancelReservation: (reservation: ControlCenterReservation, useCredit: boolean, reason: string) => void;
   onDeclineReservation: (reservation: ControlCenterReservation, reason: string) => void;
   onAddService: (reservation: ControlCenterReservation) => void;
   onTraitsUpdated?: () => void;
@@ -361,9 +361,9 @@ export function ControlCenterTable({
     setDeclineDialogOpen(true);
   };
 
-  const handleCancelConfirm = (useCredit: boolean) => {
+  const handleCancelConfirm = (useCredit: boolean, reason: string) => {
     if (selectedReservation) {
-      onCancelReservation(selectedReservation, useCredit);
+      onCancelReservation(selectedReservation, useCredit, reason);
     }
     setCancelDialogOpen(false);
     setSelectedReservation(null);

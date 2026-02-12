@@ -9,6 +9,7 @@ import { CheckCircle, XCircle, Scissors, Clock, Calendar, UserPlus, ChevronDown 
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { DeclineReservationDialog } from '@/components/staff/DeclineReservationDialog';
+import { useAuth } from '@/contexts/AuthContext';
 interface PendingRequest {
   id: string;
   pet_id: string;
@@ -47,6 +48,7 @@ interface PendingGroomingRequestsProps {
 export const PendingGroomingRequests = ({ groomers }: PendingGroomingRequestsProps) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [declineDialogOpen, setDeclineDialogOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<PendingRequest | null>(null);
   const [groomerPopoverOpen, setGroomerPopoverOpen] = useState<string | null>(null);
@@ -176,6 +178,14 @@ export const PendingGroomingRequests = ({ groomers }: PendingGroomingRequestsPro
         .eq('id', selectedRequest.id);
 
       if (error) throw error;
+
+      // Log to turn-away table
+      await supabase.from('turn_aways').insert({
+        service_type: 'grooming',
+        reason: reason || 'Declined',
+        notes: `Declined grooming for ${selectedRequest.pet_name} (${selectedRequest.client_name})`,
+        created_by: user?.id || '',
+      });
 
       toast({
         title: 'Appointment declined',
