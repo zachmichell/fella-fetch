@@ -4,6 +4,7 @@ import { StaffLayout } from '@/components/staff/StaffLayout';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { LodgingCalendarHeader } from '@/components/staff/lodging/LodgingCalendarHeader';
 import { LodgingWeeklyView } from '@/components/staff/lodging/LodgingWeeklyView';
+import { LodgingMonthlyView } from '@/components/staff/lodging/LodgingMonthlyView';
 import { LodgingPetDetailsDialog } from '@/components/staff/lodging/LodgingPetDetailsDialog';
 import { LodgingAssignSuiteDialog } from '@/components/staff/lodging/LodgingAssignSuiteDialog';
 import { CreateBoardingDialog } from '@/components/staff/lodging/CreateBoardingDialog';
@@ -14,6 +15,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { X, Info } from 'lucide-react';
 import { toast } from 'sonner';
+
+export type LodgingViewMode = 'weekly' | 'monthly';
 
 export interface BoardingReservation {
   id: string;
@@ -34,6 +37,7 @@ const StaffLodgingCalendar = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
+  const [viewMode, setViewMode] = useState<LodgingViewMode>('weekly');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedReservation, setSelectedReservation] = useState<BoardingReservation | null>(null);
   const [petDetailsOpen, setPetDetailsOpen] = useState(false);
@@ -48,6 +52,9 @@ const StaffLodgingCalendar = () => {
   const [createBookingOpen, setCreateBookingOpen] = useState(false);
   const [createBookingSuiteId, setCreateBookingSuiteId] = useState<string | null>(null);
   const [createBookingDate, setCreateBookingDate] = useState<Date | null>(null);
+
+  // Force weekly on mobile
+  const effectiveViewMode = isMobile ? 'weekly' : viewMode;
 
   // Get reservation ID from URL params (for direct navigation from Control Center)
   const reservationIdFromUrl = searchParams.get('reservationId');
@@ -272,14 +279,26 @@ const StaffLodgingCalendar = () => {
         <LodgingCalendarHeader
           currentDate={currentDate}
           onDateChange={setCurrentDate}
+          viewMode={effectiveViewMode}
+          onViewModeChange={(mode) => setViewMode(mode)}
+          showViewToggle={!isMobile}
         />
 
-        <LodgingWeeklyView
-          startDate={startOfWeek(currentDate, { weekStartsOn: 0 })}
-          onPetClick={handlePetClick}
-          onAssignSuite={handleAssignSuite}
-          onCreateBooking={handleCreateBooking}
-        />
+        {effectiveViewMode === 'monthly' ? (
+          <LodgingMonthlyView
+            startDate={currentDate}
+            onPetClick={handlePetClick}
+            onAssignSuite={handleAssignSuite}
+            onCreateBooking={handleCreateBooking}
+          />
+        ) : (
+          <LodgingWeeklyView
+            startDate={startOfWeek(currentDate, { weekStartsOn: 0 })}
+            onPetClick={handlePetClick}
+            onAssignSuite={handleAssignSuite}
+            onCreateBooking={handleCreateBooking}
+          />
+        )}
 
         <LodgingPetDetailsDialog
           open={petDetailsOpen}

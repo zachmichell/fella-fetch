@@ -13,6 +13,7 @@ import {
   ChevronRight, 
   Loader2,
   Calendar as CalendarIcon,
+  LayoutGrid,
 } from 'lucide-react';
 import { 
   format, 
@@ -20,10 +21,16 @@ import {
   startOfWeek, 
   addWeeks, 
   subWeeks, 
+  addMonths,
+  subMonths,
+  startOfMonth,
+  endOfMonth,
+  getDay,
   isSameDay,
+  isSameMonth,
 } from 'date-fns';
 
-type ViewMode = 'weekly';
+type ViewMode = 'weekly' | 'monthly';
 
 interface Reservation {
   id: string;
@@ -81,6 +88,28 @@ const StaffCalendar = () => {
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
+  // Monthly view calculations
+  const monthStart = startOfMonth(currentDate);
+  const monthEnd = endOfMonth(currentDate);
+  const monthCalendarDays = (() => {
+    const days: Date[] = [];
+    const startPadding = getDay(monthStart);
+    for (let i = startPadding - 1; i >= 0; i--) {
+      days.push(addDays(monthStart, -i - 1));
+    }
+    let current = monthStart;
+    while (current <= monthEnd) {
+      days.push(current);
+      current = addDays(current, 1);
+    }
+    while (days.length % 7 !== 0) {
+      days.push(addDays(days[days.length - 1], 1));
+    }
+    return days;
+  })();
+
+  // Force weekly on mobile
+  const effectiveViewMode = isMobile ? 'weekly' : viewMode;
 
   const fetchData = async () => {
     if (!isStaffOrAdmin) {
@@ -88,8 +117,16 @@ const StaffCalendar = () => {
       return;
     }
 
-    const startDate = format(weekDays[0], 'yyyy-MM-dd');
-    const endDate = format(weekDays[6], 'yyyy-MM-dd');
+    let startDate: string;
+    let endDate: string;
+
+    if (effectiveViewMode === 'monthly') {
+      startDate = format(monthCalendarDays[0], 'yyyy-MM-dd');
+      endDate = format(monthCalendarDays[monthCalendarDays.length - 1], 'yyyy-MM-dd');
+    } else {
+      startDate = format(weekDays[0], 'yyyy-MM-dd');
+      endDate = format(weekDays[6], 'yyyy-MM-dd');
+    }
 
     try {
       const [serviceTypesRes, reservationsRes] = await Promise.all([
@@ -120,7 +157,7 @@ const StaffCalendar = () => {
 
   useEffect(() => {
     fetchData();
-  }, [currentDate, viewMode, isStaffOrAdmin]);
+  }, [currentDate, effectiveViewMode, isStaffOrAdmin]);
 
   // Real-time subscription for auto-refresh
   useEffect(() => {
@@ -136,19 +173,17 @@ const StaffCalendar = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentDate, viewMode]);
+  }, [currentDate, effectiveViewMode]);
 
   const getServiceCountsForDay = (date: Date): ServiceCount[] => {
     const dateStr = format(date, 'yyyy-MM-dd');
     const dayReservations = reservations.filter(r => r.start_date === dateStr);
     
-    // Count by service type name (matching the enum values stored in reservations)
     const counts: Record<string, number> = {};
     dayReservations.forEach(r => {
       counts[r.service_type] = (counts[r.service_type] || 0) + 1;
     });
 
-    // Map service types to counts
     return serviceTypes.map((st) => {
       const colorKey = st.color || 'gray';
       const colors = colorMap[colorKey] || colorMap['gray'];
@@ -172,10 +207,26 @@ const StaffCalendar = () => {
 
   const goToToday = () => setCurrentDate(new Date());
   
-  const goToPrevious = () => setCurrentDate(subWeeks(currentDate, 1));
-  const goToNext = () => setCurrentDate(addWeeks(currentDate, 1));
+  const goToPrevious = () => {
+    if (effectiveViewMode === 'monthly') {
+      setCurrentDate(subMonths(currentDate, 1));
+    } else {
+      setCurrentDate(subWeeks(currentDate, 1));
+    }
+  };
+  
+  const goToNext = () => {
+    if (effectiveViewMode === 'monthly') {
+      setCurrentDate(addMonths(currentDate, 1));
+    } else {
+      setCurrentDate(addWeeks(currentDate, 1));
+    }
+  };
 
   const getHeaderText = () => {
+    if (effectiveViewMode === 'monthly') {
+      return format(currentDate, 'MMMM yyyy');
+    }
     return `${format(weekDays[0], 'MMM d')} - ${format(weekDays[6], 'MMM d, yyyy')}`;
   };
 
@@ -188,7 +239,7 @@ const StaffCalendar = () => {
             <div>
               <h1 className="text-lg sm:text-2xl font-semibold tracking-tight">Calendar</h1>
               <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-                Weekly overview of reservations
+                {effectiveViewMode === 'monthly' ? 'Monthly' : 'Weekly'} overview of reservations
               </p>
             </div>
             
@@ -201,6 +252,10 @@ const StaffCalendar = () => {
                 <ToggleGroupItem value="weekly" aria-label="Weekly view">
                   <CalendarIcon className="h-4 w-4 sm:mr-2" />
                   <span className="hidden sm:inline">Week</span>
+                </ToggleGroupItem>
+                <ToggleGroupItem value="monthly" aria-label="Monthly view">
+                  <LayoutGrid className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Month</span>
                 </ToggleGroupItem>
               </ToggleGroup>
             )}
@@ -237,6 +292,59 @@ const StaffCalendar = () => {
                 <CalendarIcon className="h-12 w-12 mb-4 opacity-50" />
                 <p>No service types configured</p>
                 <p className="text-sm">Add service types in Settings → Service Types</p>
+              </div>
+            ) : effectiveViewMode === 'monthly' ? (
+              /* Monthly View (desktop/iPad only) */
+              <div>
+                <div className="grid grid-cols-7 gap-1 mb-2">
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                    <div key={day} className="text-center font-medium text-muted-foreground py-2 text-sm">
+                      {day}
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-7 gap-1">
+                  {monthCalendarDays.map((day, index) => {
+                    const serviceCounts = getServiceCountsForDay(day);
+                    const total = getTotalForDay(day);
+                    const isToday = isSameDay(day, new Date());
+                    const isCurrentMonth = isSameMonth(day, monthStart);
+
+                    return (
+                      <div
+                        key={index}
+                        className={`min-h-[120px] border rounded-lg p-2 ${
+                          !isCurrentMonth ? 'opacity-40' : ''
+                        } ${isToday ? 'border-primary border-2' : ''}`}
+                      >
+                        <div className={`text-sm font-medium mb-1 ${isToday ? 'text-primary' : ''}`}>
+                          {format(day, 'd')}
+                        </div>
+                        {isCurrentMonth && (
+                          <div className="space-y-0.5">
+                            {serviceCounts.map((service) => (
+                              service.count > 0 && (
+                                <div
+                                  key={service.id}
+                                  className={`flex items-center justify-between px-1.5 py-0.5 rounded ${service.bgColor}`}
+                                >
+                                  <div className={`flex items-center gap-1 ${service.color}`}>
+                                    <ServiceTypeIcon iconName={service.iconName} className="h-3 w-3 flex-shrink-0" />
+                                    <span className="text-[10px] font-medium truncate">{service.displayName}</span>
+                                  </div>
+                                  <span className={`text-xs font-semibold ${service.color}`}>{service.count}</span>
+                                </div>
+                              )
+                            ))}
+                            {total > 0 && (
+                              <div className="text-[10px] text-muted-foreground text-right">{total} total</div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             ) : (
               /* Weekly View */
