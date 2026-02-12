@@ -44,20 +44,20 @@ const CAPACITY_DEFAULTS: Record<string, number> = {
 const getColor = (count: number, maxCap: number) => {
   if (maxCap === 0) return 'bg-muted text-muted-foreground';
   const pct = count / maxCap;
-  if (pct >= 0.9) return 'bg-red-500 text-white';
-  if (pct >= 0.7) return 'bg-orange-400 text-white';
+  if (pct >= 0.9) return 'bg-green-500 text-white';
+  if (pct >= 0.7) return 'bg-green-400 text-white';
   if (pct >= 0.5) return 'bg-yellow-400 text-foreground';
-  if (pct > 0) return 'bg-green-400 text-foreground';
+  if (pct > 0) return 'bg-red-400 text-foreground';
   return 'bg-muted text-muted-foreground';
 };
 
 const getColorDot = (count: number, maxCap: number) => {
   if (maxCap === 0) return 'bg-muted';
   const pct = count / maxCap;
-  if (pct >= 0.9) return 'bg-red-500';
-  if (pct >= 0.7) return 'bg-orange-400';
+  if (pct >= 0.9) return 'bg-green-500';
+  if (pct >= 0.7) return 'bg-green-400';
   if (pct >= 0.5) return 'bg-yellow-400';
-  if (pct > 0) return 'bg-green-400';
+  if (pct > 0) return 'bg-red-400';
   return 'bg-muted';
 };
 
@@ -181,10 +181,10 @@ export const CapacityHeatmap = () => {
         )}
         <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground flex-wrap">
           <span className="text-foreground font-medium">Cap: {totalCap}</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-400" /> &lt;50%</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-400" /> &lt;50%</span>
           <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-yellow-400" /> 50-69%</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-orange-400" /> 70-89%</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-500" /> 90%+</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-400" /> 70-89%</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-500" /> 90%+</span>
           <span className="mx-1 border-l border-border h-4" />
           {Object.entries(SERVICE_LABELS).map(([k, v]) => (
             <span key={k} className={`flex items-center gap-0.5 ${v.color} font-medium`}>{v.short}</span>
