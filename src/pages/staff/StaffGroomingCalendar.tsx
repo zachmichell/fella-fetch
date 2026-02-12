@@ -3,11 +3,15 @@ import { StaffLayout } from '@/components/staff/StaffLayout';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { GroomingCalendarHeader } from '@/components/staff/grooming/GroomingCalendarHeader';
 import { GroomingDayView } from '@/components/staff/grooming/GroomingDayView';
+import { GroomingWeekView } from '@/components/staff/grooming/GroomingWeekView';
 import { CreateGroomingDialog } from '@/components/staff/grooming/CreateGroomingDialog';
 import { GroomingDetailsDialog } from '@/components/staff/grooming/GroomingDetailsDialog';
 import { PendingGroomingRequests } from '@/components/staff/grooming/PendingGroomingRequests';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { startOfWeek } from 'date-fns';
+
+export type GroomingViewMode = 'daily' | 'weekly';
 
 export interface GroomingAppointment {
   id: string;
@@ -29,6 +33,7 @@ export interface GroomingAppointment {
 const StaffGroomingCalendar = () => {
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
+  const [viewMode, setViewMode] = useState<GroomingViewMode>('daily');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedAppointment, setSelectedAppointment] = useState<GroomingAppointment | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -39,6 +44,9 @@ const StaffGroomingCalendar = () => {
   const [createGroomerId, setCreateGroomerId] = useState<string | null>(null);
   const [createDate, setCreateDate] = useState<Date | null>(null);
   const [createTime, setCreateTime] = useState<string | null>(null);
+
+  // Force daily view on mobile
+  const effectiveViewMode = isMobile ? 'daily' : viewMode;
 
   // Fetch groomers
   const { data: groomers } = useQuery({
@@ -63,6 +71,7 @@ const StaffGroomingCalendar = () => {
         { event: '*', schema: 'public', table: 'reservations' },
         () => {
           queryClient.invalidateQueries({ queryKey: ['grooming-appointments'] });
+          queryClient.invalidateQueries({ queryKey: ['grooming-appointments-week'] });
           queryClient.invalidateQueries({ queryKey: ['pending-grooming'] });
         }
       )
@@ -84,6 +93,7 @@ const StaffGroomingCalendar = () => {
   useEffect(() => {
     const pollInterval = setInterval(() => {
       queryClient.invalidateQueries({ queryKey: ['grooming-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['grooming-appointments-week'] });
       queryClient.invalidateQueries({ queryKey: ['pending-grooming'] });
       queryClient.invalidateQueries({ queryKey: ['groomers'] });
     }, 30000);
@@ -117,16 +127,28 @@ const StaffGroomingCalendar = () => {
           groomers={groomers || []}
           selectedGroomerId={filterGroomerId}
           onGroomerFilterChange={setFilterGroomerId}
+          viewMode={effectiveViewMode}
+          onViewModeChange={(mode) => setViewMode(mode)}
+          showViewToggle={!isMobile}
         />
 
         <PendingGroomingRequests groomers={groomers || []} />
 
-        <GroomingDayView
-          date={currentDate}
-          onAppointmentClick={handleAppointmentClick}
-          onCreateAppointment={handleCreateAppointment}
-          filterGroomerId={filterGroomerId}
-        />
+        {effectiveViewMode === 'weekly' ? (
+          <GroomingWeekView
+            startDate={startOfWeek(currentDate, { weekStartsOn: 0 })}
+            onAppointmentClick={handleAppointmentClick}
+            onCreateAppointment={handleCreateAppointment}
+            filterGroomerId={filterGroomerId}
+          />
+        ) : (
+          <GroomingDayView
+            date={currentDate}
+            onAppointmentClick={handleAppointmentClick}
+            onCreateAppointment={handleCreateAppointment}
+            filterGroomerId={filterGroomerId}
+          />
+        )}
 
         <GroomingDetailsDialog
           open={detailsOpen}

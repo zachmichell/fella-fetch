@@ -2,9 +2,11 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CalendarIcon, ChevronLeft, ChevronRight, Scissors, User } from 'lucide-react';
-import { format, addDays, subDays } from 'date-fns';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { CalendarIcon, ChevronLeft, ChevronRight, Scissors, User, LayoutList } from 'lucide-react';
+import { format, addDays, subDays, addWeeks, subWeeks } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { GroomingViewMode } from '@/pages/staff/StaffGroomingCalendar';
 
 interface Groomer {
   id: string;
@@ -18,6 +20,9 @@ interface GroomingCalendarHeaderProps {
   groomers?: Groomer[];
   selectedGroomerId: string | null;
   onGroomerFilterChange: (groomerId: string | null) => void;
+  viewMode: GroomingViewMode;
+  onViewModeChange: (mode: GroomingViewMode) => void;
+  showViewToggle?: boolean;
 }
 
 export const GroomingCalendarHeader = ({
@@ -26,23 +31,59 @@ export const GroomingCalendarHeader = ({
   groomers = [],
   selectedGroomerId,
   onGroomerFilterChange,
+  viewMode,
+  onViewModeChange,
+  showViewToggle = true,
 }: GroomingCalendarHeaderProps) => {
-  const handlePrevious = () => onDateChange(subDays(currentDate, 1));
-  const handleNext = () => onDateChange(addDays(currentDate, 1));
+  const handlePrevious = () => {
+    if (viewMode === 'weekly') {
+      onDateChange(subWeeks(currentDate, 1));
+    } else {
+      onDateChange(subDays(currentDate, 1));
+    }
+  };
+  
+  const handleNext = () => {
+    if (viewMode === 'weekly') {
+      onDateChange(addWeeks(currentDate, 1));
+    } else {
+      onDateChange(addDays(currentDate, 1));
+    }
+  };
+  
   const handleToday = () => onDateChange(new Date());
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2">
-        <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-          <Scissors className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Scissors className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-lg sm:text-2xl font-bold">Grooming</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
+              Manage grooming and add-on appointments
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-lg sm:text-2xl font-bold">Grooming</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-            Manage grooming and add-on appointments
-          </p>
-        </div>
+
+        {showViewToggle && (
+          <ToggleGroup
+            type="single"
+            value={viewMode}
+            onValueChange={(value) => value && onViewModeChange(value as GroomingViewMode)}
+          >
+            <ToggleGroupItem value="daily" aria-label="Day view">
+              <CalendarIcon className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Day</span>
+            </ToggleGroupItem>
+            <ToggleGroupItem value="weekly" aria-label="Week view">
+              <LayoutList className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Week</span>
+            </ToggleGroupItem>
+          </ToggleGroup>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
