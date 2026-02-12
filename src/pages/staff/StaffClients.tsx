@@ -471,17 +471,23 @@ const StaffClients = () => {
                         <div className="grid grid-cols-2 gap-4">
                           <div className="min-w-0">
                             <p className="text-sm text-muted-foreground">Email</p>
-                            <p className="font-medium flex items-center gap-1 truncate">
-                              <Mail className="h-4 w-4 flex-shrink-0" />
-                              <span className="truncate">{selectedClient.email || 'Not provided'}</span>
-                            </p>
+                             <a 
+                               href={selectedClient.email ? `mailto:${selectedClient.email}` : '#'}
+                               className={`font-medium flex items-center gap-1 truncate ${selectedClient.email ? 'text-primary hover:underline cursor-pointer' : 'text-muted-foreground'}`}
+                             >
+                               <Mail className="h-4 w-4 flex-shrink-0" />
+                               <span className="truncate">{selectedClient.email || 'Not provided'}</span>
+                             </a>
                           </div>
                           <div className="min-w-0">
                             <p className="text-sm text-muted-foreground">Phone</p>
-                            <p className="font-medium flex items-center gap-1 truncate">
-                              <Phone className="h-4 w-4 flex-shrink-0" />
-                              <span className="truncate">{selectedClient.phone || 'Not provided'}</span>
-                            </p>
+                             <a 
+                               href={selectedClient.phone ? `tel:${selectedClient.phone}` : '#'}
+                               className={`font-medium flex items-center gap-1 truncate ${selectedClient.phone ? 'text-primary hover:underline cursor-pointer' : 'text-muted-foreground'}`}
+                             >
+                               <Phone className="h-4 w-4 flex-shrink-0" />
+                               <span className="truncate">{selectedClient.phone || 'Not provided'}</span>
+                             </a>
                           </div>
                           <div className="col-span-2">
                             <p className="text-sm text-muted-foreground">Address</p>
@@ -510,10 +516,12 @@ const StaffClients = () => {
                             </p>
                           </div>
                           <div>
-                            <p className="text-sm text-muted-foreground">Phone</p>
-                            <p className="font-medium">
-                              {selectedClient.emergency_contact_phone || 'Not provided'}
-                            </p>
+                             <a 
+                               href={selectedClient.emergency_contact_phone ? `tel:${selectedClient.emergency_contact_phone}` : '#'}
+                               className={`font-medium ${selectedClient.emergency_contact_phone ? 'text-primary hover:underline cursor-pointer' : 'text-muted-foreground'}`}
+                             >
+                               {selectedClient.emergency_contact_phone || 'Not provided'}
+                             </a>
                           </div>
                         </div>
                       </CardContent>
