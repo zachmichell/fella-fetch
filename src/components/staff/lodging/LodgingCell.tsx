@@ -110,7 +110,7 @@ export const LodgingCell = ({
   return (
     <div
       className={cn(
-        "p-1 md:p-2 rounded cursor-pointer transition-colors min-h-[30px] md:min-h-[60px]",
+        "p-0.5 md:p-1.5 rounded cursor-pointer transition-colors min-h-[30px] md:min-h-[60px]",
         reservation.status === 'checked_in' && "bg-green-100 dark:bg-green-900/30",
         reservation.status === 'confirmed' && "bg-blue-100 dark:bg-blue-900/30",
         reservation.status === 'checked_out' && "bg-gray-100 dark:bg-gray-800",
@@ -120,17 +120,17 @@ export const LodgingCell = ({
     >
       <div className="flex items-start justify-between gap-1">
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-sm truncate">{reservation.pet_name}</div>
-          <div className="text-xs text-muted-foreground truncate">{reservation.client_name}</div>
+          <div className="font-medium text-xs md:text-sm truncate">{reservation.pet_name}</div>
+          <div className="text-2xs md:text-xs text-muted-foreground truncate">{reservation.client_name}</div>
           
-          <div className="flex flex-wrap gap-1 mt-1">
+          <div className="flex flex-wrap gap-0.5 mt-0.5">
             {isStartDay && (
-              <Badge variant="outline" className="text-xs py-0">
+              <Badge variant="outline" className="text-2xs md:text-xs py-0">
                 Arrives
               </Badge>
             )}
             {isEndDay && (
-              <Badge variant="outline" className="text-xs py-0">
+              <Badge variant="outline" className="text-2xs md:text-xs py-0">
                 Departs
               </Badge>
             )}
@@ -139,8 +139,8 @@ export const LodgingCell = ({
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-            <Button variant="ghost" size="icon" className="h-6 w-6">
-              <MoreHorizontal className="h-3 w-3" />
+            <Button variant="ghost" size="icon" className="h-5 w-5">
+              <MoreHorizontal className="h-2.5 w-2.5" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="bg-popover">
