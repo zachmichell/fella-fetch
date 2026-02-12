@@ -20,6 +20,13 @@ const SERVICE_OPTIONS: { value: ServiceFilter; label: string }[] = [
   { value: 'training', label: 'Training' },
 ];
 
+const SERVICE_LABELS: Record<string, { label: string; short: string; color: string }> = {
+  daycare: { label: 'Daycare', short: 'DC', color: 'text-blue-600' },
+  boarding: { label: 'Boarding', short: 'BD', color: 'text-purple-600' },
+  grooming: { label: 'Grooming', short: 'GR', color: 'text-pink-600' },
+  training: { label: 'Training', short: 'TR', color: 'text-amber-600' },
+};
+
 const CAPACITY_KEYS = [
   'daycare_max_capacity',
   'boarding_max_capacity',
@@ -54,6 +61,11 @@ const getColorDot = (count: number, maxCap: number) => {
   return 'bg-muted';
 };
 
+type DayData = {
+  total: number;
+  byType: Record<string, number>;
+};
+
 export const CapacityHeatmap = () => {
   const [month, setMonth] = useState(new Date());
   const [serviceFilter, setServiceFilter] = useState<ServiceFilter>('all');
@@ -79,17 +91,13 @@ export const CapacityHeatmap = () => {
     },
   });
 
-  const typesToFetch: Array<'daycare' | 'boarding' | 'grooming' | 'training'> =
-    serviceFilter === 'all'
-      ? ['daycare', 'boarding', 'grooming', 'training']
-      : [serviceFilter as 'daycare' | 'boarding' | 'grooming' | 'training'];
-
+  // Always fetch all types so we can show breakdown
   const { data: reservations } = useQuery({
-    queryKey: ['capacity-reservations', typesToFetch.join(','), format(fetchStart, 'yyyy-MM-dd'), format(fetchEnd, 'yyyy-MM-dd')],
+    queryKey: ['capacity-reservations', 'all', format(fetchStart, 'yyyy-MM-dd'), format(fetchEnd, 'yyyy-MM-dd')],
     queryFn: async () => {
       const { data } = await supabase.from('reservations')
         .select('start_date, end_date, status, service_type')
-        .in('service_type', typesToFetch)
+        .in('service_type', ['daycare', 'boarding', 'grooming', 'training'])
         .in('status', ['confirmed', 'checked_in', 'checked_out'])
         .gte('start_date', format(fetchStart, 'yyyy-MM-dd'))
         .lte('start_date', format(fetchEnd, 'yyyy-MM-dd'));
@@ -106,21 +114,38 @@ export const CapacityHeatmap = () => {
     return getCap(`${serviceFilter}_max_capacity`);
   }, [settings, serviceFilter]);
 
-  const dayCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
+  const activeTypes = serviceFilter === 'all'
+    ? ['daycare', 'boarding', 'grooming', 'training']
+    : [serviceFilter];
+
+  const dayData = useMemo(() => {
+    const data: Record<string, DayData> = {};
+    const addCount = (dateKey: string, type: string) => {
+      if (!data[dateKey]) data[dateKey] = { total: 0, byType: {} };
+      data[dateKey].byType[type] = (data[dateKey].byType[type] || 0) + 1;
+      if (activeTypes.includes(type)) {
+        data[dateKey].total = (data[dateKey].total || 0) + 1;
+      }
+    };
+
     reservations?.forEach(r => {
-      const d = r.start_date;
-      counts[d] = (counts[d] || 0) + 1;
-      if ((r.service_type === 'boarding') && r.end_date && r.end_date !== r.start_date) {
+      addCount(r.start_date, r.service_type);
+      if (r.service_type === 'boarding' && r.end_date && r.end_date !== r.start_date) {
         const days = eachDayOfInterval({ start: new Date(r.start_date + 'T00:00:00'), end: new Date(r.end_date + 'T00:00:00') });
         days.forEach(day => {
           const key = format(day, 'yyyy-MM-dd');
-          if (key !== r.start_date) counts[key] = (counts[key] || 0) + 1;
+          if (key !== r.start_date) addCount(key, r.service_type);
         });
       }
     });
-    return counts;
-  }, [reservations]);
+
+    // Recalculate totals based on filter
+    Object.keys(data).forEach(key => {
+      data[key].total = activeTypes.reduce((sum, t) => sum + (data[key].byType[t] || 0), 0);
+    });
+
+    return data;
+  }, [reservations, activeTypes]);
 
   const navPrev = () => setMonth(viewMode === 'year' ? subYears(month, 1) : subMonths(month, 1));
   const navNext = () => setMonth(viewMode === 'year' ? addYears(month, 1) : addMonths(month, 1));
@@ -150,46 +175,75 @@ export const CapacityHeatmap = () => {
       </CardHeader>
       <CardContent>
         {viewMode === 'month' ? (
-          <MonthGrid dayCounts={dayCounts} month={month} maxCap={totalCap} />
+          <MonthGrid dayData={dayData} month={month} maxCap={totalCap} activeTypes={activeTypes} />
         ) : (
-          <YearGrid dayCounts={dayCounts} year={month} maxCap={totalCap} />
+          <YearGrid dayData={dayData} year={month} maxCap={totalCap} activeTypes={activeTypes} />
         )}
-        <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
+        <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground flex-wrap">
           <span className="text-foreground font-medium">Cap: {totalCap}</span>
           <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-400" /> &lt;50%</span>
           <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-yellow-400" /> 50-69%</span>
           <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-orange-400" /> 70-89%</span>
           <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-500" /> 90%+</span>
+          <span className="mx-1 border-l border-border h-4" />
+          {Object.entries(SERVICE_LABELS).map(([k, v]) => (
+            <span key={k} className={`flex items-center gap-0.5 ${v.color} font-medium`}>{v.short}</span>
+          ))}
         </div>
       </CardContent>
     </Card>
   );
 };
 
-const MonthGrid = ({ dayCounts, month, maxCap }: { dayCounts: Record<string, number>; month: Date; maxCap: number }) => {
+const MonthGrid = ({ dayData, month, maxCap, activeTypes }: { dayData: Record<string, DayData>; month: Date; maxCap: number; activeTypes: string[] }) => {
   const start = startOfMonth(month);
   const end = endOfMonth(month);
   const days = eachDayOfInterval({ start, end });
   const startPadding = getDay(start);
 
   return (
-    <div className="grid grid-cols-7 gap-0.5">
-      {['S','M','T','W','T','F','S'].map((d, i) => (
-        <div key={i} className="text-center text-[11px] font-medium text-muted-foreground py-0.5">{d}</div>
+    <div className="grid grid-cols-7 gap-1">
+      {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d, i) => (
+        <div key={i} className="text-center text-[10px] font-medium text-muted-foreground py-0.5">{d}</div>
       ))}
       {Array.from({ length: startPadding }).map((_, i) => <div key={`pad-${i}`} />)}
       {days.map(day => {
         const key = format(day, 'yyyy-MM-dd');
-        const count = dayCounts[key] || 0;
+        const dd = dayData[key];
+        const total = dd?.total || 0;
+
         return (
           <Tooltip key={key}>
             <TooltipTrigger asChild>
-              <div className={`h-8 flex items-center justify-center rounded text-[11px] font-semibold cursor-default ${getColor(count, maxCap)}`}>
-                <span>{format(day, 'd')}</span>
-                {count > 0 && <span className="ml-0.5 text-[10px] opacity-80">({count})</span>}
+              <div className={`min-h-[72px] rounded border border-border/50 p-1 flex flex-col cursor-default ${getColor(total, maxCap)}`}>
+                <span className="text-[10px] font-bold leading-none">{format(day, 'd')}</span>
+                <div className="flex-1 flex flex-col justify-center gap-px mt-0.5">
+                  {activeTypes.map(t => {
+                    const count = dd?.byType[t] || 0;
+                    const info = SERVICE_LABELS[t];
+                    return (
+                      <div key={t} className="flex items-center justify-between text-[9px] leading-tight">
+                        <span className="opacity-80">{info.short}</span>
+                        <span className="font-bold">{count}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                {activeTypes.length > 1 && (
+                  <div className="flex items-center justify-between text-[9px] leading-tight border-t border-current/20 pt-px mt-px">
+                    <span className="opacity-80">Tot</span>
+                    <span className="font-bold">{total}</span>
+                  </div>
+                )}
               </div>
             </TooltipTrigger>
-            <TooltipContent><p>{format(day, 'MMM d')}: {count}/{maxCap} ({maxCap > 0 ? Math.round((count / maxCap) * 100) : 0}%)</p></TooltipContent>
+            <TooltipContent>
+              <p className="font-medium">{format(day, 'MMM d, yyyy')}</p>
+              {activeTypes.map(t => (
+                <p key={t} className="text-xs">{SERVICE_LABELS[t].label}: {dd?.byType[t] || 0}</p>
+              ))}
+              <p className="text-xs font-bold mt-1">Total: {total}/{maxCap} ({maxCap > 0 ? Math.round((total / maxCap) * 100) : 0}%)</p>
+            </TooltipContent>
           </Tooltip>
         );
       })}
@@ -197,7 +251,7 @@ const MonthGrid = ({ dayCounts, month, maxCap }: { dayCounts: Record<string, num
   );
 };
 
-const YearGrid = ({ dayCounts, year, maxCap }: { dayCounts: Record<string, number>; year: Date; maxCap: number }) => {
+const YearGrid = ({ dayData, year, maxCap, activeTypes }: { dayData: Record<string, DayData>; year: Date; maxCap: number; activeTypes: string[] }) => {
   const months = eachMonthOfInterval({ start: startOfYear(year), end: endOfYear(year) });
 
   return (
@@ -215,13 +269,19 @@ const YearGrid = ({ dayCounts, year, maxCap }: { dayCounts: Record<string, numbe
               {Array.from({ length: padding }).map((_, i) => <div key={`p-${i}`} />)}
               {days.map(day => {
                 const key = format(day, 'yyyy-MM-dd');
-                const count = dayCounts[key] || 0;
+                const total = dayData[key]?.total || 0;
                 return (
                   <Tooltip key={key}>
                     <TooltipTrigger asChild>
-                      <div className={`w-full aspect-square rounded-[2px] cursor-default ${getColorDot(count, maxCap)}`} />
+                      <div className={`w-full aspect-square rounded-[2px] cursor-default ${getColorDot(total, maxCap)}`} />
                     </TooltipTrigger>
-                    <TooltipContent><p>{format(day, 'MMM d')}: {count}/{maxCap}</p></TooltipContent>
+                    <TooltipContent>
+                      <p className="font-medium">{format(day, 'MMM d')}</p>
+                      {activeTypes.map(t => (
+                        <p key={t} className="text-xs">{SERVICE_LABELS[t].label}: {dayData[key]?.byType[t] || 0}</p>
+                      ))}
+                      <p className="text-xs font-bold">Total: {total}/{maxCap}</p>
+                    </TooltipContent>
                   </Tooltip>
                 );
               })}
