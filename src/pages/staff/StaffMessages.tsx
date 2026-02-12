@@ -11,7 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { useMessageNotificationSound } from '@/hooks/useMessageNotificationSound';
-import { MessageCircle, Send, Loader2, User, Users, Clock, Search, Calendar, Plus, ShoppingCart, ArrowLeft } from 'lucide-react';
+import { MessageCircle, Send, Loader2, User, Users, Clock, Search, Calendar, Plus, ShoppingCart, ArrowLeft, Paperclip, Download, FileText, Image as ImageIcon } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ChatCalendarDrawer } from '@/components/staff/messages/ChatCalendarDrawer';
 import { SendReservationProposal, type ReservationProposalData } from '@/components/staff/messages/SendReservationProposal';
@@ -19,6 +19,7 @@ import { ReservationProposalCard, type ReservationProposalDisplayData } from '@/
 import { SendCreditPurchase, type CreditPurchaseData } from '@/components/staff/messages/SendCreditPurchase';
 import { CreditPurchaseCard } from '@/components/staff/messages/CreditPurchaseCard';
 import { ConversationDetailsPanel } from '@/components/staff/messages/ConversationDetailsPanel';
+import { ChatAttachment } from '@/components/staff/messages/ChatAttachment';
 
 interface Client {
   id: string;
@@ -35,6 +36,9 @@ interface ChatMessage {
   created_at: string;
   read_at: string | null;
   staff_id: string | null;
+  attachment_url: string | null;
+  attachment_name: string | null;
+  attachment_type: string | null;
 }
 
 interface ConversationSummary {
@@ -175,6 +179,8 @@ const StaffMessages = () => {
   const [creditPurchaseDialogOpen, setCreditPurchaseDialogOpen] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Scroll to bottom helper
   const scrollToBottom = useCallback(() => {
@@ -277,7 +283,7 @@ const StaffMessages = () => {
 
         return {
           client,
-          lastMessage: lastMessage ? { ...lastMessage, role: lastMessage.role as 'user' | 'assistant', staff_id: null } : null,
+          lastMessage: lastMessage ? { ...lastMessage, role: lastMessage.role as 'user' | 'assistant', staff_id: null, attachment_url: null, attachment_name: null, attachment_type: null } : null,
           unreadCount,
           petNames: petNamesMap[client.id] || [],
         };
@@ -523,6 +529,9 @@ const StaffMessages = () => {
       created_at: new Date().toISOString(),
       read_at: null,
       staff_id: user.id,
+      attachment_url: null,
+      attachment_name: null,
+      attachment_type: null,
     };
     setMessages(prev => [...prev, tempMessage]);
 
@@ -575,6 +584,40 @@ const StaffMessages = () => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedClient || !user) return;
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: 'File too large', description: 'Maximum file size is 10MB', variant: 'destructive' });
+      return;
+    }
+    setIsUploading(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const filePath = `${selectedClient.id}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from('chat-attachments').upload(filePath, file);
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from('chat-attachments').getPublicUrl(filePath);
+      const { error } = await supabase.from('chat_messages').insert({
+        client_id: selectedClient.id,
+        role: 'assistant',
+        content: input.trim() || file.name,
+        staff_id: user.id,
+        attachment_url: publicUrl,
+        attachment_name: file.name,
+        attachment_type: file.type,
+      });
+      if (error) throw error;
+      setInput('');
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast({ title: 'Error', description: 'Failed to upload file', variant: 'destructive' });
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -671,7 +714,7 @@ const StaffMessages = () => {
   if (isMobile) {
     return (
       <StaffLayout>
-        <div className="flex flex-col h-full w-full max-w-full overflow-hidden" style={{ height: 'calc(100dvh - 11rem)' }}>
+        <div className="flex flex-col h-full w-full max-w-full overflow-hidden" style={{ height: 'calc(100dvh - 8.5rem)' }}>
           {!selectedClient ? (
             // Conversation list
             <>
@@ -797,7 +840,15 @@ const StaffMessages = () => {
                             {creditPurchase && (
                               <CreditPurchaseCard data={creditPurchase} isClientView={false} />
                             )}
-                            {displayContent && (
+                            {message.attachment_url && message.attachment_name && message.attachment_type && (
+                              <ChatAttachment
+                                url={message.attachment_url}
+                                name={message.attachment_name}
+                                type={message.attachment_type}
+                                isOwnMessage={message.role === 'assistant'}
+                              />
+                            )}
+                            {displayContent && !message.attachment_url && (
                               <div className={`rounded-lg px-3 py-2 text-sm ${
                                 message.role === 'assistant' ? 'bg-primary text-primary-foreground' : 'bg-muted'
                               }`}>
@@ -828,17 +879,21 @@ const StaffMessages = () => {
                   </div>
                 )}
               </div>
-              <div className="flex gap-2 pt-2 shrink-0">
+              <div className="flex gap-2 shrink-0 pb-1">
+                <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*,.pdf,.doc,.docx,.txt" />
+                <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                  {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
+                </Button>
                 <Input
                   ref={inputRef}
                   value={input}
                   onChange={handleInputChange}
                   onKeyDown={handleKeyDown}
                   placeholder="Type your reply..."
-                  disabled={isLoading}
+                  disabled={isLoading || isUploading}
                   className="flex-1 h-9 text-sm"
                 />
-                <Button size="icon" className="h-9 w-9" onClick={sendMessage} disabled={!input.trim() || isLoading}>
+                <Button size="icon" className="h-9 w-9" onClick={sendMessage} disabled={!input.trim() || isLoading || isUploading}>
                   {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </Button>
               </div>
@@ -1048,8 +1103,18 @@ const StaffMessages = () => {
                                   <CreditPurchaseCard data={creditPurchase} isClientView={false} />
                                 )}
                                 
-                                {/* Only show text bubble if there's non-proposal content */}
-                                {displayContent && (
+                                {/* Show attachment if present */}
+                                {message.attachment_url && message.attachment_name && message.attachment_type && (
+                                  <ChatAttachment
+                                    url={message.attachment_url}
+                                    name={message.attachment_name}
+                                    type={message.attachment_type}
+                                    isOwnMessage={message.role === 'assistant'}
+                                  />
+                                )}
+                                
+                                {/* Only show text bubble if there's non-proposal content and no attachment-only message */}
+                                {displayContent && !message.attachment_url && (
                                   <div
                                     className={`rounded-lg px-3 py-2 text-sm ${
                                       message.role === 'assistant'
@@ -1113,18 +1178,22 @@ const StaffMessages = () => {
                   {/* Input */}
                   <div className="p-4 border-t flex-shrink-0">
                     <div className="flex gap-2">
+                      <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*,.pdf,.doc,.docx,.txt" />
+                      <Button variant="outline" size="icon" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                        {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
+                      </Button>
                       <Input
                         ref={inputRef}
                         value={input}
                         onChange={handleInputChange}
                         onKeyDown={handleKeyDown}
                         placeholder="Type your reply..."
-                        disabled={isLoading}
+                        disabled={isLoading || isUploading}
                         className="flex-1"
                       />
                       <Button
                         onClick={sendMessage}
-                        disabled={!input.trim() || isLoading}
+                        disabled={!input.trim() || isLoading || isUploading}
                       >
                         {isLoading ? (
                           <Loader2 className="h-4 w-4 animate-spin" />

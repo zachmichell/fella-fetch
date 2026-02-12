@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { useMessageNotificationSound } from '@/hooks/useMessageNotificationSound';
 import { useClientUnreadMessages } from '@/hooks/useClientUnreadMessages';
-import { Send, Loader2, User, Headphones } from 'lucide-react';
+import { Send, Loader2, User, Headphones, Paperclip } from 'lucide-react';
 import { format } from 'date-fns';
 import { z } from 'zod';
 import { ClientPortalLayout } from '@/components/client/ClientPortalLayout';
@@ -16,6 +16,7 @@ import { useClientAuth } from '@/contexts/ClientAuthContext';
 import { ReservationProposalCard, ReservationProposalDisplayData } from '@/components/staff/messages/ReservationProposalCard';
 import { CreditPurchaseCard } from '@/components/staff/messages/CreditPurchaseCard';
 import { CreditPurchaseData } from '@/components/staff/messages/SendCreditPurchase';
+import { ChatAttachment } from '@/components/staff/messages/ChatAttachment';
 
 const MAX_MESSAGE_LENGTH = 2000;
 const messageSchema = z.string()
@@ -126,6 +127,8 @@ const ClientMessages = () => {
   const [reservationStatuses, setReservationStatuses] = useState<Record<string, string>>({});
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const clientId = clientData?.id || '';
   const clientName = clientData ? `${clientData.first_name} ${clientData.last_name}` : '';
@@ -373,6 +376,38 @@ const ClientMessages = () => {
     }
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !clientId) return;
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: 'File too large', description: 'Maximum file size is 10MB', variant: 'destructive' });
+      return;
+    }
+    setIsUploading(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const filePath = `${clientId}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from('chat-attachments').upload(filePath, file);
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage.from('chat-attachments').getPublicUrl(filePath);
+      const { error } = await supabase.from('chat_messages').insert({
+        client_id: clientId,
+        role: 'user',
+        content: input.trim() || file.name,
+        attachment_url: publicUrl,
+        attachment_name: file.name,
+        attachment_type: file.type,
+      });
+      if (error) throw error;
+      setInput('');
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast({ title: 'Error', description: 'Failed to upload file', variant: 'destructive' });
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   // Helper to get proposal status from reservation status
   const getProposalStatus = (proposal: ReservationProposalDisplayData): 'pending_client_approval' | 'accepted' | 'declined' => {
@@ -460,20 +495,30 @@ const ClientMessages = () => {
           </div>
         )}
         <div className={`max-w-[85%] ${message.role === 'user' ? 'flex flex-col items-end' : ''}`}>
-          <div
-            className={`rounded-lg px-3 py-2 text-sm ${
-              message.role === 'user'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted'
-            }`}
-          >
-            <p className="whitespace-pre-wrap">{displayContent}</p>
-            <p className={`text-[10px] mt-1 ${
-              message.role === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground'
-            }`}>
-              {format(new Date(message.created_at), 'h:mm a')}
-            </p>
-          </div>
+          {(message as any).attachment_url && (message as any).attachment_name && (message as any).attachment_type && (
+            <ChatAttachment
+              url={(message as any).attachment_url}
+              name={(message as any).attachment_name}
+              type={(message as any).attachment_type}
+              isOwnMessage={message.role === 'user'}
+            />
+          )}
+          {displayContent && !(message as any).attachment_url && (
+            <div
+              className={`rounded-lg px-3 py-2 text-sm ${
+                message.role === 'user'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted'
+              }`}
+            >
+              <p className="whitespace-pre-wrap">{displayContent}</p>
+              <p className={`text-[10px] mt-1 ${
+                message.role === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground'
+              }`}>
+                {format(new Date(message.created_at), 'h:mm a')}
+              </p>
+            </div>
+          )}
         </div>
         {message.role === 'user' && (
           <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
@@ -544,20 +589,24 @@ const ClientMessages = () => {
 
             <div className="p-4 border-t bg-background">
               <div className="flex gap-2">
+                <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*,.pdf,.doc,.docx,.txt" />
+                <Button variant="outline" size="icon" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                  {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
+                </Button>
                 <Input
                   ref={inputRef}
                   value={input}
                   onChange={handleInputChange}
                   onKeyDown={handleKeyDown}
                   placeholder="Type your message..."
-                  disabled={isLoading}
+                  disabled={isLoading || isUploading}
                   className="flex-1"
                   maxLength={MAX_MESSAGE_LENGTH}
                 />
                 <Button
                   size="icon"
                   onClick={sendMessage}
-                  disabled={!input.trim() || isLoading}
+                  disabled={!input.trim() || isLoading || isUploading}
                 >
                   {isLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
