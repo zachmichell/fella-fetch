@@ -11,7 +11,9 @@ import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertTriangle, CreditCard, Ban } from 'lucide-react';
+import { useTurnAwayReasons } from '@/hooks/useTurnAwayReasons';
 
 interface CancelReservationDialogProps {
   open: boolean;
@@ -33,6 +35,7 @@ export function CancelReservationDialog({
   onConfirm,
 }: CancelReservationDialogProps) {
   const [useCredit, setUseCredit] = useState<'yes' | 'no'>('no');
+  const { reasons } = useTurnAwayReasons();
   const [reason, setReason] = useState('');
 
   const relevantCredits = serviceType === 'boarding' ? boardingCredits : daycareCredits;
@@ -68,15 +71,17 @@ export function CancelReservationDialog({
 
         <div className="py-4 space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="cancel-reason">Reason for cancellation</Label>
-            <Textarea
-              id="cancel-reason"
-              placeholder="Enter the reason for cancelling this reservation..."
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              rows={3}
-              className="resize-none"
-            />
+            <Label>Reason for cancellation</Label>
+            <Select value={reason} onValueChange={setReason}>
+              <SelectTrigger className="bg-background">
+                <SelectValue placeholder="Select a reason..." />
+              </SelectTrigger>
+              <SelectContent className="bg-popover z-50">
+                {reasons.map(r => (
+                  <SelectItem key={r} value={r}>{r}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {(serviceType === 'daycare' || serviceType === 'boarding') && (
