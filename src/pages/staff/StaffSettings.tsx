@@ -9,7 +9,7 @@ import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useBusinessHours, BusinessHours } from '@/hooks/useBusinessHours';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { Settings, AlertTriangle, Save, Loader2, Clock, Building2 } from 'lucide-react';
+import { Settings, AlertTriangle, Save, Loader2, Clock, Building2, BarChart3 } from 'lucide-react';
 import { EarlyLateFeeSettings } from '@/components/staff/EarlyLateFeeSettings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -43,6 +43,13 @@ const StaffSettings = () => {
   const [isSavingInactivity, setIsSavingInactivity] = useState(false);
   const [isSavingTimezone, setIsSavingTimezone] = useState(false);
   const [isSavingHours, setIsSavingHours] = useState(false);
+  const [isSavingCapacity, setIsSavingCapacity] = useState(false);
+  
+  // Capacity settings state
+  const [daycareCapacity, setDaycareCapacity] = useState('160');
+  const [boardingCapacity, setBoardingCapacity] = useState('55');
+  const [groomingCapacity, setGroomingCapacity] = useState('15');
+  const [trainingCapacity, setTrainingCapacity] = useState('20');
   
   // Business hours state
   const [weekdayOpen, setWeekdayOpen] = useState('7:00 AM');
@@ -59,8 +66,12 @@ const StaffSettings = () => {
       
       const currentTimezone = getSetting<string>('business_timezone', 'America/New_York');
       setTimezone(currentTimezone);
+
+      setDaycareCapacity(String(getSetting<number>('daycare_max_capacity', 160)));
+      setBoardingCapacity(String(getSetting<number>('boarding_max_capacity', 55)));
+      setGroomingCapacity(String(getSetting<number>('grooming_max_capacity', 15)));
+      setTrainingCapacity(String(getSetting<number>('training_max_capacity', 20)));
     }
-    // Only re-run when settings data actually changes, not on every render
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, settings]);
 
@@ -72,6 +83,33 @@ const StaffSettings = () => {
       setWeekendClose(businessHours.weekend.close);
     }
   }, [isLoadingHours, businessHours]);
+
+  const handleSaveCapacity = async () => {
+    const caps = [
+      { key: 'daycare_max_capacity', val: daycareCapacity, label: 'Daycare' },
+      { key: 'boarding_max_capacity', val: boardingCapacity, label: 'Boarding' },
+      { key: 'grooming_max_capacity', val: groomingCapacity, label: 'Grooming' },
+      { key: 'training_max_capacity', val: trainingCapacity, label: 'Training' },
+    ];
+    for (const c of caps) {
+      const n = parseInt(c.val, 10);
+      if (isNaN(n) || n < 0) {
+        toast({ title: 'Invalid value', description: `${c.label} must be a positive number`, variant: 'destructive' });
+        return;
+      }
+    }
+    setIsSavingCapacity(true);
+    try {
+      for (const c of caps) {
+        await updateSetting.mutateAsync({ key: c.key, value: parseInt(c.val, 10) });
+      }
+      toast({ title: 'Settings saved', description: 'Capacity limits have been updated' });
+    } catch {
+      toast({ title: 'Error saving settings', description: 'Please try again', variant: 'destructive' });
+    } finally {
+      setIsSavingCapacity(false);
+    }
+  };
 
   const handleSaveInactivityDays = async () => {
     const days = parseInt(inactivityDays, 10);
@@ -272,6 +310,43 @@ const StaffSettings = () => {
 
         {/* Early/Late Fee Settings */}
         <EarlyLateFeeSettings />
+
+        {/* Capacity Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              Capacity Limits
+            </CardTitle>
+            <CardDescription>
+              Set the maximum daily capacity for each service type. These values are used in the Capacity Heatmap to calculate fill percentages.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="daycare-cap">Daycare</Label>
+                <Input id="daycare-cap" type="number" min="0" value={daycareCapacity} onChange={e => setDaycareCapacity(e.target.value)} disabled={isLoading} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="boarding-cap">Boarding</Label>
+                <Input id="boarding-cap" type="number" min="0" value={boardingCapacity} onChange={e => setBoardingCapacity(e.target.value)} disabled={isLoading} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="grooming-cap">Grooming</Label>
+                <Input id="grooming-cap" type="number" min="0" value={groomingCapacity} onChange={e => setGroomingCapacity(e.target.value)} disabled={isLoading} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="training-cap">Training</Label>
+                <Input id="training-cap" type="number" min="0" value={trainingCapacity} onChange={e => setTrainingCapacity(e.target.value)} disabled={isLoading} />
+              </div>
+            </div>
+            <Button onClick={handleSaveCapacity} disabled={isSavingCapacity || isLoading}>
+              {isSavingCapacity ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              <span className="ml-2">Save Capacity Limits</span>
+            </Button>
+          </CardContent>
+        </Card>
 
 
         {/* Business Timezone Settings */}
