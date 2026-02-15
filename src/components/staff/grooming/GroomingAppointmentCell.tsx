@@ -67,6 +67,24 @@ export const GroomingAppointmentCell = ({
 
       if (error) throw error;
 
+      // Create Shopify order attributed to groomer's staff account
+      try {
+        const { data: orderResult, error: orderError } = await supabase.functions.invoke('shopify-create-grooming-order', {
+          body: { reservationId: appointment.id },
+        });
+        if (orderError) {
+          console.error('Failed to create Shopify order:', orderError);
+        } else if (orderResult?.shopify_order_name) {
+          toast({
+            title: 'Shopify Order Created',
+            description: `Order ${orderResult.shopify_order_name} created for ${appointment.pet_name}`,
+          });
+        }
+      } catch (orderErr) {
+        console.error('Failed to create Shopify order:', orderErr);
+        // Don't fail the completion if order creation fails
+      }
+
       // Send webhook notification with locked-in payload structure
       try {
         await supabase.functions.invoke('grooming-complete-webhook', {

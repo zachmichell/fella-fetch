@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.shopify-staff]
 verify_jwt = false
+
+[functions.shopify-create-grooming-order]
+verify_jwt = false
