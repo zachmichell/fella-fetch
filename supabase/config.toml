@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.analytics-revenue]
 verify_jwt = false
+
+[functions.shopify-staff]
+verify_jwt = false
