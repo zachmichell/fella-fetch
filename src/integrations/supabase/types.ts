@@ -662,6 +662,8 @@ export type Database = {
           is_active: boolean
           name: string
           phone: string | null
+          shopify_staff_id: string | null
+          shopify_staff_name: string | null
           sort_order: number | null
           updated_at: string
         }
@@ -674,6 +676,8 @@ export type Database = {
           is_active?: boolean
           name: string
           phone?: string | null
+          shopify_staff_id?: string | null
+          shopify_staff_name?: string | null
           sort_order?: number | null
           updated_at?: string
         }
@@ -686,6 +690,8 @@ export type Database = {
           is_active?: boolean
           name?: string
           phone?: string | null
+          shopify_staff_id?: string | null
+          shopify_staff_name?: string | null
           sort_order?: number | null
           updated_at?: string
         }

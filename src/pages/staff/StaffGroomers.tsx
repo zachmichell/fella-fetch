@@ -20,8 +20,12 @@ import {
   Mail,
   Phone,
   Clock,
-  CalendarDays
+  CalendarDays,
+  Link2,
+  Unlink,
+  ShoppingBag
 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Dialog,
@@ -54,6 +58,16 @@ interface Groomer {
   color: string | null;
   is_active: boolean;
   sort_order: number | null;
+  shopify_staff_id: string | null;
+  shopify_staff_name: string | null;
+}
+
+interface ShopifyStaffMember {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  account_owner: boolean;
 }
 
 interface GroomerFormData {
@@ -91,6 +105,8 @@ const StaffGroomers = () => {
     color: '#3b82f6',
   });
   const [draggedGroomer, setDraggedGroomer] = useState<Groomer | null>(null);
+  const [linkingGroomer, setLinkingGroomer] = useState<Groomer | null>(null);
+  const [selectedStaffId, setSelectedStaffId] = useState<string>('');
 
   // Fetch groomers
   const { data: groomers, isLoading } = useQuery({
@@ -194,6 +210,38 @@ const StaffGroomers = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['groomers-management'] });
       queryClient.invalidateQueries({ queryKey: ['groomers'] });
+    },
+  });
+
+  // Fetch Shopify staff
+  const { data: shopifyStaff, isLoading: isLoadingStaff } = useQuery({
+    queryKey: ['shopify-staff'],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke('shopify-staff');
+      if (error) throw error;
+      return (data?.staff || []) as ShopifyStaffMember[];
+    },
+    enabled: !!linkingGroomer,
+  });
+
+  // Link groomer to Shopify staff
+  const linkShopifyStaff = useMutation({
+    mutationFn: async ({ groomerId, staffId, staffName }: { groomerId: string; staffId: string | null; staffName: string | null }) => {
+      const { error } = await supabase
+        .from('groomers')
+        .update({ shopify_staff_id: staffId, shopify_staff_name: staffName } as any)
+        .eq('id', groomerId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groomers-management'] });
+      queryClient.invalidateQueries({ queryKey: ['groomers'] });
+      toast({ title: 'Shopify link updated', description: 'Groomer has been linked to Shopify staff' });
+      setLinkingGroomer(null);
+      setSelectedStaffId('');
+    },
+    onError: () => {
+      toast({ title: 'Error', description: 'Failed to link Shopify staff', variant: 'destructive' });
     },
   });
 
@@ -365,6 +413,12 @@ const StaffGroomers = () => {
                             Inactive
                           </Badge>
                         )}
+                        {groomer.shopify_staff_name && (
+                          <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                            <ShoppingBag className="h-3 w-3" />
+                            {groomer.shopify_staff_name}
+                          </Badge>
+                        )}
                       </div>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         {groomer.email && (
@@ -406,6 +460,27 @@ const StaffGroomers = () => {
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>Set service durations</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setLinkingGroomer(groomer);
+                              setSelectedStaffId(groomer.shopify_staff_id || '');
+                            }}
+                          >
+                            {groomer.shopify_staff_id ? (
+                              <Link2 className="h-4 w-4 text-primary" />
+                            ) : (
+                              <Unlink className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {groomer.shopify_staff_id ? 'Change Shopify link' : 'Link to Shopify staff'}
+                        </TooltipContent>
                       </Tooltip>
                       <Button
                         variant="ghost"
@@ -574,6 +649,80 @@ const StaffGroomers = () => {
         open={!!scheduleGroomer}
         onOpenChange={(open) => !open && setScheduleGroomer(null)}
       />
+
+      {/* Shopify Staff Linking Dialog */}
+      <Dialog open={!!linkingGroomer} onOpenChange={(open) => { if (!open) { setLinkingGroomer(null); setSelectedStaffId(''); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShoppingBag className="h-5 w-5" />
+              Link to Shopify Staff
+            </DialogTitle>
+            <DialogDescription>
+              Link "{linkingGroomer?.name}" to a Shopify staff member for commission and order attribution.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {isLoadingStaff ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-sm text-muted-foreground">Loading Shopify staff...</span>
+              </div>
+            ) : shopifyStaff && shopifyStaff.length > 0 ? (
+              <div className="space-y-2">
+                <Label>Shopify Staff Member</Label>
+                <Select value={selectedStaffId} onValueChange={setSelectedStaffId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a Shopify staff member" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {shopifyStaff.map((staff) => (
+                      <SelectItem key={staff.id} value={staff.id}>
+                        {staff.first_name} {staff.last_name} — {staff.email}
+                        {staff.account_owner && ' (Owner)'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No Shopify staff members found. Make sure your Shopify access token has the <code>read_users</code> scope.
+              </p>
+            )}
+          </div>
+
+          <DialogFooter className="flex gap-2">
+            {linkingGroomer?.shopify_staff_id && (
+              <Button
+                variant="outline"
+                onClick={() => linkShopifyStaff.mutate({ groomerId: linkingGroomer.id, staffId: null, staffName: null })}
+                disabled={linkShopifyStaff.isPending}
+              >
+                <Unlink className="h-4 w-4 mr-2" />
+                Unlink
+              </Button>
+            )}
+            <Button
+              onClick={() => {
+                if (!linkingGroomer || !selectedStaffId) return;
+                const staff = shopifyStaff?.find(s => s.id === selectedStaffId);
+                const staffName = staff ? `${staff.first_name} ${staff.last_name}`.trim() : null;
+                linkShopifyStaff.mutate({ groomerId: linkingGroomer.id, staffId: selectedStaffId, staffName });
+              }}
+              disabled={!selectedStaffId || linkShopifyStaff.isPending}
+            >
+              {linkShopifyStaff.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Link2 className="h-4 w-4 mr-2" />
+              )}
+              Link Staff
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </StaffLayout>
   );
 };
