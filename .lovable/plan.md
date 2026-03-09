@@ -1,156 +1,171 @@
 
 
-# Analytics Dashboard - Implementation Plan
+# Grooming Scheduling Engine — Architecture Plan
 
-## Overview
-Build a comprehensive analytics suite on the existing `/staff/analytics` page, replacing the placeholder with a tabbed dashboard pulling data from reservations, Shopify orders, and new tracking tables.
+## Confirmed Architecture Summary
 
----
+**All proposed entities and connections are fully supported.** Here's the confirmed design:
 
-## Phase 1: Database Schema Changes
+### Database Changes
 
-### New Tables
+**1. Alter `pets` table — add grooming-specific fields:**
+- `size` (text: Small, Medium, Large, XL)
+- `coat_type` (text)
+- `current_condition` (text)
+- `groom_level` (integer 1-4, nullable — null means "no level")
+- `level_expiration_date` (date, nullable)
 
-**1. `turn_aways`** - Lost business tracking
-- `id` (uuid, PK)
-- `service_type` (enum: daycare/boarding)
-- `date` (date)
-- `reason` (text - e.g., Capacity, Failed Assessment, Waitlisted)
-- `estimated_value` (numeric, nullable)
-- `notes` (text, nullable)
-- `created_by` (uuid)
-- `created_at` (timestamptz)
-- RLS: Staff can CRUD, admin-only delete
+**2. Alter `groomers` table — add intake/scheduling fields:**
+- `intake_style` (text: One-At-A-Time, Concurrent-Block, Concurrent-Staggered)
+- `stagger_duration` (integer, minutes, default 15)
+- `end_of_day_safeguard` (boolean, default false)
+- `eod_buffer_minutes` (integer, default 60)
+- `max_concurrent` (integer, default 2)
+- `user_id` (uuid, nullable — links to auth.users for groomer login)
 
-**2. `incidents`** - Pet incident tracking
-- `id` (uuid, PK)
-- `pet_id` (uuid, FK to pets)
-- `reservation_id` (uuid, nullable, FK to reservations)
-- `date` (date)
-- `severity` (text - Low/Medium/High)
-- `category` (text - Bite, Injury, Illness, Escape, Fight, Other)
-- `description` (text)
-- `action_taken` (text, nullable)
-- `reported_by` (uuid)
-- `created_at` (timestamptz)
-- RLS: Staff can insert/select/update; admin can delete
+**3. New table `groomer_service_matrix`:**
+- `id` (uuid PK)
+- `groomer_id` (uuid, FK groomers)
+- `shopify_product_id` (text — the Shopify service)
+- `shopify_variant_id` (text)
+- `pet_size` (text: Small, Medium, Large, XL)
+- `groom_level` (integer 1-4)
+- `duration_minutes` (integer)
+- Unique constraint on (groomer_id, shopify_variant_id, pet_size, groom_level)
+- RLS: staff CRUD
 
-**3. `class_types`** - Training class definitions
-- `id` (uuid, PK)
-- `name` (text - e.g., "Obedience L1")
-- `level` (integer - 1, 2, 3...)
-- `description` (text, nullable)
-- `max_capacity` (integer, default 10)
-- `is_active` (boolean, default true)
-- `sort_order` (integer, default 0)
-- `created_at` (timestamptz)
+**4. New table `groom_questionnaires`:**
+- `id` (uuid PK)
+- `pet_id` (uuid, FK pets)
+- `client_id` (uuid, FK clients)
+- `status` (text: pending, approved, rejected)
+- `coat_condition` (text)
+- `matting_level` (text)
+- `behavior_concerns` (text)
+- `last_groom_location` (text)
+- `photo_urls` (text array)
+- `admin_notes` (text, nullable)
+- `assigned_groom_level` (integer, nullable — set when approved)
+- `created_at`, `reviewed_at`, `reviewed_by`
+- RLS: clients can insert/view own; staff full CRUD
 
-**4. `class_sessions`** - Scheduled class instances
-- `id` (uuid, PK)
-- `class_type_id` (uuid, FK to class_types)
-- `start_date` (date)
-- `end_date` (date, nullable)
-- `day_of_week` (integer)
-- `start_time` (time)
-- `end_time` (time)
-- `instructor` (text, nullable)
-- `is_active` (boolean, default true)
-- `created_at` (timestamptz)
+**5. Add `groomer` to the `app_role` enum** for groomer login accounts.
 
-**5. `class_enrollments`** - Pet enrollment in classes
-- `id` (uuid, PK)
-- `class_session_id` (uuid, FK to class_sessions)
-- `pet_id` (uuid, FK to pets)
-- `client_id` (uuid, FK to clients)
-- `status` (text - Interested/Enrolled/Graduated/Dropped)
-- `enrolled_at` (timestamptz, nullable)
-- `graduated_at` (timestamptz, nullable)
-- `notes` (text, nullable)
-- `created_at` (timestamptz)
+**6. User roles:** Groomer accounts get the `groomer` role. New RLS helper `is_groomer(_user_id uuid)` for groomer-specific policies.
 
-### Altered Tables
+### Auth & Roles
 
-**`groomers`** - Add `commission_rate` column
-- `commission_rate` (numeric, default 50) -- percentage
+- Groomers get real auth accounts (email/password signup managed by admin)
+- Each groomer record links to auth via `user_id`
+- Groomer role grants: view own schedule, complete appointments, assign groom levels, edit own settings
+- New `GroomerPortal` layout with filtered routes
 
-### System Settings (data inserts)
-- `daycare_max_capacity` = 160
-- `boarding_max_capacity` = 55
-
-All new tables get RLS enabled with staff read/write policies.
-
----
-
-## Phase 2: Edge Function - Shopify Revenue Data
-
-Create a new backend function `analytics-revenue` that:
-- Queries Shopify Admin API for orders within a date range
-- Groups revenue by service type (using line item titles or tags)
-- Returns aggregated totals for the Owner's View financials
-- Secured: requires staff/admin auth
-
----
-
-## Phase 3: Frontend Components
-
-The `StaffAnalytics.tsx` page will be rebuilt with 4 tabs using Shadcn Tabs + Recharts:
-
-### Tab A: Capacity (Daycare/Boarding)
-- **Capacity Heatmap**: A monthly calendar grid. Each day cell is color-coded (green/yellow/red) based on `reservations` count vs. max capacity from `system_settings`. Uses existing `reservations` table filtered by service_type and status (confirmed/checked_in).
-- **Ghost Report**: Query pets table joined with reservations to find pets with no visits in 30/60/90 days. Toggle between time ranges. Shows pet name, breed, owner, last visit date.
-- **Turn-Away Form**: Quick-add form (service type, date, reason dropdown, estimated value) that inserts into the new `turn_aways` table. Below it, a summary table of recent turn-aways.
-
-### Tab B: Grooming (Performance)
-- **Commission Calculator**: Select a groomer, date range. Pulls grooming reservations for that groomer, cross-references with Shopify order amounts via the edge function, applies their `commission_rate`. Displays total revenue and take-home pay.
-- **Reliability Chart**: Bar chart showing cancellations and no-shows per groomer over a date range. Data from `reservations` where `service_type = 'grooming'` and `status = 'cancelled'`.
-- **Upsell Tracker**: Chart showing add-on frequency per grooming appointment. Derived from Shopify line items that are tagged as add-ons within grooming orders.
-
-### Tab C: Training (Funnel)
-- **Class Management**: Mini admin to create class types and sessions (only on desktop).
-- **Progression Funnel**: Visual funnel chart built with Recharts showing counts at each stage: Interested -> Enrolled L1 -> Graduated L1 -> Enrolled L2 -> Graduated L2, etc. Data from `class_enrollments` joined with `class_types`.
-- **Waitlist**: Table showing count of "Interested" enrollments grouped by class type.
-
-### Tab D: Owner's View (Financials)
-- **Payroll vs. Revenue**: Dual-line Recharts chart. Revenue from Shopify edge function. Payroll from a manual input field (stored in `system_settings` as `weekly_payroll_cost`) so the owner can adjust it.
-- **Incident Heatmap**: Grid/table breaking down incidents by pet breed and severity. Data from `incidents` joined with `pets` for breed info.
-- **VIP List**: Table of top 10% clients by lifetime spend. Data from Shopify orders grouped by customer email, joined with `clients` table.
-
----
-
-## Phase 4: File Structure
+### Two-Lane Booking Flow
 
 ```text
-src/pages/staff/StaffAnalytics.tsx          -- Main page with tabs
-src/components/staff/analytics/
-  CapacityTab.tsx                            -- Tab A container
-  CapacityHeatmap.tsx                        -- Calendar heatmap
-  GhostReport.tsx                            -- Inactive pets list
-  TurnAwayForm.tsx                           -- Quick-add + table
-  GroomingTab.tsx                            -- Tab B container
-  CommissionCalculator.tsx                   -- Groomer pay calc
-  ReliabilityChart.tsx                       -- Cancel/no-show chart
-  UpsellTracker.tsx                          -- Add-on frequency
-  TrainingTab.tsx                            -- Tab C container
-  ProgressionFunnel.tsx                      -- Funnel visualization
-  ClassManager.tsx                           -- CRUD for class types/sessions
-  WaitlistTable.tsx                          -- Interested counts
-  OwnersTab.tsx                             -- Tab D container
-  PayrollRevenueChart.tsx                    -- Dual-line chart
-  IncidentHeatmap.tsx                        -- Breed x severity grid
-  VipList.tsx                                -- Top spender table
-supabase/functions/analytics-revenue/
-  index.ts                                   -- Shopify revenue aggregation
+Client selects pet + grooming service
+         │
+         ▼
+   Has active groom_level?
+   (level != null AND level_expiration_date > today)
+         │
+    ┌────┴────┐
+    No        Yes
+    │         │
+    ▼         ▼
+  LANE A    LANE B
+  Gatekeeper VIP Fast-Track
+    │         │
+    ▼         ▼
+  Show       Lookup duration from
+  questionnaire  groomer_service_matrix
+  + photo upload (groomer + service + size + level)
+    │         │
+    ▼         ▼
+  Create     Show available slots
+  pending    (respecting intake rules)
+  request    │
+    │         ▼
+    ▼        Auto-confirm booking
+  Admin reviews
+  → approves/rejects
 ```
 
----
+- Lane detection happens client-side in the booking flow (check pet.groom_level and pet.level_expiration_date)
+- Lane A creates a `groom_questionnaires` record + reservation with status `pending`
+- Lane B queries the service matrix for duration, then feeds it into the slot availability engine
+- State management: existing step-based booking flow extended with a conditional branch at the pet selection step
 
-## Technical Notes
+### Scheduling Engine
 
-- All date range filtering will use a shared date picker component at the top of each tab, defaulting to the current month.
-- Recharts is already installed -- we'll use `BarChart`, `LineChart`, `FunnelChart`, and custom cell renderers for the heatmaps.
-- Capacity percentages are calculated as: `(count of confirmed + checked_in reservations for that date) / max_capacity from system_settings`.
-- The Ghost Report uses the query: pets with `is_active = true` whose most recent reservation `start_date` is older than the selected threshold (30/60/90 days).
-- Shopify revenue queries will be batched by month to avoid API rate limits.
-- Mobile: Tabs will stack vertically and charts will be scrollable horizontally.
-- All new tables use `is_staff_or_admin(auth.uid())` for RLS to match existing patterns.
+The availability algorithm (currently in `getAvailableTimeSlots` and `GroomingTimeSlots`) will be extended:
+
+1. **Duration lookup**: Query `groomer_service_matrix` for exact duration based on groomer + service + pet size + groom level. Fall back to `groomer_service_durations` then 60-min default.
+
+2. **Intake style logic**:
+   - `One-At-A-Time`: No overlapping appointments allowed. A slot is available only if the groomer has zero active appointments during the entire duration window.
+   - `Concurrent-Block`: Multiple pets can start at the same time, up to `max_concurrent`. Slot is available if current overlap count < max_concurrent.
+   - `Concurrent-Staggered`: Pets start at `stagger_duration` intervals. Slot is available if: (a) it aligns to stagger intervals from existing starts, and (b) overlap count < max_concurrent.
+
+3. **EOD Safeguard**: If `end_of_day_safeguard` is true and the pet is groom level 3 or 4, the slot is blocked if `slot_start + duration > groomer_end_time - eod_buffer_minutes`.
+
+4. **All checks run before displaying slots** — either client-side with fetched data, or via an edge function for complex calculations.
+
+### Groomer Portal (New)
+
+- New route group: `/groomer/*`
+- Login page similar to staff login
+- Dashboard showing their own schedule (day/week view filtered to their groomer_id)
+- Ability to mark appointments complete (triggers Shopify order)
+- Post-visit form to assign groom level (1-4) to the pet, which auto-sets `level_expiration_date` based on a configurable system setting (e.g., "groom_level_expiration_weeks" in system_settings)
+- Settings page to edit own intake style, stagger duration, EOD safeguard, max concurrent
+
+### Level Expiration
+
+- When a groomer assigns a groom level post-visit, `level_expiration_date = today + X weeks`
+- X is read from `system_settings` key `groom_level_expiration_weeks` (default: 8)
+- Configurable in Staff Settings
+
+### Questionnaire (Lane A — Fixed Questions)
+
+Built-in fields:
+1. How long since last professional groom?
+2. Coat condition (Well-maintained / Some tangles / Matted / Severely matted)
+3. Matting level (None / Mild / Moderate / Severe)
+4. Behavior concerns during grooming (None / Mild anxiety / Reactive / Aggressive)
+5. Previous grooming location
+6. Photo upload (up to 4 photos — stored in `pet-photos` bucket)
+
+### File Structure (New/Modified)
+
+```text
+New files:
+  src/pages/groomer/GroomerLogin.tsx
+  src/pages/groomer/GroomerDashboard.tsx
+  src/pages/groomer/GroomerSettings.tsx
+  src/components/groomer/GroomerLayout.tsx
+  src/components/groomer/GroomerSidebar.tsx
+  src/components/groomer/AssignGroomLevelDialog.tsx
+  src/components/booking/GroomQuestionnaire.tsx
+  src/components/staff/grooming/ServiceMatrixEditor.tsx
+  src/contexts/GroomerAuthContext.tsx
+
+Modified files:
+  src/App.tsx (add groomer routes)
+  src/pages/BookingPage.tsx (two-lane logic)
+  src/components/booking/GroomingTimeSlots.tsx (intake-aware slots)
+  src/components/staff/grooming/GroomingAppointmentCell.tsx (level assignment)
+  src/pages/staff/StaffGroomers.tsx (intake settings UI)
+  src/pages/staff/StaffSettings.tsx (level expiration config)
+```
+
+### Implementation Order
+
+1. Database migrations (new columns, new tables, enum update)
+2. Service Matrix editor in Staff Groomers page
+3. Groomer auth (new role, login, portal)
+4. Two-lane booking flow (questionnaire + fast-track)
+5. Scheduling engine upgrade (intake styles, EOD safeguard)
+6. Post-visit groom level assignment
+7. Admin questionnaire review UI
 
