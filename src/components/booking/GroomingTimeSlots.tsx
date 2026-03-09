@@ -75,8 +75,9 @@ export const GroomingTimeSlots = ({
 
   // Generate time slots based on groomer availability
   const timeSlots = useMemo(() => {
+    // Find schedules for this specific date
     const daySchedules = schedules.filter(
-      (s) => s.day_of_week === dayOfWeek && s.is_available
+      (s) => s.available_date === dateStr
     );
 
     if (daySchedules.length === 0) return [];
