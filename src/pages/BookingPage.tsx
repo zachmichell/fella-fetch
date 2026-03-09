@@ -619,14 +619,29 @@ const BookingPage = () => {
         selectedGroomingService: null, // Reset service when pet changes
       });
     } else {
-      // For grooming, only allow one pet at a time and auto-advance
+      // For grooming, only allow one pet at a time
       if (isGrooming) {
         setBookingData({
           ...bookingData,
           selectedPets: [pet],
-          selectedGroomingService: null, // Reset service when pet changes
+          selectedGroomingService: null,
         });
-        setStep(3); // Auto-advance to groomer selection
+        
+        // Two-Lane Detection: check if pet has an active groom level
+        const hasActiveLevel = pet.groom_level != null 
+          && pet.level_expiration_date 
+          && new Date(pet.level_expiration_date) > new Date();
+        
+        if (hasActiveLevel) {
+          // Lane B: VIP Fast-Track — proceed to groomer selection
+          setShowQuestionnaire(false);
+          setQuestionnaireSubmitted(false);
+          setStep(3);
+        } else {
+          // Lane A: Gatekeeper — show questionnaire
+          setShowQuestionnaire(true);
+          setQuestionnaireSubmitted(false);
+        }
       } else {
         setBookingData({
           ...bookingData,
