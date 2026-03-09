@@ -19,14 +19,32 @@ serve(async (req) => {
     const SHOPIFY_STORE_DOMAIN = 'fella-fetch.myshopify.com';
     const API_VERSION = '2025-07';
 
-    // Fetch Shopify staff/users via Admin API
-    const response = await fetch(
-      `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${API_VERSION}/users.json`,
+    // Use GraphQL Admin API to fetch staff members (works on all plans)
+    const graphqlQuery = `
       {
+        staffMembers(first: 50) {
+          edges {
+            node {
+              id
+              firstName
+              lastName
+              email
+              isShopOwner
+            }
+          }
+        }
+      }
+    `;
+
+    const response = await fetch(
+      `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${API_VERSION}/graphql.json`,
+      {
+        method: 'POST',
         headers: {
           'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ query: graphqlQuery }),
       }
     );
 
@@ -37,15 +55,25 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    
-    // Return simplified staff list
-    const staff = (data.users || []).map((user: any) => ({
-      id: String(user.id),
-      first_name: user.first_name || '',
-      last_name: user.last_name || '',
-      email: user.email || '',
-      account_owner: user.account_owner || false,
-    }));
+
+    if (data.errors) {
+      console.error('Shopify GraphQL errors:', JSON.stringify(data.errors));
+      throw new Error(`Shopify GraphQL error: ${data.errors.map((e: any) => e.message).join(', ')}`);
+    }
+
+    const edges = data.data?.staffMembers?.edges || [];
+    const staff = edges.map((edge: any) => {
+      const node = edge.node;
+      // Extract numeric ID from gid://shopify/StaffMember/12345
+      const numericId = node.id.replace(/^gid:\/\/shopify\/StaffMember\//, '');
+      return {
+        id: numericId,
+        first_name: node.firstName || '',
+        last_name: node.lastName || '',
+        email: node.email || '',
+        account_owner: node.isShopOwner || false,
+      };
+    });
 
     return new Response(JSON.stringify({ staff }), {
       status: 200,
