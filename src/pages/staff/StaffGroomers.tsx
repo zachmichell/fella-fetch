@@ -458,17 +458,6 @@ const StaffGroomers = () => {
                         </TooltipTrigger>
                         <TooltipContent>Set availability</TooltipContent>
                       </Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDurationsGroomer(groomer)}
-                          >
-                            <Clock className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Set service durations</TooltipContent>
-                      </Tooltip>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
