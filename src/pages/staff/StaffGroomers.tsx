@@ -19,7 +19,7 @@ import {
   Save,
   Mail,
   Phone,
-  Clock,
+  
   CalendarDays,
   Link2,
   Unlink,
