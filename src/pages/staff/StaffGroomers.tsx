@@ -105,6 +105,7 @@ const StaffGroomers = () => {
   const [deleteConfirmGroomer, setDeleteConfirmGroomer] = useState<Groomer | null>(null);
   const [durationsGroomer, setDurationsGroomer] = useState<Groomer | null>(null);
   const [scheduleGroomer, setScheduleGroomer] = useState<Groomer | null>(null);
+  const [matrixGroomer, setMatrixGroomer] = useState<Groomer | null>(null);
   const [formData, setFormData] = useState<GroomerFormData>({
     name: '',
     email: '',
