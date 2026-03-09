@@ -104,7 +104,7 @@ const StaffGroomers = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingGroomer, setEditingGroomer] = useState<Groomer | null>(null);
   const [deleteConfirmGroomer, setDeleteConfirmGroomer] = useState<Groomer | null>(null);
-  const [durationsGroomer, setDurationsGroomer] = useState<Groomer | null>(null);
+  // durationsGroomer state removed
   const [scheduleGroomer, setScheduleGroomer] = useState<Groomer | null>(null);
   const [matrixGroomer, setMatrixGroomer] = useState<Groomer | null>(null);
   const [formData, setFormData] = useState<GroomerFormData>({
