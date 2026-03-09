@@ -60,6 +60,12 @@ interface Groomer {
   sort_order: number | null;
   shopify_staff_id: string | null;
   shopify_staff_name: string | null;
+  intake_style: string;
+  stagger_duration: number;
+  end_of_day_safeguard: boolean;
+  eod_buffer_minutes: number;
+  max_concurrent: number;
+  user_id: string | null;
 }
 
 interface ShopifyStaffMember {
