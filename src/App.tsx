@@ -98,10 +98,6 @@ const App = () => (
               <Route path="/staff/marketing" element={<StaffMarketing />} />
               <Route path="/staff/staff-management" element={<StaffManagement />} />
               <Route path="/staff/communications" element={<StaffCommunications />} />
-              {/* Groomer Portal Routes */}
-              <Route path="/groomer/login" element={<GroomerLogin />} />
-              <Route path="/groomer" element={<GroomerDashboard />} />
-              <Route path="/groomer/settings" element={<GroomerSettings />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
