@@ -41,6 +41,9 @@ interface SelectedPet {
   grooming_product_title: string | null;
   grooming_frequency: string | null;
   last_grooming_date: string | null;
+  size: string | null;
+  groom_level: number | null;
+  level_expiration_date: string | null;
 }
 
 interface Groomer {
