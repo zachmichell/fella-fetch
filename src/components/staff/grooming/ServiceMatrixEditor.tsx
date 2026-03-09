@@ -200,8 +200,8 @@ export function ServiceMatrixEditor({ open, onOpenChange, groomerId, groomerName
               </SelectTrigger>
               <SelectContent>
                 {groomingProducts?.map(p => (
-                  <SelectItem key={p.shopify_product_id} value={p.shopify_product_id}>
-                    {p.shopify_product_title}
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.title}
                   </SelectItem>
                 ))}
               </SelectContent>
