@@ -14,6 +14,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   isStaffOrAdmin: boolean;
   isAdmin: boolean;
+  isGroomer: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
