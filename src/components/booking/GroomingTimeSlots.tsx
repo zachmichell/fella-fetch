@@ -114,7 +114,7 @@ export const GroomingTimeSlots = ({
     }
 
     return slots;
-  }, [selectedDate, selectedGroomerId, schedules, dayOfWeek]);
+  }, [selectedDate, selectedGroomerId, schedules, dateStr]);
 
   // Get the groomer's end time for EOD safeguard
   const groomerEndTime = useMemo(() => {
