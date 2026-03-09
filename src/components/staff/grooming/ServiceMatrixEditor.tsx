@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectGroup, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Save } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -30,9 +30,19 @@ interface MatrixEntry {
   duration_minutes: number;
 }
 
-interface GroomingProduct {
-  id: string;
-  title: string;
+interface GroomingVariant {
+  variantId: string;       // numeric Shopify variant ID
+  variantTitle: string;
+  productId: string;       // numeric Shopify product ID
+  productTitle: string;
+  price: string;
+  currencyCode: string;
+}
+
+interface GroomingProductGroup {
+  productId: string;
+  productTitle: string;
+  variants: GroomingVariant[];
 }
 
 interface Props {
@@ -42,7 +52,6 @@ interface Props {
   groomerName: string;
 }
 
-// Extract numeric ID from Shopify GID
 function getNumericId(gid: string): string {
   const parts = gid.split('/');
   return parts[parts.length - 1];
@@ -52,11 +61,10 @@ export function ServiceMatrixEditor({ open, onOpenChange, groomerId, groomerName
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch grooming products from Shopify via collection mappings (services category = GROOM)
-  const { data: groomingProducts, isLoading: isLoadingProducts } = useQuery({
-    queryKey: ['grooming-collection-products'],
+  // Fetch grooming products + variants from Shopify via collection mappings
+  const { data: productGroups, isLoading: isLoadingProducts } = useQuery({
+    queryKey: ['grooming-collection-products-variants'],
     queryFn: async () => {
-      // Get the services collection mappings (where GROOM is mapped)
       const { data: mappings, error } = await supabase
         .from('shopify_collection_mappings')
         .select('shopify_collection_id, shopify_collection_title')
@@ -64,8 +72,8 @@ export function ServiceMatrixEditor({ open, onOpenChange, groomerId, groomerName
       if (error) throw error;
       if (!mappings || mappings.length === 0) return [];
 
-      const allProducts: GroomingProduct[] = [];
-      const seenIds = new Set<string>();
+      const groups: GroomingProductGroup[] = [];
+      const seenProductIds = new Set<string>();
 
       for (const mapping of mappings) {
         const gid = `gid://shopify/Collection/${mapping.shopify_collection_id}`;
@@ -78,6 +86,16 @@ export function ServiceMatrixEditor({ open, onOpenChange, groomerId, groomerName
                     node {
                       id
                       title
+                      variants(first: 50) {
+                        edges {
+                          node {
+                            id
+                            title
+                            price { amount currencyCode }
+                            availableForSale
+                          }
+                        }
+                      }
                     }
                   }
                 }
@@ -88,14 +106,27 @@ export function ServiceMatrixEditor({ open, onOpenChange, groomerId, groomerName
 
         const products = result?.data?.node?.products?.edges || [];
         for (const p of products) {
-          const numericId = getNumericId(p.node.id);
-          if (!seenIds.has(numericId)) {
-            seenIds.add(numericId);
-            allProducts.push({ id: numericId, title: p.node.title });
-          }
+          const productId = getNumericId(p.node.id);
+          if (seenProductIds.has(productId)) continue;
+          seenProductIds.add(productId);
+
+          const variants: GroomingVariant[] = (p.node.variants?.edges || []).map((v: any) => ({
+            variantId: getNumericId(v.node.id),
+            variantTitle: v.node.title,
+            productId,
+            productTitle: p.node.title,
+            price: v.node.price?.amount || '0',
+            currencyCode: v.node.price?.currencyCode || 'CAD',
+          }));
+
+          groups.push({
+            productId,
+            productTitle: p.node.title,
+            variants,
+          });
         }
       }
-      return allProducts;
+      return groups;
     },
     enabled: open,
   });
@@ -114,28 +145,39 @@ export function ServiceMatrixEditor({ open, onOpenChange, groomerId, groomerName
     enabled: open && !!groomerId,
   });
 
-  const [selectedProduct, setSelectedProduct] = useState('');
+  // Selected variant key: "productId::variantId"
+  const [selectedKey, setSelectedKey] = useState('');
   const [entries, setEntries] = useState<MatrixEntry[]>([]);
 
-  // Build a grid of all size/level combos for the selected product
-  useEffect(() => {
-    if (!selectedProduct || !existingEntries) return;
+  const selectedVariant = (() => {
+    if (!selectedKey || !productGroups) return null;
+    const [productId, variantId] = selectedKey.split('::');
+    for (const group of productGroups) {
+      if (group.productId === productId) {
+        return group.variants.find(v => v.variantId === variantId) || null;
+      }
+    }
+    return null;
+  })();
 
-    const productEntries = existingEntries.filter(
-      e => e.shopify_product_id === selectedProduct
+  // Build grid when variant is selected
+  useEffect(() => {
+    if (!selectedVariant || !existingEntries) return;
+
+    const variantEntries = existingEntries.filter(
+      e => e.shopify_product_id === selectedVariant.productId && e.shopify_variant_id === selectedVariant.variantId
     );
 
-    // Build full grid
     const grid: MatrixEntry[] = [];
     for (const size of PET_SIZES) {
       for (const level of GROOM_LEVELS) {
-        const existing = productEntries.find(
+        const existing = variantEntries.find(
           e => e.pet_size === size && e.groom_level === level
         );
         grid.push(existing || {
           groomer_id: groomerId,
-          shopify_product_id: selectedProduct,
-          shopify_variant_id: selectedProduct, // use product id as variant fallback
+          shopify_product_id: selectedVariant.productId,
+          shopify_variant_id: selectedVariant.variantId,
           pet_size: size,
           groom_level: level,
           duration_minutes: 60,
@@ -143,18 +185,20 @@ export function ServiceMatrixEditor({ open, onOpenChange, groomerId, groomerName
       }
     }
     setEntries(grid);
-  }, [selectedProduct, existingEntries, groomerId]);
+  }, [selectedKey, selectedVariant, existingEntries, groomerId]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      // Delete existing entries for this product
+      if (!selectedVariant) throw new Error('No variant selected');
+
+      // Delete existing entries for this product+variant
       await supabase
         .from('groomer_service_matrix')
         .delete()
         .eq('groomer_id', groomerId)
-        .eq('shopify_product_id', selectedProduct);
+        .eq('shopify_product_id', selectedVariant.productId)
+        .eq('shopify_variant_id', selectedVariant.variantId);
 
-      // Insert all entries
       const { error } = await supabase
         .from('groomer_service_matrix')
         .insert(entries.map(e => ({
@@ -184,32 +228,72 @@ export function ServiceMatrixEditor({ open, onOpenChange, groomerId, groomerName
     ));
   };
 
+  // Count how many variants already have matrix entries for this groomer
+  const getVariantEntryCount = (productId: string, variantId: string) => {
+    if (!existingEntries) return 0;
+    return existingEntries.filter(e => e.shopify_product_id === productId && e.shopify_variant_id === variantId).length;
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Service Duration Matrix — {groomerName}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>Grooming Service</Label>
-            <Select value={selectedProduct} onValueChange={setSelectedProduct}>
+            <Label>Grooming Service (Product / Variant)</Label>
+            <Select value={selectedKey} onValueChange={setSelectedKey}>
               <SelectTrigger>
-                <SelectValue placeholder="Select a grooming service..." />
+                <SelectValue placeholder="Select a service variant..." />
               </SelectTrigger>
               <SelectContent>
-                {groomingProducts?.map(p => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.title}
-                  </SelectItem>
-                ))}
+                {isLoadingProducts ? (
+                  <div className="flex justify-center py-3">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  productGroups?.map(group => (
+                    <SelectGroup key={group.productId}>
+                      <SelectLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        {group.productTitle}
+                      </SelectLabel>
+                      {group.variants.map(v => {
+                        const key = `${v.productId}::${v.variantId}`;
+                        const entryCount = getVariantEntryCount(v.productId, v.variantId);
+                        const hasEntries = entryCount > 0;
+                        return (
+                          <SelectItem key={key} value={key}>
+                            <span className="flex items-center gap-2">
+                              {v.variantTitle === 'Default Title' ? group.productTitle : v.variantTitle}
+                              <span className="text-muted-foreground text-xs">
+                                ${parseFloat(v.price).toFixed(2)}
+                              </span>
+                              {hasEntries && (
+                                <span className="text-xs text-primary">✓</span>
+                              )}
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectGroup>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>
 
-          {selectedProduct && (
+          {selectedVariant && (
             <>
+              <p className="text-sm text-muted-foreground">
+                Configuring durations for <span className="font-medium text-foreground">{selectedVariant.productTitle}</span>
+                {selectedVariant.variantTitle !== 'Default Title' && (
+                  <> — <span className="font-medium text-foreground">{selectedVariant.variantTitle}</span></>
+                )}
+                {' '}(${parseFloat(selectedVariant.price).toFixed(2)} {selectedVariant.currencyCode})
+              </p>
+
               {isLoading ? (
                 <div className="flex justify-center py-8">
                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -221,7 +305,7 @@ export function ServiceMatrixEditor({ open, onOpenChange, groomerId, groomerName
                       <TableRow>
                         <TableHead>Size / Level</TableHead>
                         {GROOM_LEVELS.map(l => (
-                          <TableHead key={l} className="text-center">{LEVEL_LABELS[l]}</TableHead>
+                          <TableHead key={l} className="text-center text-xs">{LEVEL_LABELS[l]}</TableHead>
                         ))}
                       </TableRow>
                     </TableHeader>
@@ -263,7 +347,7 @@ export function ServiceMatrixEditor({ open, onOpenChange, groomerId, groomerName
             </>
           )}
 
-          {!groomingProducts?.length && !isLoading && (
+          {!isLoadingProducts && !productGroups?.length && (
             <p className="text-sm text-muted-foreground">
               No grooming services mapped. Map Shopify grooming products in Shopify Settings first.
             </p>
