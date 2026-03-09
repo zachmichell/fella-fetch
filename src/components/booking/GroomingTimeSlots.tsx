@@ -31,7 +31,7 @@ interface GroomerIntakeSettings {
 interface GroomingTimeSlotsProps {
   selectedDate: Date;
   selectedGroomerId: string | null;
-  groomers: { id: string; name: string; color?: string | null } & Partial<GroomerIntakeSettings>[];
+  groomers: ({ id: string; name: string; color?: string | null } & Partial<GroomerIntakeSettings>)[];
   schedules: GroomerSchedule[];
   selectedTime: string | null;
   onSelectTime: (time: string) => void;
