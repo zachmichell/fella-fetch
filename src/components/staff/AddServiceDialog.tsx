@@ -299,9 +299,9 @@ export function AddServiceDialog({
   const getAvailableTimeSlots = (): string[] => {
     if (!groomerSchedules || !selectedDate) return [];
     
-    const dayOfWeek = selectedDate.getDay();
-    const schedule = groomerSchedules.find(s => s.day_of_week === dayOfWeek);
-    if (!schedule || !schedule.is_available) return [];
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    const schedule = groomerSchedules.find(s => s.available_date === dateStr);
+    if (!schedule) return [];
     
     const startTime = schedule.start_time.slice(0, 5);
     const endTime = schedule.end_time.slice(0, 5);
