@@ -23,7 +23,8 @@ import {
   CalendarDays,
   Link2,
   Unlink,
-  ShoppingBag
+  ShoppingBag,
+  Grid3X3
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
