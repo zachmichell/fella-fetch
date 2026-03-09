@@ -120,11 +120,11 @@ export const GroomingTimeSlots = ({
   const groomerEndTime = useMemo(() => {
     if (!selectedGroomerId) return null;
     const schedule = schedules.find(
-      s => s.groomer_id === selectedGroomerId && s.day_of_week === dayOfWeek && s.is_available
+      s => s.groomer_id === selectedGroomerId && s.available_date === dateStr
     );
     if (!schedule) return null;
     return parse(schedule.end_time, "HH:mm:ss", new Date(2000, 0, 1));
-  }, [selectedGroomerId, schedules, dayOfWeek]);
+  }, [selectedGroomerId, schedules, dateStr]);
 
   // Count overlapping appointments at a given time
   const getOverlapCount = (slotTime: Date): number => {
