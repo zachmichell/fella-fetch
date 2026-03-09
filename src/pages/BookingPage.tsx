@@ -1109,6 +1109,9 @@ const BookingPage = () => {
                               grooming_product_title: pet.grooming_product_title,
                               grooming_frequency: pet.grooming_frequency,
                               last_grooming_date: pet.last_grooming_date,
+                              size: (pet as any).size || null,
+                              groom_level: (pet as any).groom_level || null,
+                              level_expiration_date: (pet as any).level_expiration_date || null,
                             })}
                             className={`p-4 rounded-xl border-2 flex items-center gap-4 transition-all text-left ${
                               isSelected
