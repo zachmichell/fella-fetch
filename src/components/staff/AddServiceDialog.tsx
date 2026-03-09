@@ -277,9 +277,8 @@ export function AddServiceDialog({
   // Check if groomer is available on selected date
   const isGroomerAvailableOnDate = (date: Date): boolean => {
     if (!groomerSchedules) return false;
-    const dayOfWeek = date.getDay();
-    const schedule = groomerSchedules.find(s => s.day_of_week === dayOfWeek);
-    return schedule?.is_available ?? false;
+    const dateStr = format(date, 'yyyy-MM-dd');
+    return groomerSchedules.some(s => s.available_date === dateStr);
   };
 
   // Get service duration for selected variant
