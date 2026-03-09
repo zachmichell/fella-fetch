@@ -54,7 +54,6 @@ export const GroomingTimeSlots = ({
   petGroomLevel,
   groomerIntakeSettings,
 }: GroomingTimeSlotsProps) => {
-  const dayOfWeek = selectedDate.getDay();
   const dateStr = format(selectedDate, "yyyy-MM-dd");
 
   const intakeStyle = groomerIntakeSettings?.intake_style || 'One-At-A-Time';
