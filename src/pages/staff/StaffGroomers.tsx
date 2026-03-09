@@ -664,6 +664,14 @@ const StaffGroomers = () => {
         groomerName={durationsGroomer?.name ?? ''}
       />
 
+      {/* Service Matrix Editor */}
+      <ServiceMatrixEditor
+        open={!!matrixGroomer}
+        onOpenChange={(open) => !open && setMatrixGroomer(null)}
+        groomerId={matrixGroomer?.id ?? ''}
+        groomerName={matrixGroomer?.name ?? ''}
+      />
+
       {/* Groomer Schedule Dialog */}
       <GroomerScheduleDialog
         groomer={scheduleGroomer}
