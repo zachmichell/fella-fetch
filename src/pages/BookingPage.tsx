@@ -25,6 +25,7 @@ import { GroomingCalendar } from "@/components/booking/GroomingCalendar";
 import { GroomingTimeSlots } from "@/components/booking/GroomingTimeSlots";
 import { useBusinessHours, generateTimeSlots, isWeekendDate } from "@/hooks/useBusinessHours";
 import { RecurringDaycareForm } from "@/components/booking/RecurringDaycareForm";
+import { GroomQuestionnaire } from "@/components/booking/GroomQuestionnaire";
 
 import iconStay from "@/assets/icons/icon-stay.png";
 import iconGroom from "@/assets/icons/icon-groom.png";
