@@ -1203,6 +1203,34 @@ const BookingPage = () => {
                         )}
                       </div>
                     )}
+
+                    {/* Lane A: Questionnaire for pets without active groom level */}
+                    {isGrooming && showQuestionnaire && bookingData.selectedPets.length > 0 && !questionnaireSubmitted && clientData && (
+                      <GroomQuestionnaire
+                        petId={bookingData.selectedPets[0].id}
+                        petName={bookingData.selectedPets[0].name}
+                        clientId={clientData.id}
+                        onSubmit={() => {
+                          setQuestionnaireSubmitted(true);
+                          setShowQuestionnaire(false);
+                          toast.success("Questionnaire submitted! Your grooming request is pending admin review. We'll notify you once approved.");
+                        }}
+                        onCancel={() => {
+                          setShowQuestionnaire(false);
+                          setBookingData({ ...bookingData, selectedPets: [] });
+                        }}
+                      />
+                    )}
+
+                    {isGrooming && questionnaireSubmitted && (
+                      <div className="bg-accent/20 rounded-xl p-6 text-center space-y-2">
+                        <Check className="w-8 h-8 text-primary mx-auto" />
+                        <h3 className="font-semibold text-foreground">Request Submitted</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Your grooming questionnaire has been submitted for review. You'll be notified once an admin approves your pet's groom level, and then you can book directly.
+                        </p>
+                      </div>
+                    )}
                   </>
                 )}
               </motion.div>
