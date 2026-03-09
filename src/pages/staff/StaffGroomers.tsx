@@ -48,6 +48,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { GroomerDurationsDialog } from '@/components/staff/grooming/GroomerDurationsDialog';
 import { GroomerScheduleDialog } from '@/components/staff/grooming/GroomerScheduleDialog';
+import { ServiceMatrixEditor } from '@/components/staff/grooming/ServiceMatrixEditor';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface Groomer {
