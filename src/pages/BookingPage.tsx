@@ -236,10 +236,10 @@ const BookingPage = () => {
         if (groomersError) throw groomersError;
         setGroomers(groomersData || []);
 
-        // Fetch all groomer schedules
+        // Fetch all groomer available dates
         const { data: schedulesData, error: schedulesError } = await supabase
-          .from("groomer_schedules")
-          .select("groomer_id, day_of_week, start_time, end_time, is_available");
+          .from("groomer_available_dates")
+          .select("groomer_id, available_date, start_time, end_time");
 
         if (schedulesError) throw schedulesError;
         setGroomerSchedules(schedulesData || []);
