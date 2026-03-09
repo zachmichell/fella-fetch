@@ -227,7 +227,7 @@ export function AddServiceDialog({
     queryFn: async () => {
       if (!selectedGroomer) return [];
       const { data, error } = await supabase
-        .from('groomer_schedules')
+        .from('groomer_available_dates')
         .select('*')
         .eq('groomer_id', selectedGroomer.id);
       
