@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Plus, Trash2, Save } from 'lucide-react';
+import { Loader2, Save } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { storefrontApiRequest } from '@/lib/shopify';
 
 const PET_SIZES = ['Small', 'Medium', 'Large', 'XL'] as const;
 const GROOM_LEVELS = [1, 2, 3, 4] as const;
@@ -29,6 +30,11 @@ interface MatrixEntry {
   duration_minutes: number;
 }
 
+interface GroomingProduct {
+  id: string;
+  title: string;
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -36,20 +42,60 @@ interface Props {
   groomerName: string;
 }
 
+// Extract numeric ID from Shopify GID
+function getNumericId(gid: string): string {
+  const parts = gid.split('/');
+  return parts[parts.length - 1];
+}
+
 export function ServiceMatrixEditor({ open, onOpenChange, groomerId, groomerName }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch grooming products from shopify_service_mappings
-  const { data: groomingProducts } = useQuery({
-    queryKey: ['grooming-service-mappings'],
+  // Fetch grooming products from Shopify via collection mappings (services category = GROOM)
+  const { data: groomingProducts, isLoading: isLoadingProducts } = useQuery({
+    queryKey: ['grooming-collection-products'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('shopify_service_mappings')
-        .select('*')
-        .eq('service_type', 'grooming');
+      // Get the services collection mappings (where GROOM is mapped)
+      const { data: mappings, error } = await supabase
+        .from('shopify_collection_mappings')
+        .select('shopify_collection_id, shopify_collection_title')
+        .eq('category', 'services');
       if (error) throw error;
-      return data;
+      if (!mappings || mappings.length === 0) return [];
+
+      const allProducts: GroomingProduct[] = [];
+      const seenIds = new Set<string>();
+
+      for (const mapping of mappings) {
+        const gid = `gid://shopify/Collection/${mapping.shopify_collection_id}`;
+        const result = await storefrontApiRequest(`
+          query GetCollectionProducts($id: ID!) {
+            node(id: $id) {
+              ... on Collection {
+                products(first: 50) {
+                  edges {
+                    node {
+                      id
+                      title
+                    }
+                  }
+                }
+              }
+            }
+          }
+        `, { id: gid });
+
+        const products = result?.data?.node?.products?.edges || [];
+        for (const p of products) {
+          const numericId = getNumericId(p.node.id);
+          if (!seenIds.has(numericId)) {
+            seenIds.add(numericId);
+            allProducts.push({ id: numericId, title: p.node.title });
+          }
+        }
+      }
+      return allProducts;
     },
     enabled: open,
   });
@@ -154,8 +200,8 @@ export function ServiceMatrixEditor({ open, onOpenChange, groomerId, groomerName
               </SelectTrigger>
               <SelectContent>
                 {groomingProducts?.map(p => (
-                  <SelectItem key={p.shopify_product_id} value={p.shopify_product_id}>
-                    {p.shopify_product_title}
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.title}
                   </SelectItem>
                 ))}
               </SelectContent>
