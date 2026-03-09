@@ -628,6 +628,48 @@ export type Database = {
           },
         ]
       }
+      groomer_available_dates: {
+        Row: {
+          available_date: string
+          created_at: string
+          end_time: string
+          groomer_id: string
+          id: string
+          start_time: string
+        }
+        Insert: {
+          available_date: string
+          created_at?: string
+          end_time?: string
+          groomer_id: string
+          id?: string
+          start_time?: string
+        }
+        Update: {
+          available_date?: string
+          created_at?: string
+          end_time?: string
+          groomer_id?: string
+          id?: string
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "groomer_available_dates_groomer_id_fkey"
+            columns: ["groomer_id"]
+            isOneToOne: false
+            referencedRelation: "groomers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "groomer_available_dates_groomer_id_fkey"
+            columns: ["groomer_id"]
+            isOneToOne: false
+            referencedRelation: "groomers_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       groomer_schedules: {
         Row: {
           created_at: string

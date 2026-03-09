@@ -51,10 +51,10 @@ interface Groomer {
 }
 
 interface GroomerSchedule {
-  day_of_week: number;
+  groomer_id: string;
+  available_date: string;
   start_time: string;
   end_time: string;
-  is_available: boolean;
 }
 
 interface GroomerDuration {
@@ -227,7 +227,7 @@ export function AddServiceDialog({
     queryFn: async () => {
       if (!selectedGroomer) return [];
       const { data, error } = await supabase
-        .from('groomer_schedules')
+        .from('groomer_available_dates')
         .select('*')
         .eq('groomer_id', selectedGroomer.id);
       
@@ -277,9 +277,8 @@ export function AddServiceDialog({
   // Check if groomer is available on selected date
   const isGroomerAvailableOnDate = (date: Date): boolean => {
     if (!groomerSchedules) return false;
-    const dayOfWeek = date.getDay();
-    const schedule = groomerSchedules.find(s => s.day_of_week === dayOfWeek);
-    return schedule?.is_available ?? false;
+    const dateStr = format(date, 'yyyy-MM-dd');
+    return groomerSchedules.some(s => s.available_date === dateStr);
   };
 
   // Get service duration for selected variant
@@ -300,9 +299,9 @@ export function AddServiceDialog({
   const getAvailableTimeSlots = (): string[] => {
     if (!groomerSchedules || !selectedDate) return [];
     
-    const dayOfWeek = selectedDate.getDay();
-    const schedule = groomerSchedules.find(s => s.day_of_week === dayOfWeek);
-    if (!schedule || !schedule.is_available) return [];
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    const schedule = groomerSchedules.find(s => s.available_date === dateStr);
+    if (!schedule) return [];
     
     const startTime = schedule.start_time.slice(0, 5);
     const endTime = schedule.end_time.slice(0, 5);

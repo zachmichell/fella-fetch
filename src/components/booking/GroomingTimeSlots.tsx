@@ -5,10 +5,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 
 interface GroomerSchedule {
   groomer_id: string;
-  day_of_week: number;
+  available_date: string;
   start_time: string;
   end_time: string;
-  is_available: boolean;
 }
 
 interface ExistingReservation {
@@ -55,7 +54,6 @@ export const GroomingTimeSlots = ({
   petGroomLevel,
   groomerIntakeSettings,
 }: GroomingTimeSlotsProps) => {
-  const dayOfWeek = selectedDate.getDay();
   const dateStr = format(selectedDate, "yyyy-MM-dd");
 
   const intakeStyle = groomerIntakeSettings?.intake_style || 'One-At-A-Time';
@@ -77,8 +75,9 @@ export const GroomingTimeSlots = ({
 
   // Generate time slots based on groomer availability
   const timeSlots = useMemo(() => {
+    // Find schedules for this specific date
     const daySchedules = schedules.filter(
-      (s) => s.day_of_week === dayOfWeek && s.is_available
+      (s) => s.available_date === dateStr
     );
 
     if (daySchedules.length === 0) return [];
@@ -115,17 +114,17 @@ export const GroomingTimeSlots = ({
     }
 
     return slots;
-  }, [selectedDate, selectedGroomerId, schedules, dayOfWeek]);
+  }, [selectedDate, selectedGroomerId, schedules, dateStr]);
 
   // Get the groomer's end time for EOD safeguard
   const groomerEndTime = useMemo(() => {
     if (!selectedGroomerId) return null;
     const schedule = schedules.find(
-      s => s.groomer_id === selectedGroomerId && s.day_of_week === dayOfWeek && s.is_available
+      s => s.groomer_id === selectedGroomerId && s.available_date === dateStr
     );
     if (!schedule) return null;
     return parse(schedule.end_time, "HH:mm:ss", new Date(2000, 0, 1));
-  }, [selectedGroomerId, schedules, dayOfWeek]);
+  }, [selectedGroomerId, schedules, dateStr]);
 
   // Count overlapping appointments at a given time
   const getOverlapCount = (slotTime: Date): number => {

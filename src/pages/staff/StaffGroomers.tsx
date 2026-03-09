@@ -19,7 +19,7 @@ import {
   Save,
   Mail,
   Phone,
-  Clock,
+  
   CalendarDays,
   Link2,
   Unlink,
@@ -47,7 +47,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { GroomerDurationsDialog } from '@/components/staff/grooming/GroomerDurationsDialog';
+// GroomerDurationsDialog removed — replaced by ServiceMatrixEditor
 import { GroomerScheduleDialog } from '@/components/staff/grooming/GroomerScheduleDialog';
 import { ServiceMatrixEditor } from '@/components/staff/grooming/ServiceMatrixEditor';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -104,7 +104,7 @@ const StaffGroomers = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingGroomer, setEditingGroomer] = useState<Groomer | null>(null);
   const [deleteConfirmGroomer, setDeleteConfirmGroomer] = useState<Groomer | null>(null);
-  const [durationsGroomer, setDurationsGroomer] = useState<Groomer | null>(null);
+  // durationsGroomer state removed
   const [scheduleGroomer, setScheduleGroomer] = useState<Groomer | null>(null);
   const [matrixGroomer, setMatrixGroomer] = useState<Groomer | null>(null);
   const [formData, setFormData] = useState<GroomerFormData>({
@@ -456,19 +456,7 @@ const StaffGroomers = () => {
                             <CalendarDays className="h-4 w-4" />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Set weekly schedule</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDurationsGroomer(groomer)}
-                          >
-                            <Clock className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Set service durations</TooltipContent>
+                        <TooltipContent>Set availability</TooltipContent>
                       </Tooltip>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -656,13 +644,6 @@ const StaffGroomers = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Groomer Durations Dialog */}
-      <GroomerDurationsDialog
-        open={!!durationsGroomer}
-        onOpenChange={(open) => !open && setDurationsGroomer(null)}
-        groomerId={durationsGroomer?.id ?? ''}
-        groomerName={durationsGroomer?.name ?? ''}
-      />
 
       {/* Service Matrix Editor */}
       <ServiceMatrixEditor
