@@ -137,6 +137,10 @@ const BookingPage = () => {
   
   // Recurring daycare state
   const [isRecurringDaycare, setIsRecurringDaycare] = useState(false);
+  
+  // Two-lane grooming state
+  const [showQuestionnaire, setShowQuestionnaire] = useState(false);
+  const [questionnaireSubmitted, setQuestionnaireSubmitted] = useState(false);
 
   // Service permissions state
   const [allowedServices, setAllowedServices] = useState<Set<string>>(new Set(['daycare', 'boarding', 'grooming', 'training']));
