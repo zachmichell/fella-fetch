@@ -559,6 +559,75 @@ export type Database = {
           },
         ]
       }
+      groom_questionnaires: {
+        Row: {
+          admin_notes: string | null
+          assigned_groom_level: number | null
+          behavior_concerns: string | null
+          client_id: string
+          coat_condition: string | null
+          created_at: string
+          id: string
+          last_groom_location: string | null
+          last_groom_timeframe: string | null
+          matting_level: string | null
+          pet_id: string
+          photo_urls: string[] | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          assigned_groom_level?: number | null
+          behavior_concerns?: string | null
+          client_id: string
+          coat_condition?: string | null
+          created_at?: string
+          id?: string
+          last_groom_location?: string | null
+          last_groom_timeframe?: string | null
+          matting_level?: string | null
+          pet_id: string
+          photo_urls?: string[] | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          assigned_groom_level?: number | null
+          behavior_concerns?: string | null
+          client_id?: string
+          coat_condition?: string | null
+          created_at?: string
+          id?: string
+          last_groom_location?: string | null
+          last_groom_timeframe?: string | null
+          matting_level?: string | null
+          pet_id?: string
+          photo_urls?: string[] | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "groom_questionnaires_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "groom_questionnaires_pet_id_fkey"
+            columns: ["pet_id"]
+            isOneToOne: false
+            referencedRelation: "pets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       groomer_schedules: {
         Row: {
           created_at: string
@@ -652,48 +721,117 @@ export type Database = {
           },
         ]
       }
+      groomer_service_matrix: {
+        Row: {
+          created_at: string
+          duration_minutes: number
+          groom_level: number
+          groomer_id: string
+          id: string
+          pet_size: string
+          shopify_product_id: string
+          shopify_variant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          duration_minutes?: number
+          groom_level: number
+          groomer_id: string
+          id?: string
+          pet_size: string
+          shopify_product_id: string
+          shopify_variant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          duration_minutes?: number
+          groom_level?: number
+          groomer_id?: string
+          id?: string
+          pet_size?: string
+          shopify_product_id?: string
+          shopify_variant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "groomer_service_matrix_groomer_id_fkey"
+            columns: ["groomer_id"]
+            isOneToOne: false
+            referencedRelation: "groomers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "groomer_service_matrix_groomer_id_fkey"
+            columns: ["groomer_id"]
+            isOneToOne: false
+            referencedRelation: "groomers_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       groomers: {
         Row: {
           color: string | null
           commission_rate: number
           created_at: string
           email: string | null
+          end_of_day_safeguard: boolean
+          eod_buffer_minutes: number
           id: string
+          intake_style: string
           is_active: boolean
+          max_concurrent: number
           name: string
           phone: string | null
           shopify_staff_id: string | null
           shopify_staff_name: string | null
           sort_order: number | null
+          stagger_duration: number
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           color?: string | null
           commission_rate?: number
           created_at?: string
           email?: string | null
+          end_of_day_safeguard?: boolean
+          eod_buffer_minutes?: number
           id?: string
+          intake_style?: string
           is_active?: boolean
+          max_concurrent?: number
           name: string
           phone?: string | null
           shopify_staff_id?: string | null
           shopify_staff_name?: string | null
           sort_order?: number | null
+          stagger_duration?: number
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           color?: string | null
           commission_rate?: number
           created_at?: string
           email?: string | null
+          end_of_day_safeguard?: boolean
+          eod_buffer_minutes?: number
           id?: string
+          intake_style?: string
           is_active?: boolean
+          max_concurrent?: number
           name?: string
           phone?: string | null
           shopify_staff_id?: string | null
           shopify_staff_name?: string | null
           sort_order?: number | null
+          stagger_duration?: number
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1104,19 +1242,24 @@ export type Database = {
           behavior_notes: string | null
           breed: string | null
           client_id: string
+          coat_type: string | null
           color: string | null
           created_at: string
+          current_condition: string | null
           date_of_birth: string | null
           feeding_instructions: string | null
           gender: string | null
+          groom_level: number | null
           grooming_frequency: string | null
           grooming_product_id: string | null
           grooming_product_title: string | null
           id: string
           is_active: boolean | null
           last_grooming_date: string | null
+          level_expiration_date: string | null
           name: string
           photo_url: string | null
+          size: string | null
           spayed_neutered: boolean | null
           special_needs: string | null
           updated_at: string
@@ -1133,19 +1276,24 @@ export type Database = {
           behavior_notes?: string | null
           breed?: string | null
           client_id: string
+          coat_type?: string | null
           color?: string | null
           created_at?: string
+          current_condition?: string | null
           date_of_birth?: string | null
           feeding_instructions?: string | null
           gender?: string | null
+          groom_level?: number | null
           grooming_frequency?: string | null
           grooming_product_id?: string | null
           grooming_product_title?: string | null
           id?: string
           is_active?: boolean | null
           last_grooming_date?: string | null
+          level_expiration_date?: string | null
           name: string
           photo_url?: string | null
+          size?: string | null
           spayed_neutered?: boolean | null
           special_needs?: string | null
           updated_at?: string
@@ -1162,19 +1310,24 @@ export type Database = {
           behavior_notes?: string | null
           breed?: string | null
           client_id?: string
+          coat_type?: string | null
           color?: string | null
           created_at?: string
+          current_condition?: string | null
           date_of_birth?: string | null
           feeding_instructions?: string | null
           gender?: string | null
+          groom_level?: number | null
           grooming_frequency?: string | null
           grooming_product_id?: string | null
           grooming_product_title?: string | null
           id?: string
           is_active?: boolean | null
           last_grooming_date?: string | null
+          level_expiration_date?: string | null
           name?: string
           photo_url?: string | null
+          size?: string | null
           spayed_neutered?: boolean | null
           special_needs?: string | null
           updated_at?: string
@@ -1818,24 +1971,39 @@ export type Database = {
       groomers_public: {
         Row: {
           color: string | null
+          end_of_day_safeguard: boolean | null
+          eod_buffer_minutes: number | null
           id: string | null
+          intake_style: string | null
           is_active: boolean | null
+          max_concurrent: number | null
           name: string | null
           sort_order: number | null
+          stagger_duration: number | null
         }
         Insert: {
           color?: string | null
+          end_of_day_safeguard?: boolean | null
+          eod_buffer_minutes?: number | null
           id?: string | null
+          intake_style?: string | null
           is_active?: boolean | null
+          max_concurrent?: number | null
           name?: string | null
           sort_order?: number | null
+          stagger_duration?: number | null
         }
         Update: {
           color?: string | null
+          end_of_day_safeguard?: boolean | null
+          eod_buffer_minutes?: number | null
           id?: string | null
+          intake_style?: string | null
           is_active?: boolean | null
+          max_concurrent?: number | null
           name?: string | null
           sort_order?: number | null
+          stagger_duration?: number | null
         }
         Relationships: []
       }
@@ -1857,6 +2025,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_groomer: { Args: { _user_id: string }; Returns: boolean }
       is_staff_or_admin: { Args: { _user_id: string }; Returns: boolean }
       restore_boarding_credits: {
         Args: { p_client_id: string; p_nights: number }
@@ -1869,7 +2038,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "staff"
+      app_role: "admin" | "staff" | "groomer"
       reservation_status:
         | "pending"
         | "confirmed"
@@ -2005,7 +2174,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "staff"],
+      app_role: ["admin", "staff", "groomer"],
       reservation_status: [
         "pending",
         "confirmed",

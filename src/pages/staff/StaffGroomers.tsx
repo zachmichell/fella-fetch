@@ -23,7 +23,8 @@ import {
   CalendarDays,
   Link2,
   Unlink,
-  ShoppingBag
+  ShoppingBag,
+  Grid3X3
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -48,6 +49,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { GroomerDurationsDialog } from '@/components/staff/grooming/GroomerDurationsDialog';
 import { GroomerScheduleDialog } from '@/components/staff/grooming/GroomerScheduleDialog';
+import { ServiceMatrixEditor } from '@/components/staff/grooming/ServiceMatrixEditor';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface Groomer {
@@ -60,6 +62,12 @@ interface Groomer {
   sort_order: number | null;
   shopify_staff_id: string | null;
   shopify_staff_name: string | null;
+  intake_style: string;
+  stagger_duration: number;
+  end_of_day_safeguard: boolean;
+  eod_buffer_minutes: number;
+  max_concurrent: number;
+  user_id: string | null;
 }
 
 interface ShopifyStaffMember {
@@ -98,6 +106,7 @@ const StaffGroomers = () => {
   const [deleteConfirmGroomer, setDeleteConfirmGroomer] = useState<Groomer | null>(null);
   const [durationsGroomer, setDurationsGroomer] = useState<Groomer | null>(null);
   const [scheduleGroomer, setScheduleGroomer] = useState<Groomer | null>(null);
+  const [matrixGroomer, setMatrixGroomer] = useState<Groomer | null>(null);
   const [formData, setFormData] = useState<GroomerFormData>({
     name: '',
     email: '',
@@ -466,6 +475,18 @@ const StaffGroomers = () => {
                           <Button
                             variant="ghost"
                             size="icon"
+                            onClick={() => setMatrixGroomer(groomer)}
+                          >
+                            <Grid3X3 className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Service duration matrix (by size & level)</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={() => {
                               setLinkingGroomer(groomer);
                               setSelectedStaffId(groomer.shopify_staff_id || '');
@@ -641,6 +662,14 @@ const StaffGroomers = () => {
         onOpenChange={(open) => !open && setDurationsGroomer(null)}
         groomerId={durationsGroomer?.id ?? ''}
         groomerName={durationsGroomer?.name ?? ''}
+      />
+
+      {/* Service Matrix Editor */}
+      <ServiceMatrixEditor
+        open={!!matrixGroomer}
+        onOpenChange={(open) => !open && setMatrixGroomer(null)}
+        groomerId={matrixGroomer?.id ?? ''}
+        groomerName={matrixGroomer?.name ?? ''}
       />
 
       {/* Groomer Schedule Dialog */}

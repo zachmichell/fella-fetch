@@ -20,15 +20,27 @@ interface ExistingReservation {
   client_name?: string;
 }
 
+interface GroomerIntakeSettings {
+  intake_style?: string;
+  stagger_duration?: number;
+  max_concurrent?: number;
+  end_of_day_safeguard?: boolean;
+  eod_buffer_minutes?: number;
+}
+
 interface GroomingTimeSlotsProps {
   selectedDate: Date;
   selectedGroomerId: string | null;
-  groomers: { id: string; name: string; color?: string | null }[];
+  groomers: ({ id: string; name: string; color?: string | null } & Partial<GroomerIntakeSettings>)[];
   schedules: GroomerSchedule[];
   selectedTime: string | null;
   onSelectTime: (time: string) => void;
   existingReservations?: ExistingReservation[];
   slotDurationMinutes?: number;
+  /** Pet's groom level for EOD safeguard check */
+  petGroomLevel?: number | null;
+  /** Groomer intake settings (from groomers_public or groomers table) */
+  groomerIntakeSettings?: GroomerIntakeSettings;
 }
 
 export const GroomingTimeSlots = ({
@@ -40,9 +52,17 @@ export const GroomingTimeSlots = ({
   onSelectTime,
   existingReservations = [],
   slotDurationMinutes = 60,
+  petGroomLevel,
+  groomerIntakeSettings,
 }: GroomingTimeSlotsProps) => {
   const dayOfWeek = selectedDate.getDay();
   const dateStr = format(selectedDate, "yyyy-MM-dd");
+
+  const intakeStyle = groomerIntakeSettings?.intake_style || 'One-At-A-Time';
+  const maxConcurrent = groomerIntakeSettings?.max_concurrent || 1;
+  const staggerDuration = groomerIntakeSettings?.stagger_duration || 15;
+  const eodSafeguard = groomerIntakeSettings?.end_of_day_safeguard || false;
+  const eodBuffer = groomerIntakeSettings?.eod_buffer_minutes || 60;
 
   // Get reservations for this date with groomer info
   const dayReservations = useMemo(() => {
@@ -50,22 +70,19 @@ export const GroomingTimeSlots = ({
       .filter((r) => r.start_date === dateStr)
       .map((r) => ({
         ...r,
-        groomerName: groomers.find(g => g.id === r.groomer_id)?.name || "Unknown",
-        groomerColor: groomers.find(g => g.id === r.groomer_id)?.color || "#6b7280",
+        groomerName: (groomers as any[]).find((g: any) => g.id === r.groomer_id)?.name || "Unknown",
+        groomerColor: (groomers as any[]).find((g: any) => g.id === r.groomer_id)?.color || "#6b7280",
       }));
   }, [existingReservations, dateStr, groomers]);
 
   // Generate time slots based on groomer availability
   const timeSlots = useMemo(() => {
-    // Get relevant schedules for this day
     const daySchedules = schedules.filter(
       (s) => s.day_of_week === dayOfWeek && s.is_available
     );
 
     if (daySchedules.length === 0) return [];
 
-    // If specific groomer selected, use their schedule
-    // If "any available", use the earliest start and latest end
     let startTime: string;
     let endTime: string;
 
@@ -75,7 +92,6 @@ export const GroomingTimeSlots = ({
       startTime = schedule.start_time;
       endTime = schedule.end_time;
     } else {
-      // Find earliest start and latest end among all available groomers
       startTime = daySchedules.reduce((earliest, s) => 
         s.start_time < earliest ? s.start_time : earliest, 
         "23:59"
@@ -101,36 +117,112 @@ export const GroomingTimeSlots = ({
     return slots;
   }, [selectedDate, selectedGroomerId, schedules, dayOfWeek]);
 
-  // Check if a time slot is already booked and get booking info
-  const getSlotBookingInfo = (timeSlot: string): { isBooked: boolean; reservation?: typeof dayReservations[0] } => {
-    if (dayReservations.length === 0) return { isBooked: false };
+  // Get the groomer's end time for EOD safeguard
+  const groomerEndTime = useMemo(() => {
+    if (!selectedGroomerId) return null;
+    const schedule = schedules.find(
+      s => s.groomer_id === selectedGroomerId && s.day_of_week === dayOfWeek && s.is_available
+    );
+    if (!schedule) return null;
+    return parse(schedule.end_time, "HH:mm:ss", new Date(2000, 0, 1));
+  }, [selectedGroomerId, schedules, dayOfWeek]);
 
-    // Find reservation that overlaps with this time slot
-    const matchingReservation = dayReservations.find((r) => {
+  // Count overlapping appointments at a given time
+  const getOverlapCount = (slotTime: Date): number => {
+    const baseDate = new Date(2000, 0, 1);
+    return dayReservations.filter(r => {
       if (!r.start_time) return false;
-      
-      // If groomer is specified, only check that groomer's bookings
       if (selectedGroomerId && r.groomer_id !== selectedGroomerId) return false;
-      
-      // Parse reservation times
-      const baseDate = new Date(2000, 0, 1);
       const resStart = parse(r.start_time, "HH:mm:ss", baseDate);
       const resEnd = r.end_time 
         ? parse(r.end_time, "HH:mm:ss", baseDate)
         : addMinutes(resStart, slotDurationMinutes);
-      
-      // Parse slot time
-      const slotTime = parse(timeSlot, "h:mm a", baseDate);
-      const slotEnd = addMinutes(slotTime, 15); // 15-minute slot
+      return slotTime >= resStart && slotTime < resEnd;
+    }).length;
+  };
 
-      // Check for overlap
-      return slotTime < resEnd && slotEnd > resStart;
+  // Check if slot aligns with stagger intervals from existing appointments
+  const alignsWithStagger = (slotTime: Date): boolean => {
+    if (intakeStyle !== 'Concurrent-Staggered') return true;
+    const baseDate = new Date(2000, 0, 1);
+    const groomerRes = dayReservations.filter(r => {
+      if (!r.start_time) return false;
+      if (selectedGroomerId && r.groomer_id !== selectedGroomerId) return false;
+      return true;
     });
+    if (groomerRes.length === 0) return true; // No existing, any slot works
+    
+    // Check if this slot is at a stagger interval from any existing start
+    return groomerRes.some(r => {
+      const resStart = parse(r.start_time!, "HH:mm:ss", baseDate);
+      const diffMs = Math.abs(slotTime.getTime() - resStart.getTime());
+      const diffMins = diffMs / 60000;
+      return diffMins % staggerDuration === 0;
+    });
+  };
 
-    return { 
-      isBooked: !!matchingReservation, 
-      reservation: matchingReservation 
-    };
+  // Check if a time slot is available considering intake rules
+  const getSlotBookingInfo = (timeSlot: string): { isBooked: boolean; reservation?: typeof dayReservations[0]; isBlocked?: boolean; blockReason?: string } => {
+    const baseDate = new Date(2000, 0, 1);
+    const slotTime = parse(timeSlot, "h:mm a", baseDate);
+    const slotEnd = addMinutes(slotTime, slotDurationMinutes);
+
+    // EOD Safeguard: block L3/L4 dogs near end of day
+    if (eodSafeguard && petGroomLevel && petGroomLevel >= 3 && groomerEndTime) {
+      const bufferStart = addMinutes(groomerEndTime, -eodBuffer);
+      if (slotEnd > bufferStart) {
+        return { isBooked: true, isBlocked: true, blockReason: 'EOD safeguard: Level 3/4 dogs cannot be booked this late' };
+      }
+    }
+
+    // Check intake style rules
+    if (intakeStyle === 'One-At-A-Time') {
+      // No overlapping allowed during the entire duration
+      for (let t = slotTime; isBefore(t, slotEnd); t = addMinutes(t, 15)) {
+        if (getOverlapCount(t) > 0) {
+          const res = dayReservations.find(r => {
+            if (!r.start_time) return false;
+            if (selectedGroomerId && r.groomer_id !== selectedGroomerId) return false;
+            const resStart = parse(r.start_time, "HH:mm:ss", baseDate);
+            const resEnd = r.end_time ? parse(r.end_time, "HH:mm:ss", baseDate) : addMinutes(resStart, slotDurationMinutes);
+            return t >= resStart && t < resEnd;
+          });
+          return { isBooked: true, reservation: res };
+        }
+      }
+    } else if (intakeStyle === 'Concurrent-Block') {
+      // Check if concurrent count < max at slot start
+      if (getOverlapCount(slotTime) >= maxConcurrent) {
+        const res = dayReservations.find(r => {
+          if (!r.start_time) return false;
+          if (selectedGroomerId && r.groomer_id !== selectedGroomerId) return false;
+          const resStart = parse(r.start_time, "HH:mm:ss", baseDate);
+          const resEnd = r.end_time ? parse(r.end_time, "HH:mm:ss", baseDate) : addMinutes(resStart, slotDurationMinutes);
+          return slotTime >= resStart && slotTime < resEnd;
+        });
+        return { isBooked: true, reservation: res };
+      }
+    } else if (intakeStyle === 'Concurrent-Staggered') {
+      // Must align to stagger intervals AND not exceed max concurrent
+      if (!alignsWithStagger(slotTime) || getOverlapCount(slotTime) >= maxConcurrent) {
+        return { isBooked: true, isBlocked: true, blockReason: 'Slot not available (stagger/capacity)' };
+      }
+    }
+
+    // Fallback: legacy overlap check for slots without intake info
+    if (!groomerIntakeSettings) {
+      const matchingReservation = dayReservations.find((r) => {
+        if (!r.start_time) return false;
+        if (selectedGroomerId && r.groomer_id !== selectedGroomerId) return false;
+        const resStart = parse(r.start_time, "HH:mm:ss", baseDate);
+        const resEnd = r.end_time ? parse(r.end_time, "HH:mm:ss", baseDate) : addMinutes(resStart, slotDurationMinutes);
+        const slotEndCheck = addMinutes(slotTime, 15);
+        return slotTime < resEnd && slotEndCheck > resStart;
+      });
+      return { isBooked: !!matchingReservation, reservation: matchingReservation };
+    }
+
+    return { isBooked: false };
   };
 
   if (timeSlots.length === 0) {
@@ -155,28 +247,29 @@ export const GroomingTimeSlots = ({
       <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
         {timeSlots.map((time) => {
           const isSelected = selectedTime === time;
-          const { isBooked, reservation } = getSlotBookingInfo(time);
+          const { isBooked, reservation, isBlocked, blockReason } = getSlotBookingInfo(time);
 
-          if (isBooked && reservation) {
+          if (isBooked) {
+            const tooltipContent = isBlocked && blockReason
+              ? blockReason
+              : reservation
+                ? `${reservation.pet_name || 'Appointment'} — ${reservation.groomerName}`
+                : 'Unavailable';
+
             return (
               <Tooltip key={time}>
                 <TooltipTrigger asChild>
                   <div
                     className="py-3 px-4 rounded-xl border-2 font-medium flex items-center justify-center gap-2 
                       border-border bg-muted/50 text-muted-foreground cursor-not-allowed opacity-70"
-                    style={{ borderLeftColor: reservation.groomerColor, borderLeftWidth: '4px' }}
+                    style={reservation ? { borderLeftColor: reservation.groomerColor, borderLeftWidth: '4px' } : undefined}
                   >
                     <User className="w-3 h-3" />
                     <span className="text-sm">{time}</span>
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-xs">
-                  <div className="text-sm">
-                    <p className="font-medium">{reservation.pet_name || "Appointment"}</p>
-                    <p className="text-muted-foreground">
-                      {reservation.groomerName} • {reservation.client_name || "Booked"}
-                    </p>
-                  </div>
+                  <p className="text-sm">{tooltipContent}</p>
                 </TooltipContent>
               </Tooltip>
             );

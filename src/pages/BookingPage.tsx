@@ -25,6 +25,7 @@ import { GroomingCalendar } from "@/components/booking/GroomingCalendar";
 import { GroomingTimeSlots } from "@/components/booking/GroomingTimeSlots";
 import { useBusinessHours, generateTimeSlots, isWeekendDate } from "@/hooks/useBusinessHours";
 import { RecurringDaycareForm } from "@/components/booking/RecurringDaycareForm";
+import { GroomQuestionnaire } from "@/components/booking/GroomQuestionnaire";
 
 import iconStay from "@/assets/icons/icon-stay.png";
 import iconGroom from "@/assets/icons/icon-groom.png";
@@ -41,6 +42,9 @@ interface SelectedPet {
   grooming_product_title: string | null;
   grooming_frequency: string | null;
   last_grooming_date: string | null;
+  size: string | null;
+  groom_level: number | null;
+  level_expiration_date: string | null;
 }
 
 interface Groomer {
@@ -134,6 +138,10 @@ const BookingPage = () => {
   
   // Recurring daycare state
   const [isRecurringDaycare, setIsRecurringDaycare] = useState(false);
+  
+  // Two-lane grooming state
+  const [showQuestionnaire, setShowQuestionnaire] = useState(false);
+  const [questionnaireSubmitted, setQuestionnaireSubmitted] = useState(false);
 
   // Service permissions state
   const [allowedServices, setAllowedServices] = useState<Set<string>>(new Set(['daycare', 'boarding', 'grooming', 'training']));
@@ -612,14 +620,29 @@ const BookingPage = () => {
         selectedGroomingService: null, // Reset service when pet changes
       });
     } else {
-      // For grooming, only allow one pet at a time and auto-advance
+      // For grooming, only allow one pet at a time
       if (isGrooming) {
         setBookingData({
           ...bookingData,
           selectedPets: [pet],
-          selectedGroomingService: null, // Reset service when pet changes
+          selectedGroomingService: null,
         });
-        setStep(3); // Auto-advance to groomer selection
+        
+        // Two-Lane Detection: check if pet has an active groom level
+        const hasActiveLevel = pet.groom_level != null 
+          && pet.level_expiration_date 
+          && new Date(pet.level_expiration_date) > new Date();
+        
+        if (hasActiveLevel) {
+          // Lane B: VIP Fast-Track — proceed to groomer selection
+          setShowQuestionnaire(false);
+          setQuestionnaireSubmitted(false);
+          setStep(3);
+        } else {
+          // Lane A: Gatekeeper — show questionnaire
+          setShowQuestionnaire(true);
+          setQuestionnaireSubmitted(false);
+        }
       } else {
         setBookingData({
           ...bookingData,
@@ -1106,6 +1129,9 @@ const BookingPage = () => {
                               grooming_product_title: pet.grooming_product_title,
                               grooming_frequency: pet.grooming_frequency,
                               last_grooming_date: pet.last_grooming_date,
+                              size: (pet as any).size || null,
+                              groom_level: (pet as any).groom_level || null,
+                              level_expiration_date: (pet as any).level_expiration_date || null,
                             })}
                             className={`p-4 rounded-xl border-2 flex items-center gap-4 transition-all text-left ${
                               isSelected
@@ -1175,6 +1201,34 @@ const BookingPage = () => {
                             — {bookingData.selectedPets.length} separate reservations will be created
                           </span>
                         )}
+                      </div>
+                    )}
+
+                    {/* Lane A: Questionnaire for pets without active groom level */}
+                    {isGrooming && showQuestionnaire && bookingData.selectedPets.length > 0 && !questionnaireSubmitted && clientData && (
+                      <GroomQuestionnaire
+                        petId={bookingData.selectedPets[0].id}
+                        petName={bookingData.selectedPets[0].name}
+                        clientId={clientData.id}
+                        onSubmit={() => {
+                          setQuestionnaireSubmitted(true);
+                          setShowQuestionnaire(false);
+                          toast.success("Questionnaire submitted! Your grooming request is pending admin review. We'll notify you once approved.");
+                        }}
+                        onCancel={() => {
+                          setShowQuestionnaire(false);
+                          setBookingData({ ...bookingData, selectedPets: [] });
+                        }}
+                      />
+                    )}
+
+                    {isGrooming && questionnaireSubmitted && (
+                      <div className="bg-accent/20 rounded-xl p-6 text-center space-y-2">
+                        <Check className="w-8 h-8 text-primary mx-auto" />
+                        <h3 className="font-semibold text-foreground">Request Submitted</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Your grooming questionnaire has been submitted for review. You'll be notified once an admin approves your pet's groom level, and then you can book directly.
+                        </p>
                       </div>
                     )}
                   </>
