@@ -456,9 +456,8 @@ const StaffGroomers = () => {
                             <CalendarDays className="h-4 w-4" />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Set weekly schedule</TooltipContent>
+                        <TooltipContent>Set availability</TooltipContent>
                       </Tooltip>
-                      <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
                             variant="ghost"
