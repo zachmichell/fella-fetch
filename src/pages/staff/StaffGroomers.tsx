@@ -644,13 +644,6 @@ const StaffGroomers = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Groomer Durations Dialog */}
-      <GroomerDurationsDialog
-        open={!!durationsGroomer}
-        onOpenChange={(open) => !open && setDurationsGroomer(null)}
-        groomerId={durationsGroomer?.id ?? ''}
-        groomerName={durationsGroomer?.name ?? ''}
-      />
 
       {/* Service Matrix Editor */}
       <ServiceMatrixEditor
