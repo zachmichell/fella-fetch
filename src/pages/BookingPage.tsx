@@ -55,10 +55,9 @@ interface Groomer {
 
 interface GroomerSchedule {
   groomer_id: string;
-  day_of_week: number;
+  available_date: string;
   start_time: string;
   end_time: string;
-  is_available: boolean;
 }
 
 interface GroomingVariant {
