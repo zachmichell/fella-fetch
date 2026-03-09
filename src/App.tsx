@@ -46,6 +46,10 @@ import StaffSubscriptions from "./pages/staff/StaffSubscriptions";
 import StaffMarketing from "./pages/staff/StaffMarketing";
 import StaffManagement from "./pages/staff/StaffManagement";
 import StaffCommunications from "./pages/staff/StaffCommunications";
+// Groomer pages
+import GroomerLogin from "./pages/groomer/GroomerLogin";
+import GroomerDashboard from "./pages/groomer/GroomerDashboard";
+import GroomerSettings from "./pages/groomer/GroomerSettings";
 
 const queryClient = new QueryClient();
 
