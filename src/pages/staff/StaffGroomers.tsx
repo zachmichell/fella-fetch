@@ -475,6 +475,18 @@ const StaffGroomers = () => {
                           <Button
                             variant="ghost"
                             size="icon"
+                            onClick={() => setMatrixGroomer(groomer)}
+                          >
+                            <Grid3X3 className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Service duration matrix (by size & level)</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={() => {
                               setLinkingGroomer(groomer);
                               setSelectedStaffId(groomer.shopify_staff_id || '');
