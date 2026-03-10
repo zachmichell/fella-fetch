@@ -101,8 +101,6 @@ const StaffGroomers = () => {
     color: '#3b82f6',
   });
   const [draggedGroomer, setDraggedGroomer] = useState<Groomer | null>(null);
-  const [linkingGroomer, setLinkingGroomer] = useState<Groomer | null>(null);
-  const [selectedStaffId, setSelectedStaffId] = useState<string>('');
 
   // Fetch groomers
   const { data: groomers, isLoading } = useQuery({
