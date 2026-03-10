@@ -66,6 +66,7 @@ Deno.serve(async (req) => {
     const groomTypeMatch = notes.match(/Groom Type:\s*([^\n|]+)/);
     const serviceName = serviceMatch ? serviceMatch[1].trim() : 'Grooming Service';
     const groomType = groomTypeMatch ? groomTypeMatch[1].trim() : null;
+    console.log(`Parsed from notes - Service: "${serviceName}", Groom Type: "${groomType}", Raw notes: "${notes}"`);
 
     const pet = reservation.pets as any;
     const client = pet.clients as any;
