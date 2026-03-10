@@ -215,16 +215,7 @@ const StaffGroomers = () => {
     },
   });
 
-  // Fetch Shopify staff
-  const { data: shopifyStaff, isLoading: isLoadingStaff } = useQuery({
-    queryKey: ['shopify-staff'],
-    queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('shopify-staff');
-      if (error) throw error;
-      return (data?.staff || []) as ShopifyStaffMember[];
-    },
-    enabled: !!linkingGroomer,
-  });
+  const [manualStaffName, setManualStaffName] = useState('');
 
   // Link groomer to Shopify staff
   const linkShopifyStaff = useMutation({
