@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
       // Use GraphQL to search for the product by title for reliable matching
       const graphqlQuery = `
         {
-          products(first: 10, query: "title:${serviceName.replace(/"/g, '\\"')}") {
+          products(first: 10, query: "title:\\"${serviceName.replace(/"/g, '\\"')}\\"") {
             edges {
               node {
                 id
