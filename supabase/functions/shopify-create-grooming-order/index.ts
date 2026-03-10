@@ -180,7 +180,7 @@ Deno.serve(async (req) => {
       order: {
         line_items: lineItems,
         note: orderNote,
-        tags: `grooming, lovable-generated, ${groomerName}`,
+        tags: groomerName,
         note_attributes: [
           { name: 'reservation_id', value: reservationId },
           { name: 'pet_name', value: pet.name },
