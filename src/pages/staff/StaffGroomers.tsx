@@ -645,7 +645,7 @@ const StaffGroomers = () => {
       />
 
       {/* Shopify Staff Linking Dialog */}
-      <Dialog open={!!linkingGroomer} onOpenChange={(open) => { if (!open) { setLinkingGroomer(null); setSelectedStaffId(''); } }}>
+      <Dialog open={!!linkingGroomer} onOpenChange={(open) => { if (!open) { setLinkingGroomer(null); setSelectedStaffId(''); setManualStaffName(''); } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
