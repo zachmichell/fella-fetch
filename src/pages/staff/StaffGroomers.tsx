@@ -462,6 +462,7 @@ const StaffGroomers = () => {
                             onClick={() => {
                               setLinkingGroomer(groomer);
                               setSelectedStaffId(groomer.shopify_staff_id || '');
+                              setManualStaffName(groomer.shopify_staff_name || '');
                             }}
                           >
                             {groomer.shopify_staff_id ? (
