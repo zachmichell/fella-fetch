@@ -154,6 +154,8 @@ Deno.serve(async (req) => {
       console.error('Error searching Shopify products:', searchErr);
     }
 
+    const usedVariant = lineItems.length > 0 && lineItems[0].variant_id;
+
     // Fallback: custom line item if no variant found
     if (lineItems.length === 0) {
       const title = groomType 
