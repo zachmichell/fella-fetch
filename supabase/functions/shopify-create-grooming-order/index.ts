@@ -175,9 +175,9 @@ Deno.serve(async (req) => {
       `Time: ${groomTime}`,
     ].filter(Boolean).join(' | ');
 
-    // Build the draft order payload
-    const draftOrderPayload: any = {
-      draft_order: {
+    // Build the order payload
+    const orderPayload: any = {
+      order: {
         line_items: lineItems,
         note: orderNote,
         tags: `grooming, lovable-generated, ${groomerName}`,
@@ -187,39 +187,40 @@ Deno.serve(async (req) => {
           { name: 'groomer_name', value: groomerName },
           { name: 'service_type', value: 'grooming' },
         ],
+        financial_status: 'pending',
       },
     };
 
     // Add customer email if available
     if (clientEmail) {
-      draftOrderPayload.draft_order.email = clientEmail;
+      orderPayload.order.email = clientEmail;
     }
 
-    // Create the draft order via Shopify Admin API
+    // Create the order via Shopify Admin API
     const orderResponse = await fetch(
-      `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/draft_orders.json`,
+      `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/orders.json`,
       {
         method: 'POST',
         headers: {
           'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(draftOrderPayload),
+        body: JSON.stringify(orderPayload),
       }
     );
 
     if (!orderResponse.ok) {
       const errorBody = await orderResponse.text();
-      console.error('Shopify draft order creation failed:', orderResponse.status, errorBody);
-      throw new Error(`Shopify draft order creation failed [${orderResponse.status}]: ${errorBody}`);
+      console.error('Shopify order creation failed:', orderResponse.status, errorBody);
+      throw new Error(`Shopify order creation failed [${orderResponse.status}]: ${errorBody}`);
     }
 
     const orderData = await orderResponse.json();
-    const draftOrder = orderData.draft_order;
-    const shopifyOrderId = String(draftOrder.id);
-    const shopifyOrderName = draftOrder.name;
+    const order = orderData.order;
+    const shopifyOrderId = String(order.id);
+    const shopifyOrderName = order.name;
 
-    console.log(`Shopify draft order created: ${shopifyOrderName} (${shopifyOrderId}) for reservation ${reservationId}`);
+    console.log(`Shopify order created: ${shopifyOrderName} (${shopifyOrderId}) for reservation ${reservationId}`);
 
     return new Response(
       JSON.stringify({
