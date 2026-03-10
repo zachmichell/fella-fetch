@@ -418,28 +418,6 @@ const StaffGroomers = () => {
                         </TooltipTrigger>
                         <TooltipContent>Service duration matrix (by size & level)</TooltipContent>
                       </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setLinkingGroomer(groomer);
-                              setSelectedStaffId(groomer.shopify_staff_id || '');
-                              setManualStaffName(groomer.shopify_staff_name || '');
-                            }}
-                          >
-                            {groomer.shopify_staff_id ? (
-                              <Link2 className="h-4 w-4 text-primary" />
-                            ) : (
-                              <Unlink className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {groomer.shopify_staff_id ? 'Change Shopify link' : 'Link to Shopify staff'}
-                        </TooltipContent>
-                      </Tooltip>
                       <Button
                         variant="ghost"
                         size="sm"
