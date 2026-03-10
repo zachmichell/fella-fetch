@@ -173,7 +173,6 @@ Deno.serve(async (req) => {
       `Groomer: ${groomerName}`,
       `Date: ${groomDate}`,
       `Time: ${groomTime}`,
-      `Reservation: ${reservationId}`,
     ].filter(Boolean).join(' | ');
 
     // Build the draft order payload
