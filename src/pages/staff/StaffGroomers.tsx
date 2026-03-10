@@ -19,11 +19,7 @@ import {
   Save,
   Mail,
   Phone,
-  
   CalendarDays,
-  Link2,
-  Unlink,
-  ShoppingBag,
   Grid3X3
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
