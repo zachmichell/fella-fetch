@@ -76,38 +76,71 @@ Deno.serve(async (req) => {
     let lineItems: any[] = [];
 
     try {
-      const searchUrl = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/products.json?title=${encodeURIComponent(serviceName)}&limit=5`;
-      const productResponse = await fetch(searchUrl, {
-        headers: {
-          'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
-          'Content-Type': 'application/json',
-        },
-      });
+      // Use GraphQL to search for the product by title for reliable matching
+      const graphqlQuery = `
+        {
+          products(first: 10, query: "title:${serviceName.replace(/"/g, '\\"')}") {
+            edges {
+              node {
+                id
+                title
+                variants(first: 50) {
+                  edges {
+                    node {
+                      id
+                      title
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      `;
+
+      const productResponse = await fetch(
+        `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`,
+        {
+          method: 'POST',
+          headers: {
+            'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ query: graphqlQuery }),
+        }
+      );
 
       if (productResponse.ok) {
-        const productData = await productResponse.json();
-        const products = productData.products || [];
+        const graphqlData = await productResponse.json();
+        const productEdges = graphqlData?.data?.products?.edges || [];
         
-        const matchingProduct = products.find(
-          (p: any) => p.title.toLowerCase() === serviceName.toLowerCase()
+        // Find exact title match
+        const matchingEdge = productEdges.find(
+          (edge: any) => edge.node.title.toLowerCase() === serviceName.toLowerCase()
         );
 
-        if (matchingProduct) {
+        if (matchingEdge) {
+          const product = matchingEdge.node;
+          const variants = product.variants.edges.map((e: any) => e.node);
+          
           let matchingVariant = null;
           if (groomType) {
-            matchingVariant = matchingProduct.variants.find(
+            matchingVariant = variants.find(
               (v: any) => v.title.toLowerCase() === groomType.toLowerCase()
             );
           }
-          if (!matchingVariant && matchingProduct.variants.length > 0) {
-            matchingVariant = matchingProduct.variants[0];
+          if (!matchingVariant && variants.length > 0) {
+            matchingVariant = variants[0];
           }
 
           if (matchingVariant) {
+            // Extract numeric ID from GID format (gid://shopify/ProductVariant/12345)
+            const numericId = matchingVariant.id.split('/').pop();
             lineItems.push({
-              variant_id: matchingVariant.id,
+              variant_id: parseInt(numericId, 10),
               quantity: 1,
             });
+            console.log(`Matched Shopify variant: ${matchingVariant.title} (${numericId}) for product: ${product.title}`);
           }
         }
       }
