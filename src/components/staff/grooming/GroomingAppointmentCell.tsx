@@ -60,6 +60,8 @@ export const GroomingAppointmentCell = ({
   };
 
   const handleComplete = async () => {
+    if (isCompleting) return;
+    setIsCompleting(true);
     try {
       const { error } = await supabase
         .from('reservations')
