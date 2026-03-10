@@ -207,28 +207,6 @@ const StaffGroomers = () => {
     },
   });
 
-  const [manualStaffName, setManualStaffName] = useState('');
-
-  // Link groomer to Shopify staff
-  const linkShopifyStaff = useMutation({
-    mutationFn: async ({ groomerId, staffId, staffName }: { groomerId: string; staffId: string | null; staffName: string | null }) => {
-      const { error } = await supabase
-        .from('groomers')
-        .update({ shopify_staff_id: staffId, shopify_staff_name: staffName } as any)
-        .eq('id', groomerId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['groomers-management'] });
-      queryClient.invalidateQueries({ queryKey: ['groomers'] });
-      toast({ title: 'Shopify link updated', description: 'Groomer has been linked to Shopify staff' });
-      setLinkingGroomer(null);
-      setSelectedStaffId('');
-    },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to link Shopify staff', variant: 'destructive' });
-    },
-  });
 
   // Reorder groomers mutation
   const reorderGroomers = useMutation({
