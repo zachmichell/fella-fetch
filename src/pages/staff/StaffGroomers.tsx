@@ -376,12 +376,6 @@ const StaffGroomers = () => {
                             Inactive
                           </Badge>
                         )}
-                        {groomer.shopify_staff_name && (
-                          <Badge variant="secondary" className="text-xs flex items-center gap-1">
-                            <ShoppingBag className="h-3 w-3" />
-                            {groomer.shopify_staff_name}
-                          </Badge>
-                        )}
                       </div>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         {groomer.email && (
