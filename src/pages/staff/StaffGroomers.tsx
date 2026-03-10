@@ -70,13 +70,6 @@ interface Groomer {
   user_id: string | null;
 }
 
-interface ShopifyStaffMember {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  account_owner: boolean;
-}
 
 interface GroomerFormData {
   name: string;
