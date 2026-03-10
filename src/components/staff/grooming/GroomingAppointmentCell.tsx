@@ -42,6 +42,7 @@ export const GroomingAppointmentCell = ({
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [isDragging, setIsDragging] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
   
   const { productTitle, variantTitle } = useMemo(
     () => parseGroomingNotes(appointment.notes),
@@ -59,6 +60,8 @@ export const GroomingAppointmentCell = ({
   };
 
   const handleComplete = async () => {
+    if (isCompleting) return;
+    setIsCompleting(true);
     try {
       const { error } = await supabase
         .from('reservations')
@@ -116,6 +119,8 @@ export const GroomingAppointmentCell = ({
         description: 'Failed to update appointment',
         variant: 'destructive',
       });
+    } finally {
+      setIsCompleting(false);
     }
   };
 

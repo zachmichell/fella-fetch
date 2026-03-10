@@ -19,11 +19,7 @@ import {
   Save,
   Mail,
   Phone,
-  
   CalendarDays,
-  Link2,
-  Unlink,
-  ShoppingBag,
   Grid3X3
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -60,8 +56,6 @@ interface Groomer {
   color: string | null;
   is_active: boolean;
   sort_order: number | null;
-  shopify_staff_id: string | null;
-  shopify_staff_name: string | null;
   intake_style: string;
   stagger_duration: number;
   end_of_day_safeguard: boolean;
@@ -107,8 +101,6 @@ const StaffGroomers = () => {
     color: '#3b82f6',
   });
   const [draggedGroomer, setDraggedGroomer] = useState<Groomer | null>(null);
-  const [linkingGroomer, setLinkingGroomer] = useState<Groomer | null>(null);
-  const [selectedStaffId, setSelectedStaffId] = useState<string>('');
 
   // Fetch groomers
   const { data: groomers, isLoading } = useQuery({
@@ -215,28 +207,6 @@ const StaffGroomers = () => {
     },
   });
 
-  const [manualStaffName, setManualStaffName] = useState('');
-
-  // Link groomer to Shopify staff
-  const linkShopifyStaff = useMutation({
-    mutationFn: async ({ groomerId, staffId, staffName }: { groomerId: string; staffId: string | null; staffName: string | null }) => {
-      const { error } = await supabase
-        .from('groomers')
-        .update({ shopify_staff_id: staffId, shopify_staff_name: staffName } as any)
-        .eq('id', groomerId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['groomers-management'] });
-      queryClient.invalidateQueries({ queryKey: ['groomers'] });
-      toast({ title: 'Shopify link updated', description: 'Groomer has been linked to Shopify staff' });
-      setLinkingGroomer(null);
-      setSelectedStaffId('');
-    },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to link Shopify staff', variant: 'destructive' });
-    },
-  });
 
   // Reorder groomers mutation
   const reorderGroomers = useMutation({
@@ -406,12 +376,6 @@ const StaffGroomers = () => {
                             Inactive
                           </Badge>
                         )}
-                        {groomer.shopify_staff_name && (
-                          <Badge variant="secondary" className="text-xs flex items-center gap-1">
-                            <ShoppingBag className="h-3 w-3" />
-                            {groomer.shopify_staff_name}
-                          </Badge>
-                        )}
                       </div>
                       <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         {groomer.email && (
@@ -453,28 +417,6 @@ const StaffGroomers = () => {
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>Service duration matrix (by size & level)</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setLinkingGroomer(groomer);
-                              setSelectedStaffId(groomer.shopify_staff_id || '');
-                              setManualStaffName(groomer.shopify_staff_name || '');
-                            }}
-                          >
-                            {groomer.shopify_staff_id ? (
-                              <Link2 className="h-4 w-4 text-primary" />
-                            ) : (
-                              <Unlink className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {groomer.shopify_staff_id ? 'Change Shopify link' : 'Link to Shopify staff'}
-                        </TooltipContent>
                       </Tooltip>
                       <Button
                         variant="ghost"
@@ -645,61 +587,6 @@ const StaffGroomers = () => {
         onOpenChange={(open) => !open && setScheduleGroomer(null)}
       />
 
-      {/* Shopify Staff Linking Dialog */}
-      <Dialog open={!!linkingGroomer} onOpenChange={(open) => { if (!open) { setLinkingGroomer(null); setSelectedStaffId(''); setManualStaffName(''); } }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ShoppingBag className="h-5 w-5" />
-              Link to Shopify Staff
-            </DialogTitle>
-            <DialogDescription>
-              Link "{linkingGroomer?.name}" to a Shopify staff member for commission and order attribution.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Enter the Shopify staff member's name exactly as it appears in your Shopify admin. This is used for commission and order attribution.
-            </p>
-            <div className="space-y-2">
-              <Label>Staff Member Name</Label>
-              <Input
-                placeholder="e.g. Jane Smith"
-                value={manualStaffName}
-                onChange={(e) => setManualStaffName(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <DialogFooter className="flex gap-2">
-            {linkingGroomer?.shopify_staff_id && (
-              <Button
-                variant="outline"
-                onClick={() => linkShopifyStaff.mutate({ groomerId: linkingGroomer.id, staffId: null, staffName: null })}
-                disabled={linkShopifyStaff.isPending}
-              >
-                <Unlink className="h-4 w-4 mr-2" />
-                Unlink
-              </Button>
-            )}
-            <Button
-              onClick={() => {
-                if (!linkingGroomer || !manualStaffName.trim()) return;
-                linkShopifyStaff.mutate({ groomerId: linkingGroomer.id, staffId: manualStaffName.trim(), staffName: manualStaffName.trim() });
-              }}
-              disabled={!manualStaffName.trim() || linkShopifyStaff.isPending}
-            >
-              {linkShopifyStaff.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <Link2 className="h-4 w-4 mr-2" />
-              )}
-              Link Staff
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </StaffLayout>
   );
 };

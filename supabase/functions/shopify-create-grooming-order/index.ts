@@ -43,41 +43,37 @@ Deno.serve(async (req) => {
       throw new Error(`Reservation not found: ${resError?.message || 'unknown'}`);
     }
 
-    // Fetch the groomer with Shopify staff name
-    let shopifyStaffName: string | null = null;
+    // Fetch the groomer name
     let groomerName = 'Unassigned';
 
     if (reservation.groomer_id) {
       const { data: groomer } = await supabase
         .from('groomers')
-        .select('name, shopify_staff_id, shopify_staff_name')
+        .select('name')
         .eq('id', reservation.groomer_id)
         .single();
 
       if (groomer) {
         groomerName = groomer.name;
-        shopifyStaffName = groomer.shopify_staff_name || null;
       }
     }
 
-    // Parse service and groom type from notes
+    // Parse service and groom type from notes (format: "Groom Type: Large / Level 2 | Service: Bath & Brush | ...")
     const notes = reservation.notes || '';
-    const serviceMatch = notes.match(/Service:\s*([^\n|]+)/);
-    const groomTypeMatch = notes.match(/Groom Type:\s*([^\n|]+)/);
+    const serviceMatch = notes.match(/Service:\s*([^|\n]+)/);
+    const groomTypeMatch = notes.match(/Groom Type:\s*([^|\n]+)/);
     const serviceName = serviceMatch ? serviceMatch[1].trim() : 'Grooming Service';
     const groomType = groomTypeMatch ? groomTypeMatch[1].trim() : null;
-    console.log(`Parsed from notes - Service: "${serviceName}", Groom Type: "${groomType}", Raw notes: "${notes}"`);
+    console.log(`Parsed from notes - Service: "${serviceName}", Groom Type: "${groomType}"`);
 
     const pet = reservation.pets as any;
     const client = pet.clients as any;
-    const clientName = `${client.first_name} ${client.last_name}`.trim();
     const clientEmail = client.email || '';
 
     // Try to find the Shopify variant for proper line items
     let lineItems: any[] = [];
 
     try {
-      // Use GraphQL to search for the product by title for reliable matching
       const graphqlQuery = `
         {
           products(first: 10, query: "title:\\"${serviceName.replace(/"/g, '\\"')}\\"") {
@@ -116,7 +112,6 @@ Deno.serve(async (req) => {
         console.log('GraphQL product search response:', JSON.stringify(graphqlData));
         const productEdges = graphqlData?.data?.products?.edges || [];
         
-        // Find exact title match
         const matchingEdge = productEdges.find(
           (edge: any) => edge.node.title.toLowerCase() === serviceName.toLowerCase()
         );
@@ -124,15 +119,19 @@ Deno.serve(async (req) => {
         if (matchingEdge) {
           const product = matchingEdge.node;
           const variants = product.variants.edges.map((e: any) => e.node);
+          console.log(`Found product "${product.title}" with ${variants.length} variants: ${variants.map((v: any) => v.title).join(', ')}`);
           
           let matchingVariant = null;
           if (groomType) {
+            // Exact match on variant title
             matchingVariant = variants.find(
               (v: any) => v.title.toLowerCase() === groomType.toLowerCase()
             );
+            console.log(`Variant match for "${groomType}": ${matchingVariant ? matchingVariant.title : 'NOT FOUND'}`);
           }
           if (!matchingVariant && variants.length > 0) {
             matchingVariant = variants[0];
+            console.log(`Falling back to first variant: ${matchingVariant.title}`);
           }
 
           if (matchingVariant) {
@@ -141,27 +140,22 @@ Deno.serve(async (req) => {
               variant_id: parseInt(numericId, 10),
               quantity: 1,
             });
-            console.log(`Matched Shopify variant: ${matchingVariant.title} (${numericId}) for product: ${product.title}`);
+            console.log(`Using variant: ${matchingVariant.title} (${numericId})`);
           }
         } else {
-          console.log(`No exact title match found for "${serviceName}" among ${productEdges.length} results`);
+          console.log(`No exact title match for "${serviceName}" among ${productEdges.length} results`);
         }
       } else {
         const errText = await productResponse.text();
-        console.error(`GraphQL product search failed: ${productResponse.status} - ${errText}`);
+        console.error(`GraphQL search failed: ${productResponse.status} - ${errText}`);
       }
     } catch (searchErr) {
       console.error('Error searching Shopify products:', searchErr);
     }
 
-    const usedVariant = lineItems.length > 0 && lineItems[0].variant_id;
-
     // Fallback: custom line item if no variant found
     if (lineItems.length === 0) {
-      const title = groomType 
-        ? `${serviceName} - ${groomType}`
-        : serviceName;
-      
+      const title = groomType ? `${serviceName} - ${groomType}` : serviceName;
       lineItems.push({
         title,
         quantity: 1,
@@ -169,11 +163,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Build note with staff attribution
+    // Build note with groomer attribution
     const orderNote = [
       `Grooming for ${pet.name} (${pet.breed || 'Unknown breed'})`,
       `Groomer: ${groomerName}`,
-      shopifyStaffName ? `Shopify Staff: ${shopifyStaffName}` : null,
       `Reservation: ${reservationId}`,
     ].filter(Boolean).join(' | ');
 
@@ -182,12 +175,11 @@ Deno.serve(async (req) => {
       draft_order: {
         line_items: lineItems,
         note: orderNote,
-        tags: `grooming, lovable-generated${shopifyStaffName ? `, ${shopifyStaffName}` : ''}`,
+        tags: `grooming, lovable-generated, ${groomerName}`,
         note_attributes: [
           { name: 'reservation_id', value: reservationId },
           { name: 'pet_name', value: pet.name },
           { name: 'groomer_name', value: groomerName },
-          { name: 'shopify_staff_name', value: shopifyStaffName || '' },
           { name: 'service_type', value: 'grooming' },
         ],
       },
@@ -220,7 +212,7 @@ Deno.serve(async (req) => {
     const orderData = await orderResponse.json();
     const draftOrder = orderData.draft_order;
     const shopifyOrderId = String(draftOrder.id);
-    const shopifyOrderName = draftOrder.name; // e.g., #D1
+    const shopifyOrderName = draftOrder.name;
 
     console.log(`Shopify draft order created: ${shopifyOrderName} (${shopifyOrderId}) for reservation ${reservationId}`);
 
@@ -229,7 +221,6 @@ Deno.serve(async (req) => {
         success: true,
         shopify_order_id: shopifyOrderId,
         shopify_order_name: shopifyOrderName,
-        staff_attribution: shopifyStaffName || null,
       }),
       {
         status: 200,
