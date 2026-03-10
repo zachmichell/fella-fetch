@@ -119,6 +119,8 @@ export const GroomingAppointmentCell = ({
         description: 'Failed to update appointment',
         variant: 'destructive',
       });
+    } finally {
+      setIsCompleting(false);
     }
   };
 
