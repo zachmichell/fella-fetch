@@ -230,6 +230,13 @@ Deno.serve(async (req) => {
         shopify_order_id: shopifyOrderId,
         shopify_order_name: shopifyOrderName,
         staff_attribution: shopifyStaffName || null,
+        debug: {
+          parsed_service: serviceName,
+          parsed_groom_type: groomType,
+          used_variant: usedVariant,
+          line_items: lineItems,
+          tags: draftOrder.tags,
+        },
       }),
       {
         status: 200,
