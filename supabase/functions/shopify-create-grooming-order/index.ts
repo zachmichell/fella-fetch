@@ -163,10 +163,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Build note with groomer attribution
+    // Format date and time for the note
+    const groomDate = reservation.start_date || 'Unknown date';
+    const groomTime = reservation.start_time || 'Unknown time';
+
+    // Build note with groomer attribution and appointment details
     const orderNote = [
       `Grooming for ${pet.name} (${pet.breed || 'Unknown breed'})`,
       `Groomer: ${groomerName}`,
+      `Date: ${groomDate}`,
+      `Time: ${groomTime}`,
       `Reservation: ${reservationId}`,
     ].filter(Boolean).join(' | ');
 
