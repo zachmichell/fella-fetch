@@ -20,7 +20,7 @@ interface UseTypingIndicatorOptions {
 export const useTypingIndicator = ({ channelName, userId, userName }: UseTypingIndicatorOptions) => {
   const [othersTyping, setOthersTyping] = useState<TypingState>({});
   const channelRef = useRef<RealtimeChannel | null>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Clean up stale typing indicators (older than 3 seconds)
   useEffect(() => {

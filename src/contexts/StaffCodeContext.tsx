@@ -34,7 +34,7 @@ export function StaffCodeProvider({ children }: { children: ReactNode }) {
   const [isLocked, setIsLocked] = useState(true);
   const [initialized, setInitialized] = useState(false);
   const [inactivityTimeout, setInactivityTimeout] = useState(DEFAULT_INACTIVITY_TIMEOUT);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Fetch inactivity timeout from system settings
   useEffect(() => {
