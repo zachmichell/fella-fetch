@@ -113,6 +113,7 @@ Deno.serve(async (req) => {
 
       if (productResponse.ok) {
         const graphqlData = await productResponse.json();
+        console.log('GraphQL product search response:', JSON.stringify(graphqlData));
         const productEdges = graphqlData?.data?.products?.edges || [];
         
         // Find exact title match
@@ -135,7 +136,6 @@ Deno.serve(async (req) => {
           }
 
           if (matchingVariant) {
-            // Extract numeric ID from GID format (gid://shopify/ProductVariant/12345)
             const numericId = matchingVariant.id.split('/').pop();
             lineItems.push({
               variant_id: parseInt(numericId, 10),
@@ -143,7 +143,12 @@ Deno.serve(async (req) => {
             });
             console.log(`Matched Shopify variant: ${matchingVariant.title} (${numericId}) for product: ${product.title}`);
           }
+        } else {
+          console.log(`No exact title match found for "${serviceName}" among ${productEdges.length} results`);
         }
+      } else {
+        const errText = await productResponse.text();
+        console.error(`GraphQL product search failed: ${productResponse.status} - ${errText}`);
       }
     } catch (searchErr) {
       console.error('Error searching Shopify products:', searchErr);
