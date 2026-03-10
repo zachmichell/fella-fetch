@@ -56,8 +56,6 @@ interface Groomer {
   color: string | null;
   is_active: boolean;
   sort_order: number | null;
-  shopify_staff_id: string | null;
-  shopify_staff_name: string | null;
   intake_style: string;
   stagger_duration: number;
   end_of_day_safeguard: boolean;
