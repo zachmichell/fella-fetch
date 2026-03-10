@@ -587,61 +587,6 @@ const StaffGroomers = () => {
         onOpenChange={(open) => !open && setScheduleGroomer(null)}
       />
 
-      {/* Shopify Staff Linking Dialog */}
-      <Dialog open={!!linkingGroomer} onOpenChange={(open) => { if (!open) { setLinkingGroomer(null); setSelectedStaffId(''); setManualStaffName(''); } }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ShoppingBag className="h-5 w-5" />
-              Link to Shopify Staff
-            </DialogTitle>
-            <DialogDescription>
-              Link "{linkingGroomer?.name}" to a Shopify staff member for commission and order attribution.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Enter the Shopify staff member's name exactly as it appears in your Shopify admin. This is used for commission and order attribution.
-            </p>
-            <div className="space-y-2">
-              <Label>Staff Member Name</Label>
-              <Input
-                placeholder="e.g. Jane Smith"
-                value={manualStaffName}
-                onChange={(e) => setManualStaffName(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <DialogFooter className="flex gap-2">
-            {linkingGroomer?.shopify_staff_id && (
-              <Button
-                variant="outline"
-                onClick={() => linkShopifyStaff.mutate({ groomerId: linkingGroomer.id, staffId: null, staffName: null })}
-                disabled={linkShopifyStaff.isPending}
-              >
-                <Unlink className="h-4 w-4 mr-2" />
-                Unlink
-              </Button>
-            )}
-            <Button
-              onClick={() => {
-                if (!linkingGroomer || !manualStaffName.trim()) return;
-                linkShopifyStaff.mutate({ groomerId: linkingGroomer.id, staffId: manualStaffName.trim(), staffName: manualStaffName.trim() });
-              }}
-              disabled={!manualStaffName.trim() || linkShopifyStaff.isPending}
-            >
-              {linkShopifyStaff.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <Link2 className="h-4 w-4 mr-2" />
-              )}
-              Link Staff
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </StaffLayout>
   );
 };
