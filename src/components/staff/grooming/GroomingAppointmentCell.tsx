@@ -42,6 +42,7 @@ export const GroomingAppointmentCell = ({
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [isDragging, setIsDragging] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
   
   const { productTitle, variantTitle } = useMemo(
     () => parseGroomingNotes(appointment.notes),
