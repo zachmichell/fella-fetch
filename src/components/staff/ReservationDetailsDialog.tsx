@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useVisitCareLogs } from '@/hooks/useVisitCareLogs';
 import { VisitCareLogList } from '@/components/client/VisitCareLogList';
 import {
@@ -88,7 +88,7 @@ export function ReservationDetailsDialog({
   const [isEditing, setIsEditing] = useState(initialEdit);
   const [isSaving, setIsSaving] = useState(false);
 
-  const [editData, setEditData] = useState({
+  const buildEditData = () => ({
     start_date: reservation.start_date,
     end_date: reservation.end_date || '',
     start_time: reservation.start_time || '',
@@ -96,6 +96,14 @@ export function ReservationDetailsDialog({
     notes: reservation.notes || '',
     service_type: reservation.service_type,
   });
+
+  const [editData, setEditData] = useState(buildEditData);
+
+  // Reset state when reservation or dialog changes
+  useEffect(() => {
+    setEditData(buildEditData());
+    setIsEditing(initialEdit);
+  }, [reservation.id, initialEdit]);
 
   const handleStartEdit = () => {
     setEditData({
