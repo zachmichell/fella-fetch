@@ -105,6 +105,12 @@ const StaffCommunications = () => {
         message: DEFAULT_CHECKIN_MESSAGE,
       });
       setCheckinNotification(savedCheckin);
+
+      const savedCheckout = getSetting<NotificationSettings>('checkout_notification_sms', {
+        enabled: false,
+        message: DEFAULT_CHECKOUT_MESSAGE,
+      });
+      setCheckoutNotification(savedCheckout);
     }
   }, [isLoading]);
 
