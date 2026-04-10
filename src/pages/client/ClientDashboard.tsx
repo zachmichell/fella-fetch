@@ -128,7 +128,6 @@ const ClientDashboard = () => {
     getVisitProgress: (v: typeof currentVisits[0]) => { progress: number; elapsed: string; estimatedEnd: Date | null } 
   }) => {
     const { progress, elapsed, estimatedEnd } = getVisitProgress(visit);
-    const { progress, elapsed, estimatedEnd } = getVisitProgress(visit);
     
     return (
       <div className="p-4 rounded-lg bg-background border">
