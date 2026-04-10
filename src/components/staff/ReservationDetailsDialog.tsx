@@ -530,14 +530,3 @@ export function ReservationDetailsDialog({
     </Dialog>
   );
 }
-
-function CareLogsSection({ petId, reservationId }: { petId: string; reservationId: string }) {
-  const { data: logs = [], isLoading } = useVisitCareLogs(petId, reservationId);
-
-  return (
-    <>
-      <Separator />
-      <VisitCareLogList logs={logs} isLoading={isLoading} />
-    </>
-  );
-}
