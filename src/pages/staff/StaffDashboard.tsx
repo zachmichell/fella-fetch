@@ -136,7 +136,7 @@ const StaffDashboard = () => {
   };
 
   const fetchDashboardData = useCallback(async () => {
-
+    if (!isStaffOrAdmin) {
       setLoading(false);
       return;
     }
