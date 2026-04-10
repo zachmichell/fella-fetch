@@ -673,6 +673,15 @@ export function ControlCenterTable({
                             <Tags className="h-4 w-4 mr-2" />
                             Manage Traits
                           </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setCareLogReservation(reservation);
+                              setCareLogDialogOpen(true);
+                            }}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Log Care Activity
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -913,6 +922,20 @@ export function ControlCenterTable({
           reservation={detailsReservation}
           onUpdated={onTraitsUpdated}
           initialEdit={detailsInitialEdit}
+        />
+      )}
+
+      {/* Add Care Log Dialog */}
+      {careLogReservation && (
+        <AddCareLogDialog
+          open={careLogDialogOpen}
+          onOpenChange={(open) => {
+            setCareLogDialogOpen(open);
+            if (!open) setCareLogReservation(null);
+          }}
+          petId={careLogReservation.pet_id}
+          petName={careLogReservation.pet_name}
+          reservationId={careLogReservation.id}
         />
       )}
     </div>
