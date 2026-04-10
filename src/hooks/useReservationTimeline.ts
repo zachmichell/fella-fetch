@@ -74,25 +74,18 @@ export function useReservationTimeline(reservationId: string | undefined, petId:
       if (careRes.data && careRes.data.length > 0) {
         const feedingIds = careRes.data.filter(l => l.log_type === 'feeding').map(l => l.reference_id);
         const medIds = careRes.data.filter(l => l.log_type === 'medication').map(l => l.reference_id);
-        const staffIds = [...new Set(careRes.data.map(l => l.administered_by))];
 
-        const [feedingRes, medRes, staffRes] = await Promise.all([
+        const [feedingRes, medRes] = await Promise.all([
           feedingIds.length > 0
             ? supabase.from('pet_feeding_schedules').select('id, food_type').in('id', feedingIds)
             : Promise.resolve({ data: [] }),
           medIds.length > 0
             ? supabase.from('pet_medications').select('id, name').in('id', medIds)
             : Promise.resolve({ data: [] }),
-          staffIds.length > 0
-            ? supabase.from('profiles').select('user_id, first_name, last_name').in('user_id', staffIds)
-            : Promise.resolve({ data: [] }),
         ]);
 
         const feedingMap = new Map((feedingRes.data || []).map(f => [f.id, f.food_type]));
         const medMap = new Map((medRes.data || []).map(m => [m.id, m.name]));
-        const staffMap = new Map(
-          (staffRes.data || []).map(s => [s.user_id, `${s.first_name || ''} ${s.last_name || ''}`.trim()])
-        );
 
         for (const log of careRes.data) {
           const refName = log.log_type === 'feeding'
