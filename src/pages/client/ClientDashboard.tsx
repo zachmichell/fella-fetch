@@ -7,8 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Calendar, Clock, CalendarDays, Plus, AlertTriangle, ExternalLink, Dog, PawPrint } from 'lucide-react';
 import { ClientPortalLayout } from '@/components/client/ClientPortalLayout';
 import { Progress } from '@/components/ui/progress';
-import { VisitCareLogList } from '@/components/client/VisitCareLogList';
-import { useVisitCareLogs } from '@/hooks/useVisitCareLogs';
 import { ClientActivityTimeline } from '@/components/client/ClientActivityTimeline';
 import { format, parseISO, isFuture, isToday, differenceInMinutes, differenceInHours } from 'date-fns';
 
@@ -129,7 +127,7 @@ const ClientDashboard = () => {
     visit: typeof currentVisits[0]; 
     getVisitProgress: (v: typeof currentVisits[0]) => { progress: number; elapsed: string; estimatedEnd: Date | null } 
   }) => {
-    const { data: careLogs = [], isLoading: careLogsLoading } = useVisitCareLogs(visit.pets.id, visit.id);
+    const { progress, elapsed, estimatedEnd } = getVisitProgress(visit);
     const { progress, elapsed, estimatedEnd } = getVisitProgress(visit);
     
     return (
