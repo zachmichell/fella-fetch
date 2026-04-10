@@ -25,12 +25,14 @@ interface WebhookUrls {
   marketing_email: string;
 }
 
-interface GroomingPickupSettings {
+interface NotificationSettings {
   enabled: boolean;
   message: string;
 }
 
 const DEFAULT_GROOMING_PICKUP_MESSAGE = `Hi {{client_name}}, {{pet_names}} is all done with their {{service_type}} at {{business_name}}! Ready for pickup. 🐾`;
+
+const DEFAULT_CHECKIN_MESSAGE = `Hi {{client_name}}, {{pet_name}} has been checked in for {{service_type}} at {{business_name}}! 🐾`;
 
 const StaffCommunications = () => {
   const { isAdmin } = useAuth();
@@ -51,11 +53,17 @@ const StaffCommunications = () => {
   });
   const [isSavingWebhooks, setIsSavingWebhooks] = useState(false);
 
-  const [groomingPickup, setGroomingPickup] = useState<GroomingPickupSettings>({
+  const [groomingPickup, setGroomingPickup] = useState<NotificationSettings>({
     enabled: false,
     message: DEFAULT_GROOMING_PICKUP_MESSAGE,
   });
   const [isSavingGrooming, setIsSavingGrooming] = useState(false);
+
+  const [checkinNotification, setCheckinNotification] = useState<NotificationSettings>({
+    enabled: false,
+    message: DEFAULT_CHECKIN_MESSAGE,
+  });
+  const [isSavingCheckin, setIsSavingCheckin] = useState(false);
 
   const initialized = useRef(false);
   useEffect(() => {
