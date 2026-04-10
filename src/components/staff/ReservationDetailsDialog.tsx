@@ -508,8 +508,9 @@ export function ReservationDetailsDialog({
             )}
           </div>
 
-          {/* Care Activity Logs */}
-          <CareLogsSection petId={reservation.pet_id} reservationId={reservation.id} />
+          {/* Activity Timeline */}
+          <Separator />
+          <ReservationTimeline reservationId={reservation.id} petId={reservation.pet_id} />
         </div>
 
         {/* Edit action buttons */}
