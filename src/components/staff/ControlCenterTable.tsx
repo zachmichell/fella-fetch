@@ -33,6 +33,7 @@ import {
   Tags,
   DollarSign,
   Scissors,
+  FileText,
   Clock,
   Repeat,
   ArrowUp,
