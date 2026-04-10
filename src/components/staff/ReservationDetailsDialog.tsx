@@ -3,7 +3,7 @@ import { useVisitCareLogs } from '@/hooks/useVisitCareLogs';
 import { VisitCareLogList } from '@/components/client/VisitCareLogList';
 import { ReservationTimeline } from './ReservationTimeline';
 import { usePetActivityLog } from '@/hooks/usePetActivityLog';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import {
   Dialog,
   DialogContent,
@@ -93,6 +93,19 @@ export function ReservationDetailsDialog({
   const [isEditing, setIsEditing] = useState(initialEdit);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Fetch all service types from the database
+  const { data: serviceTypes = [] } = useQuery({
+    queryKey: ['service-types-for-edit'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('service_types')
+        .select('id, name, display_name, category')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+      return data || [];
+    },
+  });
+
   const buildEditData = () => ({
     start_date: reservation.start_date,
     end_date: reservation.end_date || '',
@@ -100,7 +113,14 @@ export function ReservationDetailsDialog({
     end_time: reservation.end_time || '',
     notes: reservation.notes || '',
     service_type: reservation.service_type,
+    selected_service_type_name: getServiceTypeNameFromReservation(reservation),
   });
+
+  function getServiceTypeNameFromReservation(res: ControlCenterReservation): string {
+    const notes = res.notes || '';
+    if (res.service_type === 'daycare' && notes.toLowerCase().includes('half day')) return 'half_daycare';
+    return res.service_type;
+  }
 
   const [editData, setEditData] = useState(buildEditData);
 
@@ -118,6 +138,7 @@ export function ReservationDetailsDialog({
       end_time: reservation.end_time || '',
       notes: reservation.notes || '',
       service_type: reservation.service_type,
+      selected_service_type_name: getServiceTypeNameFromReservation(reservation),
     });
     setIsEditing(true);
   };
@@ -126,9 +147,38 @@ export function ReservationDetailsDialog({
     setIsEditing(false);
   };
 
+  // Map service type name to the DB enum and update notes for sub-types
+  const resolveServiceType = (name: string) => {
+    const enumMap: Record<string, string> = {
+      daycare: 'daycare',
+      half_daycare: 'daycare',
+      boarding: 'boarding',
+      grooming: 'grooming',
+      training: 'training',
+      assessment: 'daycare',
+      nail_trim: 'grooming',
+      bath: 'grooming',
+    };
+    return (enumMap[name] || 'daycare') as 'daycare' | 'boarding' | 'grooming' | 'training';
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      const resolvedType = resolveServiceType(editData.selected_service_type_name);
+      const selectedSt = serviceTypes.find(st => st.name === editData.selected_service_type_name);
+      const displayName = selectedSt?.display_name || editData.selected_service_type_name;
+
+      // Update notes to reflect service sub-type
+      let updatedNotes = editData.notes || '';
+      // Remove old service/day-type markers
+      updatedNotes = updatedNotes.replace(/\b(Full Day|Half Day)\b/gi, '').trim();
+      if (editData.selected_service_type_name === 'half_daycare') {
+        updatedNotes = `Half Day${updatedNotes ? ' | ' + updatedNotes : ''}`;
+      } else if (editData.selected_service_type_name === 'daycare') {
+        updatedNotes = `Full Day${updatedNotes ? ' | ' + updatedNotes : ''}`;
+      }
+
       const { error } = await supabase
         .from('reservations')
         .update({
@@ -136,8 +186,8 @@ export function ReservationDetailsDialog({
           end_date: editData.end_date || null,
           start_time: editData.start_time || null,
           end_time: editData.end_time || null,
-          notes: editData.notes || null,
-          service_type: editData.service_type as any,
+          notes: updatedNotes || null,
+          service_type: resolvedType as any,
         })
         .eq('id', reservation.id);
 
@@ -149,8 +199,8 @@ export function ReservationDetailsDialog({
       if (editData.end_date !== (reservation.end_date || '')) changes.push(`end date → ${editData.end_date || 'none'}`);
       if (editData.start_time !== (reservation.start_time || '')) changes.push(`start time → ${editData.start_time || 'none'}`);
       if (editData.end_time !== (reservation.end_time || '')) changes.push(`end time → ${editData.end_time || 'none'}`);
-      if (editData.service_type !== reservation.service_type) changes.push(`service type → ${editData.service_type}`);
-      if (editData.notes !== (reservation.notes || '')) changes.push('notes updated');
+      if (editData.selected_service_type_name !== getServiceTypeNameFromReservation(reservation)) changes.push(`service type → ${displayName}`);
+      if (updatedNotes !== (reservation.notes || '')) changes.push('notes updated');
 
       const changeDesc = changes.length > 0 ? changes.join(', ') : 'reservation details';
 
@@ -267,17 +317,18 @@ export function ReservationDetailsDialog({
               <div className="mt-1">
                 {isEditing ? (
                   <Select
-                    value={editData.service_type}
-                    onValueChange={(v) => setEditData(prev => ({ ...prev, service_type: v }))}
+                    value={editData.selected_service_type_name}
+                    onValueChange={(v) => setEditData(prev => ({ ...prev, selected_service_type_name: v, service_type: resolveServiceType(v) }))}
                   >
                     <SelectTrigger className="h-8">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="daycare">Daycare</SelectItem>
-                      <SelectItem value="boarding">Boarding</SelectItem>
-                      <SelectItem value="grooming">Grooming</SelectItem>
-                      <SelectItem value="training">Training</SelectItem>
+                      {serviceTypes.map((st) => (
+                        <SelectItem key={st.id} value={st.name}>
+                          {st.display_name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 ) : (
