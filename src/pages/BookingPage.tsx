@@ -750,6 +750,43 @@ const BookingPage = () => {
     }
   };
 
+  // Check if any selected pets already have reservations on the given date(s)
+  const checkExistingBookings = async (
+    pets: SelectedPet[],
+    dates: string[]
+  ): Promise<{ hasConflict: boolean; message: string }> => {
+    const petIds = pets.map(p => p.id);
+    const { data: existing } = await supabase
+      .from('reservations')
+      .select('pet_id, start_date, end_date, service_type, status')
+      .in('pet_id', petIds)
+      .in('status', ['pending', 'confirmed', 'checked_in']);
+
+    if (!existing || existing.length === 0) return { hasConflict: false, message: '' };
+
+    const conflicts: string[] = [];
+    for (const pet of pets) {
+      for (const date of dates) {
+        const dateObj = parseLocalDate(date);
+        const match = existing.find(r => {
+          if (r.pet_id !== pet.id) return false;
+          const rStart = parseLocalDate(r.start_date);
+          const rEnd = r.end_date ? parseLocalDate(r.end_date) : rStart;
+          return dateObj >= rStart && dateObj <= rEnd;
+        });
+        if (match) {
+          const svcLabel = match.service_type.charAt(0).toUpperCase() + match.service_type.slice(1);
+          conflicts.push(`${pet.name} already has a ${svcLabel} booking on ${format(parseLocalDate(date), 'MMM d, yyyy')}`);
+        }
+      }
+    }
+
+    if (conflicts.length === 0) return { hasConflict: false, message: '' };
+    // Deduplicate
+    const unique = [...new Set(conflicts)];
+    return { hasConflict: true, message: unique.join('\n') };
+  };
+
   // Submit grooming reservation
   const handleSubmitGroomingReservation = async () => {
     if (!bookingData.groomingDate || !bookingData.groomingTime || bookingData.selectedPets.length === 0) {
