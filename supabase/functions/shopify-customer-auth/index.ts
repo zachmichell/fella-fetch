@@ -22,7 +22,7 @@ serve(async (req) => {
       throw new Error('Shopify storefront token not configured');
     }
 
-    const { action, email, password, accessToken, reservations } = await req.json();
+    const { action, email, password, accessToken, reservations, reservationId, petId } = await req.json();
 
     // Create a Storefront Access Token using Admin API
     if (action === 'createStorefrontToken') {
