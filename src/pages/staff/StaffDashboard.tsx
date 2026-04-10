@@ -47,6 +47,51 @@ const StaffDashboard = () => {
   const [traitAlertPetName, setTraitAlertPetName] = useState('');
   const [pendingTraitAction, setPendingTraitAction] = useState<{ type: 'checkin' | 'checkout'; reservation: ControlCenterReservation } | null>(null);
 
+  // Send check-in SMS notification if enabled and client has opted in
+  const sendCheckInNotification = async (reservation: ControlCenterReservation) => {
+    try {
+      // Check if check-in notification is enabled in settings
+      const { data: settingData } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'checkin_notification_sms')
+        .maybeSingle();
+
+      const settings = settingData?.value as { enabled: boolean; message: string } | null;
+      if (!settings?.enabled) return;
+
+      // Fetch client details (phone, opt-in, name)
+      const { data: client } = await supabase
+        .from('clients')
+        .select('phone, sms_reminders_opt_in, first_name, last_name')
+        .eq('id', reservation.client_id)
+        .maybeSingle();
+
+      if (!client?.phone || !client.sms_reminders_opt_in) return;
+
+      // Fetch business name
+      const { data: bizSetting } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'business_name')
+        .maybeSingle();
+      const businessName = (bizSetting?.value as string) || 'our facility';
+
+      // Resolve template variables
+      const message = settings.message
+        .replace(/\{\{client_name\}\}/g, `${client.first_name} ${client.last_name}`.trim())
+        .replace(/\{\{pet_name\}\}/g, reservation.pet_name)
+        .replace(/\{\{service_type\}\}/g, reservation.service_type)
+        .replace(/\{\{business_name\}\}/g, businessName);
+
+      await supabase.functions.invoke('send-sms', {
+        body: { to: client.phone, message },
+      });
+    } catch (err) {
+      console.error('Failed to send check-in notification:', err);
+    }
+  };
+
   const fetchDashboardData = useCallback(async () => {
     if (!isStaffOrAdmin) {
       setLoading(false);
