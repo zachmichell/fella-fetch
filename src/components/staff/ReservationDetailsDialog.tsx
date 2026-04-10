@@ -3,7 +3,7 @@ import { useVisitCareLogs } from '@/hooks/useVisitCareLogs';
 import { VisitCareLogList } from '@/components/client/VisitCareLogList';
 import { ReservationTimeline } from './ReservationTimeline';
 import { usePetActivityLog } from '@/hooks/usePetActivityLog';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import {
   Dialog,
   DialogContent,
@@ -92,6 +92,19 @@ export function ReservationDetailsDialog({
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(initialEdit);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Fetch all service types from the database
+  const { data: serviceTypes = [] } = useQuery({
+    queryKey: ['service-types-for-edit'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('service_types')
+        .select('id, name, display_name, category')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+      return data || [];
+    },
+  });
 
   const buildEditData = () => ({
     start_date: reservation.start_date,
