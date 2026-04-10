@@ -113,7 +113,14 @@ export function ReservationDetailsDialog({
     end_time: reservation.end_time || '',
     notes: reservation.notes || '',
     service_type: reservation.service_type,
+    selected_service_type_name: getServiceTypeNameFromReservation(reservation),
   });
+
+  function getServiceTypeNameFromReservation(res: ControlCenterReservation): string {
+    const notes = res.notes || '';
+    if (res.service_type === 'daycare' && notes.toLowerCase().includes('half day')) return 'half_daycare';
+    return res.service_type;
+  }
 
   const [editData, setEditData] = useState(buildEditData);
 
@@ -131,6 +138,7 @@ export function ReservationDetailsDialog({
       end_time: reservation.end_time || '',
       notes: reservation.notes || '',
       service_type: reservation.service_type,
+      selected_service_type_name: getServiceTypeNameFromReservation(reservation),
     });
     setIsEditing(true);
   };
