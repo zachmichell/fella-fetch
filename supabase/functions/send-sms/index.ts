@@ -21,33 +21,23 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Get API key from secure backend secret (trim whitespace)
-    const telnyxApiKey = Deno.env.get('TELNYX_API_KEY')?.trim();
-    if (!telnyxApiKey) {
-      console.error('TELNYX_API_KEY secret is not configured');
-      return new Response(
-        JSON.stringify({ success: false, error: 'Telnyx API key is not configured. Please add it as a backend secret.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Load from-number from system_settings
-    const { data: telnyxSettings } = await supabase
+    // Load SMS webhook URL from system_settings
+    const { data: smsSettings } = await supabase
       .from('system_settings')
       .select('value')
-      .eq('key', 'telnyx_config')
+      .eq('key', 'sms_webhook_config')
       .maybeSingle();
 
-    const config = telnyxSettings?.value as { from_number: string } | null;
+    const config = smsSettings?.value as { webhook_url: string; from_number?: string } | null;
 
-    if (!config?.from_number) {
-      console.error('Telnyx from number not configured in settings');
+    if (!config?.webhook_url) {
+      console.error('SMS webhook URL not configured in settings');
       return new Response(
-        JSON.stringify({ success: false, error: 'Telnyx From Number is not configured. Please set it in SMS & Communications settings.' }),
+        JSON.stringify({ success: false, error: 'SMS webhook URL is not configured. Please set it in SMS & Communications settings.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -68,7 +58,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const results: Array<{ to: string; status: string; error?: string; telnyx_id?: string }> = [];
+    const results: Array<{ to: string; status: string; error?: string }> = [];
 
     for (const msg of messages) {
       const toNormalized = normalizePhone(msg.to);
@@ -78,26 +68,26 @@ Deno.serve(async (req) => {
       }
 
       try {
-        const response = await fetch('https://api.telnyx.com/v2/messages', {
+        const payload: Record<string, string> = {
+          to: toNormalized,
+          message: msg.message,
+        };
+        if (config.from_number) {
+          payload.from = config.from_number;
+        }
+
+        const response = await fetch(config.webhook_url, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${telnyxApiKey}`,
-          },
-          body: JSON.stringify({
-            from: config.from_number,
-            to: toNormalized,
-            text: msg.message,
-          }),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
         });
 
         if (response.ok) {
-          const data = await response.json();
-          results.push({ to: toNormalized, status: 'sent', telnyx_id: data?.data?.id });
+          results.push({ to: toNormalized, status: 'sent' });
         } else {
           const errorText = await response.text();
-          console.error(`Telnyx API error for ${toNormalized}:`, response.status, errorText);
-          results.push({ to: toNormalized, status: 'failed', error: `Telnyx ${response.status}: ${errorText}` });
+          console.error(`Webhook error for ${toNormalized}:`, response.status, errorText);
+          results.push({ to: toNormalized, status: 'failed', error: `Webhook ${response.status}` });
         }
       } catch (err) {
         console.error(`Error sending to ${toNormalized}:`, err);
