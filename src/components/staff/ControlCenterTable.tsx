@@ -166,6 +166,7 @@ export function ControlCenterTable({
   const [traitsDialogOpen, setTraitsDialogOpen] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [detailsReservation, setDetailsReservation] = useState<ControlCenterReservation | null>(null);
+  const [detailsInitialEdit, setDetailsInitialEdit] = useState(false);
   const [selectedPetForTraits, setSelectedPetForTraits] = useState<{ id: string; name: string } | null>(null);
   const [petLastActivity, setPetLastActivity] = useState<Record<string, number | null>>({});
   const [sortField, setSortField] = useState<SortField | null>(null);
