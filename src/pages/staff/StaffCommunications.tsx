@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { MessageSquare, Save, Loader2, Globe, AlertTriangle, Scissors, Phone, Send } from 'lucide-react';
+import { MessageSquare, Save, Loader2, Globe, AlertTriangle, Scissors, Phone, Send, UserCheck } from 'lucide-react';
 import { SmsReminderSettings } from '@/components/staff/SmsReminderSettings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -394,6 +394,61 @@ const StaffCommunications = () => {
             <Button onClick={handleSaveGroomingPickup} disabled={isSavingGrooming || isLoading}>
               {isSavingGrooming ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
               Save Grooming Pickup Settings
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Check-In Notification SMS */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <UserCheck className="h-5 w-5 text-primary" />
+              Check-In Notification
+            </CardTitle>
+            <CardDescription>
+              Automatically send an SMS to the pet owner when their pet is checked in — only if they have SMS reminders enabled on their account.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Enable Check-In SMS</Label>
+                <p className="text-xs text-muted-foreground">Send an SMS when a pet is checked in</p>
+              </div>
+              <Switch
+                checked={checkinNotification.enabled}
+                onCheckedChange={(checked) => setCheckinNotification(prev => ({ ...prev, enabled: checked }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="checkin-message">Message Template</Label>
+              <Textarea
+                id="checkin-message"
+                value={checkinNotification.message}
+                onChange={(e) => setCheckinNotification(prev => ({ ...prev, message: e.target.value }))}
+                rows={3}
+                placeholder="Enter check-in notification message..."
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              <p className="text-xs text-muted-foreground w-full mb-1">Available variables:</p>
+              {[
+                { code: '{{client_name}}', label: 'Client Name' },
+                { code: '{{pet_name}}', label: 'Pet Name' },
+                { code: '{{service_type}}', label: 'Service Type' },
+                { code: '{{business_name}}', label: 'Business Name' },
+              ].map(v => (
+                <Badge key={v.code} variant="secondary" className="text-xs font-mono cursor-default">
+                  {v.code} — {v.label}
+                </Badge>
+              ))}
+            </div>
+
+            <Button onClick={handleSaveCheckinNotification} disabled={isSavingCheckin || isLoading}>
+              {isSavingCheckin ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+              Save Check-In Notification Settings
             </Button>
           </CardContent>
         </Card>
