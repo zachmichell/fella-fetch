@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useVisitCareLogs } from '@/hooks/useVisitCareLogs';
 import { VisitCareLogList } from '@/components/client/VisitCareLogList';
+import { ReservationTimeline } from './ReservationTimeline';
+import { usePetActivityLog } from '@/hooks/usePetActivityLog';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Dialog,
   DialogContent,
