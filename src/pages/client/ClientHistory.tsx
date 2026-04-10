@@ -110,6 +110,7 @@ const ClientHistory = () => {
           <div className="flex-1 overflow-y-auto">
             {selectedReservation && (
               <ClientActivityTimeline
+                key={selectedReservation.id}
                 reservationId={selectedReservation.id}
                 petId={selectedReservation.pets.id}
               />
