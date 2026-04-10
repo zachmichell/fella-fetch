@@ -22,7 +22,7 @@ serve(async (req) => {
       throw new Error('Shopify storefront token not configured');
     }
 
-    const { action, email, password, accessToken, reservations } = await req.json();
+    const { action, email, password, accessToken, reservations, reservationId, petId } = await req.json();
 
     // Create a Storefront Access Token using Admin API
     if (action === 'createStorefrontToken') {
@@ -760,6 +760,161 @@ serve(async (req) => {
 
       return new Response(
         JSON.stringify({ success: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'getActivityLog') {
+      if (!accessToken || !reservationId || !petId) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required fields' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify the access token
+      const customerQuery = `
+        query getCustomer($accessToken: String!) {
+          customer(customerAccessToken: $accessToken) { email }
+        }
+      `;
+      const customerResponse = await fetch(SHOPIFY_STOREFRONT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Shopify-Storefront-Access-Token': storefrontToken,
+        },
+        body: JSON.stringify({ query: customerQuery, variables: { accessToken } }),
+      });
+      const customerData = await customerResponse.json();
+      if (customerData.errors || !customerData.data?.customer?.email) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired session' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const customerEmail = customerData.data.customer.email;
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+      // Verify this client owns the pet
+      const { data: client } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('email', customerEmail)
+        .maybeSingle();
+
+      if (!client) {
+        return new Response(
+          JSON.stringify({ error: 'Client not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: pet } = await supabase
+        .from('pets')
+        .select('id')
+        .eq('id', petId)
+        .eq('client_id', client.id)
+        .maybeSingle();
+
+      if (!pet) {
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Fetch activity logs and care logs
+      const [activityRes, careRes] = await Promise.all([
+        supabase
+          .from('pet_activity_logs')
+          .select('id, created_at, action_type, action_category, description, details, performed_by')
+          .eq('reservation_id', reservationId)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('pet_care_logs')
+          .select('id, administered_at, log_type, amount_given, amount_taken, notes, administered_by, reference_id')
+          .eq('reservation_id', reservationId)
+          .eq('pet_id', petId)
+          .order('administered_at', { ascending: false }),
+      ]);
+
+      // Get staff names
+      const allStaffIds = [
+        ...(activityRes.data || []).map((l: any) => l.performed_by),
+        ...(careRes.data || []).map((l: any) => l.administered_by),
+      ].filter(Boolean);
+      const uniqueStaffIds = [...new Set(allStaffIds)];
+
+      const staffRes = uniqueStaffIds.length > 0
+        ? await supabase.from('profiles').select('user_id, first_name, last_name').in('user_id', uniqueStaffIds)
+        : { data: [] };
+
+      const staffMap = new Map(
+        (staffRes.data || []).map((s: any) => [s.user_id, `${s.first_name || ''} ${s.last_name || ''}`.trim()])
+      );
+
+      const events: any[] = [];
+
+      for (const log of (activityRes.data || []) as any[]) {
+        events.push({
+          id: `activity-${log.id}`,
+          timestamp: log.created_at,
+          type: 'activity',
+          category: log.action_category,
+          description: log.description,
+          performedBy: staffMap.get(log.performed_by) || 'Staff',
+          details: log.details,
+        });
+      }
+
+      // Resolve care log references
+      if (careRes.data && careRes.data.length > 0) {
+        const feedingIds = careRes.data.filter((l: any) => l.log_type === 'feeding').map((l: any) => l.reference_id);
+        const medIds = careRes.data.filter((l: any) => l.log_type === 'medication').map((l: any) => l.reference_id);
+
+        const [feedingRes, medRes] = await Promise.all([
+          feedingIds.length > 0
+            ? supabase.from('pet_feeding_schedules').select('id, food_type').in('id', feedingIds)
+            : Promise.resolve({ data: [] }),
+          medIds.length > 0
+            ? supabase.from('pet_medications').select('id, name').in('id', medIds)
+            : Promise.resolve({ data: [] }),
+        ]);
+
+        const feedingMap = new Map((feedingRes.data || []).map((f: any) => [f.id, f.food_type]));
+        const medMap = new Map((medRes.data || []).map((m: any) => [m.id, m.name]));
+
+        for (const log of careRes.data as any[]) {
+          const refName = log.log_type === 'feeding'
+            ? feedingMap.get(log.reference_id) || 'Food'
+            : medMap.get(log.reference_id) || 'Medication';
+
+          const parts: string[] = [];
+          if (log.amount_given) parts.push(`Given: ${log.amount_given}`);
+          if (log.amount_taken) parts.push(`Taken: ${log.amount_taken}`);
+          if (log.notes) parts.push(log.notes);
+
+          events.push({
+            id: `care-${log.id}`,
+            timestamp: log.administered_at,
+            type: 'care',
+            category: log.log_type,
+            description: log.log_type === 'feeding'
+              ? `Feeding logged: ${refName}${parts.length ? ` (${parts.join(', ')})` : ''}`
+              : `Medication administered: ${refName}${parts.length ? ` (${parts.join(', ')})` : ''}`,
+            performedBy: staffMap.get(log.administered_by) || 'Staff',
+          });
+        }
+      }
+
+      events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+      return new Response(
+        JSON.stringify({ events }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
