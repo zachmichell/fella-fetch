@@ -178,7 +178,7 @@ const ClientDashboard = () => {
         </div>
 
         {/* Activity Timeline */}
-        <ClientActivityTimeline reservationId={visit.id} petId={visit.pets.id} />
+        <ClientActivityTimeline reservationId={visit.id} petId={visit.pets.id} inline />
       </div>
     );
   };
