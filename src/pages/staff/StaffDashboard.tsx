@@ -79,6 +79,7 @@ const StaffDashboard = () => {
 
       // Resolve template variables
       const message = settings.message
+        .replace(/\{\{client_first_name\}\}/g, client.first_name || '')
         .replace(/\{\{client_name\}\}/g, `${client.first_name} ${client.last_name}`.trim())
         .replace(/\{\{pet_name\}\}/g, reservation.pet_name)
         .replace(/\{\{service_type\}\}/g, reservation.service_type)
