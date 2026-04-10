@@ -55,6 +55,7 @@ import { CancelReservationDialog } from './CancelReservationDialog';
 import { DeclineReservationDialog } from './DeclineReservationDialog';
 import { ReservationDetailsDialog } from './ReservationDetailsDialog';
 import { AddCareLogDialog } from './AddCareLogDialog';
+import { AddPetNoteDialog } from './AddPetNoteDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { usePetInactivityDays } from '@/hooks/useSystemSettings';
 
@@ -171,6 +172,8 @@ export function ControlCenterTable({
   const [selectedPetForTraits, setSelectedPetForTraits] = useState<{ id: string; name: string } | null>(null);
   const [careLogDialogOpen, setCareLogDialogOpen] = useState(false);
   const [careLogReservation, setCareLogReservation] = useState<ControlCenterReservation | null>(null);
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  const [noteReservation, setNoteReservation] = useState<ControlCenterReservation | null>(null);
   const [petLastActivity, setPetLastActivity] = useState<Record<string, number | null>>({});
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
@@ -681,6 +684,15 @@ export function ControlCenterTable({
                           >
                             <Plus className="h-4 w-4 mr-2" />
                             Log Care Activity
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setNoteReservation(reservation);
+                              setNoteDialogOpen(true);
+                            }}
+                          >
+                            <FileText className="h-4 w-4 mr-2" />
+                            Add Note
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
