@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { useClientAuth } from '@/contexts/ClientAuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { History, Calendar, Clock } from 'lucide-react';
+import { History, Calendar, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import { ClientPortalLayout } from '@/components/client/ClientPortalLayout';
+import { ClientActivityTimeline } from '@/components/client/ClientActivityTimeline';
 import { format, parseISO, isPast, isToday } from 'date-fns';
 
 const ClientHistory = () => {
