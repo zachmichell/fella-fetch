@@ -4,7 +4,6 @@ import {
   LogOut,
   Utensils,
   Pill,
-  Clock,
   Activity,
   Scissors,
   FileText,
@@ -16,6 +15,7 @@ import { useReservationTimeline, type TimelineEvent } from '@/hooks/useReservati
 interface ClientActivityTimelineProps {
   reservationId: string;
   petId: string;
+  inline?: boolean;
 }
 
 const categoryIcons: Record<string, React.ElementType> = {
@@ -39,12 +39,12 @@ const categoryColors: Record<string, string> = {
   general: 'text-muted-foreground bg-muted',
 };
 
-export function ClientActivityTimeline({ reservationId, petId }: ClientActivityTimelineProps) {
+export function ClientActivityTimeline({ reservationId, petId, inline = false }: ClientActivityTimelineProps) {
   const { data: events = [], isLoading } = useReservationTimeline(reservationId, petId);
 
   if (isLoading) {
     return (
-      <div className="mt-3 pt-3 border-t space-y-2">
+      <div className={inline ? "mt-3 pt-3 border-t space-y-2" : "space-y-2 py-2"}>
         <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
           <Activity className="h-3 w-3" />
           Activity Log
@@ -55,15 +55,21 @@ export function ClientActivityTimeline({ reservationId, petId }: ClientActivityT
     );
   }
 
-  if (events.length === 0) return null;
+  if (events.length === 0) {
+    return (
+      <div className={inline ? "mt-3 pt-3 border-t" : "py-4"}>
+        <p className="text-sm text-center text-muted-foreground">No activity recorded for this visit</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="mt-3 pt-3 border-t space-y-2">
+    <div className={inline ? "mt-3 pt-3 border-t space-y-2" : "space-y-2 py-2"}>
       <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
         <Activity className="h-3 w-3" />
         Activity Log ({events.length})
       </p>
-      <div className="space-y-1.5 max-h-40 overflow-y-auto">
+      <div className={`space-y-1.5 ${inline ? 'max-h-40' : 'max-h-[60vh]'} overflow-y-auto`}>
         {events.map((event) => {
           const Icon = categoryIcons[event.category] || Activity;
           const colorClass = categoryColors[event.category] || categoryColors.general;
@@ -84,7 +90,7 @@ export function ClientActivityTimeline({ reservationId, petId }: ClientActivityT
                   </span>
                 </div>
                 <p className="text-muted-foreground">
-                  by {event.performedBy} · {format(new Date(event.timestamp), 'h:mm a')}
+                  {format(new Date(event.timestamp), 'MMM d, h:mm a')}
                 </p>
               </div>
             </div>
