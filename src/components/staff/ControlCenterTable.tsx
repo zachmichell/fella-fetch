@@ -652,16 +652,13 @@ export function ControlCenterTable({
                         <DropdownMenuContent align="start">
                           <DropdownMenuItem onClick={() => {
                             setDetailsReservation(reservation);
+                            setDetailsInitialEdit(false);
                             setDetailsDialogOpen(true);
                           }}>View Details</DropdownMenuItem>
                           <DropdownMenuItem onClick={() => {
                             setDetailsReservation(reservation);
+                            setDetailsInitialEdit(true);
                             setDetailsDialogOpen(true);
-                            // Will start in edit mode via a timeout to let dialog mount
-                            setTimeout(() => {
-                              const editBtn = document.querySelector('[data-edit-trigger]') as HTMLButtonElement;
-                              editBtn?.click();
-                            }, 100);
                           }}>Edit Reservation</DropdownMenuItem>
                           <DropdownMenuItem>View Pet Profile</DropdownMenuItem>
                           <DropdownMenuItem 
