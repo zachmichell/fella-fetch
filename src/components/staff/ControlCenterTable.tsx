@@ -902,10 +902,14 @@ export function ControlCenterTable({
           open={detailsDialogOpen}
           onOpenChange={(open) => {
             setDetailsDialogOpen(open);
-            if (!open) setDetailsReservation(null);
+            if (!open) {
+              setDetailsReservation(null);
+              setDetailsInitialEdit(false);
+            }
           }}
           reservation={detailsReservation}
           onUpdated={onTraitsUpdated}
+          initialEdit={detailsInitialEdit}
         />
       )}
     </div>
