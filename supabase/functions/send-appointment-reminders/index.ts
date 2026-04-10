@@ -73,6 +73,8 @@ Deno.serve(async (req) => {
       const appointmentTime = testOverride?.time || "08:00";
 
       let message = config.message;
+      const clientFirstName = testOverride?.client_first_name || clientName.split(' ')[0];
+      message = message.replace(/\{\{client_first_name\}\}/g, clientFirstName);
       message = message.replace(/\{\{client_name\}\}/g, clientName);
       message = message.replace(/\{\{pet_names\}\}/g, petNames);
       message = message.replace(/\{\{service_type\}\}/g, st?.display_name || "Daycare");
@@ -219,6 +221,7 @@ Deno.serve(async (req) => {
         const { client, petNames, reservation, reservationIds: resIds } = data;
 
         let message = config.message;
+        message = message.replace(/\{\{client_first_name\}\}/g, client.first_name || '');
         message = message.replace(/\{\{client_name\}\}/g, `${client.first_name} ${client.last_name}`);
         message = message.replace(/\{\{pet_names\}\}/g, petNames.join(", "));
         message = message.replace(/\{\{service_type\}\}/g, serviceType.display_name);
