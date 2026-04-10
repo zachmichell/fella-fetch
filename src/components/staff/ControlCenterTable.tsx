@@ -820,15 +820,14 @@ export function ControlCenterTable({
                               key={service.id}
                               variant="secondary"
                               className="bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200 text-xs flex items-center gap-1 w-fit"
-                              title={`${serviceName} - ${service.start_time ? service.start_time.slice(0, 5) : 'TBD'}${service.groomer_name ? ` with ${service.groomer_name}` : ''}`}
+                              title={`${serviceName} - ${service.start_date ? format(parseLocalDate(service.start_date), 'MMM d') : 'TBD'}${service.start_time ? ` @ ${service.start_time.slice(0, 5)}` : ''}${service.groomer_name ? ` with ${service.groomer_name}` : ''}`}
                             >
                               <Scissors className="h-3 w-3" />
                               {serviceName}
-                              {service.start_time && (
-                                <span className="text-pink-600 dark:text-pink-300">
-                                  @ {service.start_time.slice(0, 5)}
-                                </span>
-                              )}
+                              <span className="text-pink-600 dark:text-pink-300">
+                                {service.start_date && format(parseLocalDate(service.start_date), 'M/d')}
+                                {service.start_time && ` @ ${service.start_time.slice(0, 5)}`}
+                              </span>
                             </Badge>
                           );
                         })
