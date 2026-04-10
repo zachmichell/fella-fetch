@@ -21,8 +21,9 @@ interface SmsWebhookConfig {
   from_number: string;
 }
 
-interface WebhookUrls {
-  marketing_email: string;
+interface EmailWebhookConfig {
+  single_webhook_url: string;
+  bulk_webhook_url: string;
 }
 
 interface NotificationSettings {
@@ -48,8 +49,9 @@ const StaffCommunications = () => {
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [testPhone, setTestPhone] = useState('');
 
-  const [webhooks, setWebhooks] = useState<WebhookUrls>({
-    marketing_email: '',
+  const [emailConfig, setEmailConfig] = useState<EmailWebhookConfig>({
+    single_webhook_url: '',
+    bulk_webhook_url: '',
   });
   const [isSavingWebhooks, setIsSavingWebhooks] = useState(false);
 
@@ -78,10 +80,11 @@ const StaffCommunications = () => {
       };
       setSmsConfig(migratedSms);
 
-      const savedWebhooks = getSetting<any>('webhook_urls', {
-        marketing_email: '',
+      const savedEmail = getSetting<any>('email_webhook_config', {});
+      setEmailConfig({
+        single_webhook_url: savedEmail.single_webhook_url || savedEmail.marketing_email || getSetting<any>('webhook_urls', {}).marketing_email || '',
+        bulk_webhook_url: savedEmail.bulk_webhook_url || '',
       });
-      setWebhooks({ marketing_email: savedWebhooks.marketing_email || '' });
 
       const savedGrooming = getSetting<NotificationSettings>('grooming_pickup_sms', {
         enabled: false,
@@ -142,16 +145,15 @@ const StaffCommunications = () => {
     }
   };
 
-  const handleSaveWebhooks = async () => {
+  const handleSaveEmailConfig = async () => {
     setIsSavingWebhooks(true);
     try {
-      const existingWebhooks = getSetting<any>('webhook_urls', {});
       await updateSetting.mutateAsync({
-        key: 'webhook_urls',
-        value: { ...existingWebhooks, marketing_email: webhooks.marketing_email },
-        description: 'Webhook URLs for Email integrations',
+        key: 'email_webhook_config',
+        value: emailConfig,
+        description: 'Email webhook configuration — single and bulk URLs',
       });
-      toast({ title: 'Saved', description: 'Email webhook URL has been updated' });
+      toast({ title: 'Saved', description: 'Email webhook configuration updated' });
     } catch (error) {
       toast({ title: 'Error saving', description: 'Please try again', variant: 'destructive' });
     } finally {
@@ -318,26 +320,43 @@ const StaffCommunications = () => {
               Email Webhook
             </CardTitle>
             <CardDescription>
-              Configure the webhook endpoint for sending marketing emails through your external email service.
+              Configure webhook endpoints for sending emails through your external email service (e.g. Make, Zapier).
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="marketing-email-webhook">Marketing Email Webhook URL</Label>
+              <Label htmlFor="email-single-webhook-url">Single Email Webhook URL</Label>
               <Input
-                id="marketing-email-webhook"
+                id="email-single-webhook-url"
                 type="url"
-                placeholder="https://hook.us1.make.com/..."
-                value={webhooks.marketing_email}
-                onChange={(e) => setWebhooks(prev => ({ ...prev, marketing_email: e.target.value }))}
+                placeholder="https://hook.us1.make.com/single-email..."
+                value={emailConfig.single_webhook_url}
+                onChange={(e) => setEmailConfig(prev => ({ ...prev, single_webhook_url: e.target.value }))}
                 disabled={isLoading}
               />
-              <p className="text-xs text-muted-foreground">Used when sending bulk emails from the Marketing section.</p>
+              <p className="text-xs text-muted-foreground">
+                Used for sending a single email to one client (e.g. check-in notification, grooming complete). Receives <code className="text-xs">{`{ to, subject, body, ... }`}</code>.
+              </p>
             </div>
 
-            <Button onClick={handleSaveWebhooks} disabled={isSavingWebhooks || isLoading}>
+            <div className="space-y-2">
+              <Label htmlFor="email-bulk-webhook-url">Bulk Email Webhook URL</Label>
+              <Input
+                id="email-bulk-webhook-url"
+                type="url"
+                placeholder="https://hook.us1.make.com/bulk-email..."
+                value={emailConfig.bulk_webhook_url}
+                onChange={(e) => setEmailConfig(prev => ({ ...prev, bulk_webhook_url: e.target.value }))}
+                disabled={isLoading}
+              />
+              <p className="text-xs text-muted-foreground">
+                Used for sending emails to multiple recipients at once (e.g. marketing campaigns). Receives <code className="text-xs">{`{ recipients: [{ to, subject, body }], ... }`}</code>.
+              </p>
+            </div>
+
+            <Button onClick={handleSaveEmailConfig} disabled={isSavingWebhooks || isLoading}>
               {isSavingWebhooks ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-              Save Email Webhook
+              Save Email Webhook Settings
             </Button>
           </CardContent>
         </Card>
