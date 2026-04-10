@@ -9,6 +9,7 @@ import { ClientPortalLayout } from '@/components/client/ClientPortalLayout';
 import { Progress } from '@/components/ui/progress';
 import { VisitCareLogList } from '@/components/client/VisitCareLogList';
 import { useVisitCareLogs } from '@/hooks/useVisitCareLogs';
+import { ClientActivityTimeline } from '@/components/client/ClientActivityTimeline';
 import { format, parseISO, isFuture, isToday, differenceInMinutes, differenceInHours } from 'date-fns';
 
 const SHOPIFY_STORE_URL = 'https://fella-fetch.myshopify.com';
@@ -179,8 +180,8 @@ const ClientDashboard = () => {
           )}
         </div>
 
-        {/* Care Logs */}
-        <VisitCareLogList logs={careLogs} isLoading={careLogsLoading} />
+        {/* Activity Timeline */}
+        <ClientActivityTimeline reservationId={visit.id} petId={visit.pets.id} />
       </div>
     );
   };
