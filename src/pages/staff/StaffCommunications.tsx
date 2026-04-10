@@ -207,6 +207,22 @@ const StaffCommunications = () => {
     }
   };
 
+  const handleSaveCheckoutNotification = async () => {
+    setIsSavingCheckout(true);
+    try {
+      await updateSetting.mutateAsync({
+        key: 'checkout_notification_sms',
+        value: checkoutNotification,
+        description: 'Check-out SMS notification settings',
+      });
+      toast({ title: 'Saved', description: 'Check-out notification settings updated' });
+    } catch (error) {
+      toast({ title: 'Error saving', description: 'Please try again', variant: 'destructive' });
+    } finally {
+      setIsSavingCheckout(false);
+    }
+  };
+
   if (!isAdmin) {
     return (
       <StaffLayout>
