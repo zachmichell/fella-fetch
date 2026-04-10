@@ -337,6 +337,11 @@ const StaffDashboard = () => {
         }
       });
 
+      // Send check-in notification SMS (fire-and-forget)
+      sendCheckInNotification(reservation).catch(err => 
+        console.error('Check-in notification error:', err)
+      );
+
       toast({ title: `${reservation.pet_name} checked in successfully!` });
       fetchDashboardData();
     } catch (error) {
