@@ -317,17 +317,18 @@ export function ReservationDetailsDialog({
               <div className="mt-1">
                 {isEditing ? (
                   <Select
-                    value={editData.service_type}
-                    onValueChange={(v) => setEditData(prev => ({ ...prev, service_type: v }))}
+                    value={editData.selected_service_type_name}
+                    onValueChange={(v) => setEditData(prev => ({ ...prev, selected_service_type_name: v, service_type: resolveServiceType(v) }))}
                   >
                     <SelectTrigger className="h-8">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="daycare">Daycare</SelectItem>
-                      <SelectItem value="boarding">Boarding</SelectItem>
-                      <SelectItem value="grooming">Grooming</SelectItem>
-                      <SelectItem value="training">Training</SelectItem>
+                      {serviceTypes.map((st) => (
+                        <SelectItem key={st.id} value={st.name}>
+                          {st.display_name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 ) : (
