@@ -35,6 +35,8 @@ const DEFAULT_GROOMING_PICKUP_MESSAGE = `Hi {{client_name}}, {{pet_names}} is al
 
 const DEFAULT_CHECKIN_MESSAGE = `Hi {{client_first_name}}, {{pet_name}} has been checked in for {{service_type}} at {{business_name}}! 🐾`;
 
+const DEFAULT_CHECKOUT_MESSAGE = `Hi {{client_first_name}}, {{pet_name}} has been checked out from {{service_type}} at {{business_name}}! Ready for pickup. 🐾`;
+
 const StaffCommunications = () => {
   const { isAdmin } = useAuth();
   const { toast } = useToast();
