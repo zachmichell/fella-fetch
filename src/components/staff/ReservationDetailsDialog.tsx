@@ -192,7 +192,13 @@ export function ReservationDetailsDialog({
   };
 
   const parsedTimes = parseTimesFromNotes(reservation.notes);
-  const displayStartTime = reservation.start_time ? reservation.start_time.slice(0, 5) : parsedTimes.dropOff;
+  const isCheckedIn = !!reservation.checked_in_at;
+  const checkedInTime = reservation.checked_in_at
+    ? format(new Date(reservation.checked_in_at), 'h:mm a')
+    : null;
+  const displayStartTime = isCheckedIn && checkedInTime
+    ? checkedInTime
+    : reservation.start_time ? reservation.start_time.slice(0, 5) : parsedTimes.dropOff;
   const displayEndTime = reservation.end_time ? reservation.end_time.slice(0, 5) : parsedTimes.pickUp;
 
   const isHalfDay = reservation.notes?.toLowerCase().includes('half day');
@@ -320,10 +326,15 @@ export function ReservationDetailsDialog({
                   <Label className="text-xs">Start Time</Label>
                   <Input
                     type="time"
-                    value={editData.start_time}
+                    value={isCheckedIn ? '' : editData.start_time}
                     onChange={(e) => setEditData(prev => ({ ...prev, start_time: e.target.value }))}
                     className="h-8"
+                    disabled={isCheckedIn}
+                    placeholder={isCheckedIn ? checkedInTime || '' : ''}
                   />
+                  {isCheckedIn && (
+                    <p className="text-xs text-muted-foreground">Locked to check-in: {checkedInTime}</p>
+                  )}
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs">End Time</Label>
@@ -363,59 +374,6 @@ export function ReservationDetailsDialog({
             )}
           </div>
 
-          {/* Check-in/Check-out Times */}
-          {(reservation.checked_in_at || reservation.checked_out_at) && (
-            <>
-              <Separator />
-              <div className="grid grid-cols-2 gap-3">
-                {reservation.checked_in_at && (
-                  <div>
-                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">Checked In</Label>
-                    <div className="text-sm mt-1">
-                      {format(new Date(reservation.checked_in_at), 'MMM d, yyyy h:mm a')}
-                    </div>
-                  </div>
-                )}
-                {reservation.checked_out_at && (
-                  <div>
-                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">Checked Out</Label>
-                    <div className="text-sm mt-1">
-                      {format(new Date(reservation.checked_out_at), 'MMM d, yyyy h:mm a')}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-
-          {/* Credits */}
-          <Separator />
-          <div>
-            <Label className="text-xs text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-              <DollarSign className="h-3.5 w-3.5" />
-              Client Credits
-            </Label>
-            <div className="flex gap-4 mt-2">
-              <div className="text-center">
-                <div className={`text-lg font-semibold ${reservation.daycare_credits <= 0 ? 'text-destructive' : ''}`}>
-                  {reservation.daycare_credits}
-                </div>
-                <div className="text-xs text-muted-foreground">Full Day</div>
-              </div>
-              <div className="text-center">
-                <div className={`text-lg font-semibold ${reservation.half_daycare_credits <= 0 ? 'text-destructive' : ''}`}>
-                  {reservation.half_daycare_credits}
-                </div>
-                <div className="text-xs text-muted-foreground">Half Day</div>
-              </div>
-              <div className="text-center">
-                <div className={`text-lg font-semibold ${reservation.boarding_credits <= 0 ? 'text-destructive' : ''}`}>
-                  {reservation.boarding_credits}
-                </div>
-                <div className="text-xs text-muted-foreground">Boarding</div>
-              </div>
-            </div>
-          </div>
 
           {/* Payment Status */}
           {reservation.payment_pending && (
