@@ -37,6 +37,7 @@ interface ReservationDetailsDialogProps {
   onOpenChange: (open: boolean) => void;
   reservation: ControlCenterReservation;
   onUpdated?: () => void;
+  initialEdit?: boolean;
 }
 
 const parseLocalDate = (dateStr: string): Date => {
@@ -79,9 +80,10 @@ export function ReservationDetailsDialog({
   onOpenChange,
   reservation,
   onUpdated,
+  initialEdit = false,
 }: ReservationDetailsDialogProps) {
   const { toast } = useToast();
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(initialEdit);
   const [isSaving, setIsSaving] = useState(false);
 
   const [editData, setEditData] = useState({
