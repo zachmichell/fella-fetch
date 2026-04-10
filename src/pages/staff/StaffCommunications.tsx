@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { MessageSquare, Save, Loader2, Globe, AlertTriangle, Scissors, Phone, Send, UserCheck } from 'lucide-react';
+import { MessageSquare, Save, Loader2, Globe, AlertTriangle, Scissors, Phone, Send, UserCheck, LogOut } from 'lucide-react';
 import { SmsReminderSettings } from '@/components/staff/SmsReminderSettings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
