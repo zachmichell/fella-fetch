@@ -16,7 +16,8 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 
 interface SmsWebhookConfig {
-  webhook_url: string;
+  single_webhook_url: string;
+  bulk_webhook_url: string;
   from_number: string;
 }
 
@@ -37,7 +38,8 @@ const StaffCommunications = () => {
   const { getSetting, updateSetting, isLoading } = useSystemSettings();
 
   const [smsConfig, setSmsConfig] = useState<SmsWebhookConfig>({
-    webhook_url: '',
+    single_webhook_url: '',
+    bulk_webhook_url: '',
     from_number: '',
   });
   const [isSavingSms, setIsSavingSms] = useState(false);
@@ -60,11 +62,13 @@ const StaffCommunications = () => {
     if (!isLoading && !initialized.current) {
       initialized.current = true;
 
-      const savedSms = getSetting<SmsWebhookConfig>('sms_webhook_config', {
-        webhook_url: '',
-        from_number: '',
-      });
-      setSmsConfig(savedSms);
+      const savedSms = getSetting<any>('sms_webhook_config', {});
+      const migratedSms: SmsWebhookConfig = {
+        single_webhook_url: savedSms.single_webhook_url || savedSms.webhook_url || '',
+        bulk_webhook_url: savedSms.bulk_webhook_url || '',
+        from_number: savedSms.from_number || '',
+      };
+      setSmsConfig(migratedSms);
 
       const savedWebhooks = getSetting<any>('webhook_urls', {
         marketing_email: '',
@@ -200,17 +204,32 @@ const StaffCommunications = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="sms-webhook-url">SMS Webhook URL</Label>
+              <Label htmlFor="sms-single-webhook-url">Single SMS Webhook URL</Label>
               <Input
-                id="sms-webhook-url"
+                id="sms-single-webhook-url"
                 type="url"
-                placeholder="https://hook.us1.make.com/..."
-                value={smsConfig.webhook_url}
-                onChange={(e) => setSmsConfig(prev => ({ ...prev, webhook_url: e.target.value }))}
+                placeholder="https://hook.us1.make.com/single..."
+                value={smsConfig.single_webhook_url}
+                onChange={(e) => setSmsConfig(prev => ({ ...prev, single_webhook_url: e.target.value }))}
                 disabled={isLoading}
               />
               <p className="text-xs text-muted-foreground">
-                The webhook will receive a JSON payload with <code className="text-xs">to</code>, <code className="text-xs">message</code>, and optionally <code className="text-xs">from</code> fields.
+                Used for sending a single SMS to one client. Receives <code className="text-xs">{`{ to, message, from }`}</code>.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="sms-bulk-webhook-url">Bulk SMS Webhook URL</Label>
+              <Input
+                id="sms-bulk-webhook-url"
+                type="url"
+                placeholder="https://hook.us1.make.com/bulk..."
+                value={smsConfig.bulk_webhook_url}
+                onChange={(e) => setSmsConfig(prev => ({ ...prev, bulk_webhook_url: e.target.value }))}
+                disabled={isLoading}
+              />
+              <p className="text-xs text-muted-foreground">
+                Used for sending SMS to multiple recipients at once. Receives <code className="text-xs">{`{ recipients: [{ to, message }], from }`}</code>.
               </p>
             </div>
 
@@ -251,7 +270,7 @@ const StaffCommunications = () => {
                 <Button
                   variant="outline"
                   onClick={handleSendTestSms}
-                  disabled={isSendingTest || !smsConfig.webhook_url}
+                  disabled={isSendingTest || !smsConfig.single_webhook_url}
                 >
                   {isSendingTest ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
                   Send Test
