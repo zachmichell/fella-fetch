@@ -53,6 +53,7 @@ import { PetTraitBadges, type PetTrait } from './PetTraitBadges';
 import { ManagePetTraitsDialog } from './ManagePetTraitsDialog';
 import { CancelReservationDialog } from './CancelReservationDialog';
 import { DeclineReservationDialog } from './DeclineReservationDialog';
+import { ReservationDetailsDialog } from './ReservationDetailsDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { usePetInactivityDays } from '@/hooks/useSystemSettings';
 
@@ -163,6 +164,8 @@ export function ControlCenterTable({
   const [declineDialogOpen, setDeclineDialogOpen] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState<ControlCenterReservation | null>(null);
   const [traitsDialogOpen, setTraitsDialogOpen] = useState(false);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [detailsReservation, setDetailsReservation] = useState<ControlCenterReservation | null>(null);
   const [selectedPetForTraits, setSelectedPetForTraits] = useState<{ id: string; name: string } | null>(null);
   const [petLastActivity, setPetLastActivity] = useState<Record<string, number | null>>({});
   const [sortField, setSortField] = useState<SortField | null>(null);
@@ -646,8 +649,19 @@ export function ControlCenterTable({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start">
-                          <DropdownMenuItem>View Details</DropdownMenuItem>
-                          <DropdownMenuItem>Edit Reservation</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            setDetailsReservation(reservation);
+                            setDetailsDialogOpen(true);
+                          }}>View Details</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            setDetailsReservation(reservation);
+                            setDetailsDialogOpen(true);
+                            // Will start in edit mode via a timeout to let dialog mount
+                            setTimeout(() => {
+                              const editBtn = document.querySelector('[data-edit-trigger]') as HTMLButtonElement;
+                              editBtn?.click();
+                            }, 100);
+                          }}>Edit Reservation</DropdownMenuItem>
                           <DropdownMenuItem>View Pet Profile</DropdownMenuItem>
                           <DropdownMenuItem 
                             onClick={() => {
