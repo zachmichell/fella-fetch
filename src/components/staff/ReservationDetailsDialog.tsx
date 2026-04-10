@@ -152,6 +152,21 @@ export function ReservationDetailsDialog({
     }
   };
 
+  // Parse drop-off and pick-up times from notes
+  const parseTimesFromNotes = (notes: string | null): { dropOff: string | null; pickUp: string | null } => {
+    if (!notes) return { dropOff: null, pickUp: null };
+    const dropOffMatch = notes.match(/Drop-off:\s*(\d{1,2}:\d{2}\s*(?:AM|PM)?)/i);
+    const pickUpMatch = notes.match(/Pick-up:\s*(\d{1,2}:\d{2}\s*(?:AM|PM)?)/i);
+    return {
+      dropOff: dropOffMatch ? dropOffMatch[1].trim() : null,
+      pickUp: pickUpMatch ? pickUpMatch[1].trim() : null,
+    };
+  };
+
+  const parsedTimes = parseTimesFromNotes(reservation.notes);
+  const displayStartTime = reservation.start_time ? reservation.start_time.slice(0, 5) : parsedTimes.dropOff;
+  const displayEndTime = reservation.end_time ? reservation.end_time.slice(0, 5) : parsedTimes.pickUp;
+
   const isHalfDay = reservation.notes?.toLowerCase().includes('half day');
   const serviceLabel = reservation.service_type === 'daycare'
     ? (isHalfDay ? 'Daycare | Half Day' : 'Daycare | Full Day')
