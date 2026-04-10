@@ -883,6 +883,26 @@ const BookingPage = () => {
       return;
     }
 
+    // Check for existing bookings on the selected date range
+    const datesToCheck = [bookingData.date];
+    if (bookingData.endDate && bookingData.endDate !== bookingData.date) {
+      // For multi-day bookings (boarding), check all dates in range
+      let current = parseLocalDate(bookingData.date);
+      const end = parseLocalDate(bookingData.endDate);
+      while (current <= end) {
+        const ds = format(current, 'yyyy-MM-dd');
+        if (!datesToCheck.includes(ds)) datesToCheck.push(ds);
+        current = new Date(current.getTime() + 86400000);
+      }
+    }
+    const conflict = await checkExistingBookings(bookingData.selectedPets, datesToCheck);
+    if (conflict.hasConflict) {
+      toast.warning("Scheduling conflict", {
+        description: conflict.message,
+        duration: 6000,
+      });
+    }
+
     setIsSubmitting(true);
     try {
       // Build notes string
