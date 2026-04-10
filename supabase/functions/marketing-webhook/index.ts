@@ -83,18 +83,56 @@ Deno.serve(async (req) => {
 
   try {
     const payload: MarketingWebhookPayload = await req.json();
-    console.log('Marketing webhook triggered:', {
+    console.log('Marketing message triggered:', {
       channel: payload.channel,
       segmentName: payload.segmentName,
       recipientCount: payload.recipients.length,
     });
 
-    // Get webhook URL from system_settings table first, fall back to env vars
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
-    let webhookUrl: string | undefined;
+    const messageTemplate = payload.message || '';
+
+    if (payload.channel === 'sms') {
+      // Send SMS directly via Telnyx through the send-sms function
+      const smsRecipients = payload.recipients
+        .filter(r => r.clientPhone)
+        .map(r => ({
+          to: normalizePhone(r.clientPhone) || '',
+          message: resolveVariables(messageTemplate, r),
+        }))
+        .filter(r => r.to);
+
+      if (smsRecipients.length === 0) {
+        return new Response(
+          JSON.stringify({ success: true, message: 'No valid SMS recipients' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: smsResult, error: smsError } = await supabaseClient.functions.invoke('send-sms', {
+        body: { recipients: smsRecipients },
+      });
+
+      if (smsError) {
+        console.error('SMS send error:', smsError);
+        return new Response(
+          JSON.stringify({ success: false, error: 'SMS delivery failed', details: String(smsError) }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Marketing SMS sent:', smsResult);
+      return new Response(
+        JSON.stringify({ success: true, recipientCount: smsRecipients.length, smsResult }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // EMAIL channel - still uses webhook
+    let emailWebhookUrl: string | undefined;
 
     const { data: settingsData } = await supabaseClient
       .from('system_settings')
@@ -104,32 +142,25 @@ Deno.serve(async (req) => {
 
     if (settingsData?.value) {
       const urls = settingsData.value as Record<string, string>;
-      webhookUrl = payload.channel === 'sms' ? urls.marketing_sms : urls.marketing_email;
+      emailWebhookUrl = urls.marketing_email;
     }
 
-    if (!webhookUrl) {
-      webhookUrl = payload.channel === 'sms'
-        ? Deno.env.get('MARKETING_SMS_WEBHOOK_URL')
-        : Deno.env.get('MARKETING_EMAIL_WEBHOOK_URL');
+    if (!emailWebhookUrl) {
+      emailWebhookUrl = Deno.env.get('MARKETING_EMAIL_WEBHOOK_URL');
     }
 
-    if (!webhookUrl) {
-      console.log(`${payload.channel.toUpperCase()} webhook URL not configured, skipping`);
+    if (!emailWebhookUrl) {
+      console.log('Email webhook URL not configured, skipping');
       return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: `${payload.channel.toUpperCase()} webhook URL not configured, skipped` 
-        }),
+        JSON.stringify({ success: true, message: 'Email webhook URL not configured, skipped' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Build per-recipient payloads with resolved variables
-    const messageTemplate = payload.message || '';
     const subjectTemplate = payload.emailSubject || '';
 
     const webhookPayload = {
-      event: `marketing.${payload.channel}`,
+      event: 'marketing.email',
       timestamp: new Date().toISOString(),
       data: {
         channel: payload.channel,
@@ -167,25 +198,23 @@ Deno.serve(async (req) => {
       },
     };
 
-    console.log('Sending webhook to:', webhookUrl);
-    
-    const response = await fetch(webhookUrl, {
+    console.log('Sending email webhook to:', emailWebhookUrl);
+
+    const response = await fetch(emailWebhookUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(webhookPayload),
     });
 
     if (!response.ok) {
-      console.error('Webhook failed:', response.status, await response.text());
+      console.error('Email webhook failed:', response.status, await response.text());
       return new Response(
-        JSON.stringify({ success: false, error: 'Webhook delivery failed' }),
+        JSON.stringify({ success: false, error: 'Email webhook delivery failed' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Marketing webhook sent successfully');
+    console.log('Marketing email webhook sent successfully');
     return new Response(
       JSON.stringify({ success: true, recipientCount: payload.recipients.length }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

@@ -36,29 +36,6 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Get webhook URL: prefer UI-configured, fall back to env secret
-    let webhookUrl = Deno.env.get('MAKE_WEBHOOK_URL') || '';
-    const { data: webhookSettings } = await supabase
-      .from('system_settings')
-      .select('value')
-      .eq('key', 'webhook_urls')
-      .maybeSingle();
-
-    if (webhookSettings?.value) {
-      const urls = webhookSettings.value as Record<string, string>;
-      if (urls.grooming_pickup) {
-        webhookUrl = urls.grooming_pickup;
-      }
-    }
-
-    if (!webhookUrl) {
-      console.log('Grooming pickup webhook URL not configured, skipping');
-      return new Response(
-        JSON.stringify({ success: true, message: 'Webhook URL not configured, skipped' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     // Get grooming pickup SMS settings
     const { data: pickupSettings } = await supabase
       .from('system_settings')
@@ -77,7 +54,7 @@ Deno.serve(async (req) => {
     }
 
     const payload: GroomingCompletePayload = await req.json();
-    console.log('Processing grooming complete webhook:', payload);
+    console.log('Processing grooming complete SMS:', payload);
 
     // Render message template
     let message = settings.message || '';
@@ -87,39 +64,31 @@ Deno.serve(async (req) => {
     message = message.replace(/\{\{groomer_name\}\}/g, payload.groomerName || '');
     message = message.replace(/\{\{business_name\}\}/g, 'Fella & Fetch');
 
-    const webhookPayload = {
-      event: 'grooming.completed',
-      timestamp: new Date().toISOString(),
-      data: {
-        reservation_id: payload.reservationId,
-        pet_name: payload.petName,
-        client_name: payload.clientName,
-        client_phone: normalizePhone(payload.clientPhone),
-        groomer_name: payload.groomerName,
-        service_type: payload.serviceType,
-        completed_at: payload.completedAt,
-        notes: payload.notes || null,
-        message,
-      },
-    };
+    const clientPhone = normalizePhone(payload.clientPhone);
+    if (!clientPhone) {
+      console.log('No valid phone number for client, skipping SMS');
+      return new Response(
+        JSON.stringify({ success: true, message: 'No valid phone number, skipped' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    const response = await fetch(webhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(webhookPayload),
+    // Send SMS via Telnyx using the send-sms function
+    const { data: smsResult, error: smsError } = await supabase.functions.invoke('send-sms', {
+      body: { to: clientPhone, message },
     });
 
-    if (!response.ok) {
-      console.error('Webhook failed:', response.status, await response.text());
+    if (smsError) {
+      console.error('Failed to send SMS:', smsError);
       return new Response(
-        JSON.stringify({ success: false, error: 'Webhook delivery failed' }),
+        JSON.stringify({ success: false, error: 'SMS delivery failed' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Grooming pickup webhook sent successfully');
+    console.log('Grooming pickup SMS sent successfully:', smsResult);
     return new Response(
-      JSON.stringify({ success: true, message: webhookPayload.data.message }),
+      JSON.stringify({ success: true, message, smsResult }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
