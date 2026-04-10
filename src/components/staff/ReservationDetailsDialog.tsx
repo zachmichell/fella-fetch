@@ -316,7 +316,7 @@ export function ReservationDetailsDialog({
                   </div>
                   <div className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
                     <Clock className="h-3 w-3" />
-                    {reservation.start_time ? reservation.start_time.slice(0, 5) : 'No time set'}
+                    {displayStartTime || 'No time set'}
                   </div>
                 </div>
                 <div className="rounded-lg border p-3">
@@ -328,7 +328,7 @@ export function ReservationDetailsDialog({
                   </div>
                   <div className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
                     <Clock className="h-3 w-3" />
-                    {reservation.end_time ? reservation.end_time.slice(0, 5) : 'No time set'}
+                    {displayEndTime || 'No time set'}
                   </div>
                 </div>
               </div>
