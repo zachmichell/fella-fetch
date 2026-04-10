@@ -46,14 +46,16 @@ export function useReservationTimeline(reservationId: string | undefined, petId:
       ];
       const uniqueStaffIds = [...new Set(allStaffIds)].filter(Boolean);
 
-      // Fetch all staff profiles in one query
-      const staffRes = uniqueStaffIds.length > 0
-        ? await supabase.from('profiles').select('user_id, first_name, last_name').in('user_id', uniqueStaffIds)
-        : { data: [] };
-
-      const staffMap = new Map(
-        (staffRes.data || []).map(s => [s.user_id, `${s.first_name || ''} ${s.last_name || ''}`.trim()])
-      );
+      // Fetch all staff profiles in one query (may fail for client users due to RLS)
+      let staffMap = new Map<string, string>();
+      if (uniqueStaffIds.length > 0) {
+        const staffRes = await supabase.from('profiles').select('user_id, first_name, last_name').in('user_id', uniqueStaffIds);
+        if (staffRes.data) {
+          staffMap = new Map(
+            staffRes.data.map(s => [s.user_id, `${s.first_name || ''} ${s.last_name || ''}`.trim()])
+          );
+        }
+      }
 
       if (activityRes.data) {
         for (const log of activityRes.data as any[]) {

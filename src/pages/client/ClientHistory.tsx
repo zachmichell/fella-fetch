@@ -2,14 +2,15 @@ import { useState } from 'react';
 import { useClientAuth } from '@/contexts/ClientAuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { History, Calendar, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { History, Calendar, Clock } from 'lucide-react';
 import { ClientPortalLayout } from '@/components/client/ClientPortalLayout';
 import { ClientActivityTimeline } from '@/components/client/ClientActivityTimeline';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { format, parseISO, isPast, isToday } from 'date-fns';
 
 const ClientHistory = () => {
   const { reservations } = useClientAuth();
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedReservation, setSelectedReservation] = useState<typeof reservations[0] | null>(null);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -52,8 +53,8 @@ const ClientHistory = () => {
                 {pastReservations.map((reservation) => (
                   <div
                     key={reservation.id}
-                    className="p-4 rounded-lg border bg-muted/30 cursor-pointer"
-                    onClick={() => setExpandedId(expandedId === reservation.id ? null : reservation.id)}
+                    className="p-4 rounded-lg border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => setSelectedReservation(reservation)}
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div>
@@ -62,16 +63,9 @@ const ClientHistory = () => {
                           {reservation.service_type}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className={getStatusColor(reservation.status)}>
-                          {reservation.status.replace('_', ' ')}
-                        </Badge>
-                        {expandedId === reservation.id ? (
-                          <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </div>
+                      <Badge variant="outline" className={getStatusColor(reservation.status)}>
+                        {reservation.status.replace('_', ' ')}
+                      </Badge>
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
@@ -85,9 +79,6 @@ const ClientHistory = () => {
                         </div>
                       )}
                     </div>
-                    {expandedId === reservation.id && (
-                      <ClientActivityTimeline reservationId={reservation.id} petId={reservation.pets.id} />
-                    )}
                   </div>
                 ))}
               </div>
@@ -100,6 +91,32 @@ const ClientHistory = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Activity Log Dialog */}
+      <Dialog open={!!selectedReservation} onOpenChange={(open) => !open && setSelectedReservation(null)}>
+        <DialogContent className="max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5" />
+              {selectedReservation?.pets.name} — {selectedReservation?.service_type}
+            </DialogTitle>
+            {selectedReservation && (
+              <p className="text-sm text-muted-foreground">
+                {format(parseISO(selectedReservation.start_date), 'MMMM d, yyyy')}
+                {selectedReservation.start_time && ` at ${format(parseISO(`2000-01-01T${selectedReservation.start_time}`), 'h:mm a')}`}
+              </p>
+            )}
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto">
+            {selectedReservation && (
+              <ClientActivityTimeline
+                reservationId={selectedReservation.id}
+                petId={selectedReservation.pets.id}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </ClientPortalLayout>
   );
 };
