@@ -32,7 +32,7 @@ interface NotificationSettings {
 
 const DEFAULT_GROOMING_PICKUP_MESSAGE = `Hi {{client_name}}, {{pet_names}} is all done with their {{service_type}} at {{business_name}}! Ready for pickup. 🐾`;
 
-const DEFAULT_CHECKIN_MESSAGE = `Hi {{client_name}}, {{pet_name}} has been checked in for {{service_type}} at {{business_name}}! 🐾`;
+const DEFAULT_CHECKIN_MESSAGE = `Hi {{client_first_name}}, {{pet_name}} has been checked in for {{service_type}} at {{business_name}}! 🐾`;
 
 const StaffCommunications = () => {
   const { isAdmin } = useAuth();
@@ -435,7 +435,8 @@ const StaffCommunications = () => {
             <div className="flex flex-wrap gap-1.5">
               <p className="text-xs text-muted-foreground w-full mb-1">Available variables:</p>
               {[
-                { code: '{{client_name}}', label: 'Client Name' },
+                { code: '{{client_first_name}}', label: 'First Name' },
+                { code: '{{client_name}}', label: 'Full Name' },
                 { code: '{{pet_name}}', label: 'Pet Name' },
                 { code: '{{service_type}}', label: 'Service Type' },
                 { code: '{{business_name}}', label: 'Business Name' },
