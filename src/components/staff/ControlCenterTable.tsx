@@ -53,6 +53,7 @@ import { PetTraitBadges, type PetTrait } from './PetTraitBadges';
 import { ManagePetTraitsDialog } from './ManagePetTraitsDialog';
 import { CancelReservationDialog } from './CancelReservationDialog';
 import { DeclineReservationDialog } from './DeclineReservationDialog';
+import { ReservationDetailsDialog } from './ReservationDetailsDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { usePetInactivityDays } from '@/hooks/useSystemSettings';
 
@@ -163,6 +164,9 @@ export function ControlCenterTable({
   const [declineDialogOpen, setDeclineDialogOpen] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState<ControlCenterReservation | null>(null);
   const [traitsDialogOpen, setTraitsDialogOpen] = useState(false);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [detailsReservation, setDetailsReservation] = useState<ControlCenterReservation | null>(null);
+  const [detailsInitialEdit, setDetailsInitialEdit] = useState(false);
   const [selectedPetForTraits, setSelectedPetForTraits] = useState<{ id: string; name: string } | null>(null);
   const [petLastActivity, setPetLastActivity] = useState<Record<string, number | null>>({});
   const [sortField, setSortField] = useState<SortField | null>(null);
@@ -646,8 +650,16 @@ export function ControlCenterTable({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start">
-                          <DropdownMenuItem>View Details</DropdownMenuItem>
-                          <DropdownMenuItem>Edit Reservation</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            setDetailsReservation(reservation);
+                            setDetailsInitialEdit(false);
+                            setDetailsDialogOpen(true);
+                          }}>View Details</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            setDetailsReservation(reservation);
+                            setDetailsInitialEdit(true);
+                            setDetailsDialogOpen(true);
+                          }}>Edit Reservation</DropdownMenuItem>
                           <DropdownMenuItem>View Pet Profile</DropdownMenuItem>
                           <DropdownMenuItem 
                             onClick={() => {
@@ -881,6 +893,23 @@ export function ControlCenterTable({
           petId={selectedPetForTraits.id}
           petName={selectedPetForTraits.name}
           onTraitsUpdated={onTraitsUpdated}
+        />
+      )}
+
+      {/* Reservation Details Dialog */}
+      {detailsReservation && (
+        <ReservationDetailsDialog
+          open={detailsDialogOpen}
+          onOpenChange={(open) => {
+            setDetailsDialogOpen(open);
+            if (!open) {
+              setDetailsReservation(null);
+              setDetailsInitialEdit(false);
+            }
+          }}
+          reservation={detailsReservation}
+          onUpdated={onTraitsUpdated}
+          initialEdit={detailsInitialEdit}
         />
       )}
     </div>
