@@ -49,8 +49,9 @@ const StaffCommunications = () => {
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [testPhone, setTestPhone] = useState('');
 
-  const [webhooks, setWebhooks] = useState<WebhookUrls>({
-    marketing_email: '',
+  const [emailConfig, setEmailConfig] = useState<EmailWebhookConfig>({
+    single_webhook_url: '',
+    bulk_webhook_url: '',
   });
   const [isSavingWebhooks, setIsSavingWebhooks] = useState(false);
 
