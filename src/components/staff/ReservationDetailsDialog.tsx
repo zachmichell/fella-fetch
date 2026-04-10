@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useVisitCareLogs } from '@/hooks/useVisitCareLogs';
+import { VisitCareLogList } from '@/components/client/VisitCareLogList';
 import {
   Dialog,
   DialogContent,
@@ -458,6 +460,9 @@ export function ReservationDetailsDialog({
               </p>
             )}
           </div>
+
+          {/* Care Activity Logs */}
+          <CareLogsSection petId={reservation.pet_id} reservationId={reservation.id} />
         </div>
 
         {/* Edit action buttons */}
