@@ -21,8 +21,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Get API key from secure backend secret
-    const telnyxApiKey = Deno.env.get('TELNYX_API_KEY');
+    // Get API key from secure backend secret (trim whitespace)
+    const telnyxApiKey = Deno.env.get('TELNYX_API_KEY')?.trim();
     if (!telnyxApiKey) {
       console.error('TELNYX_API_KEY secret is not configured');
       return new Response(
