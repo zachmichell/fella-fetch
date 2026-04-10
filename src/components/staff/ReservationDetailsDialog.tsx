@@ -152,6 +152,21 @@ export function ReservationDetailsDialog({
     }
   };
 
+  // Parse drop-off and pick-up times from notes
+  const parseTimesFromNotes = (notes: string | null): { dropOff: string | null; pickUp: string | null } => {
+    if (!notes) return { dropOff: null, pickUp: null };
+    const dropOffMatch = notes.match(/Drop-off:\s*(\d{1,2}:\d{2}\s*(?:AM|PM)?)/i);
+    const pickUpMatch = notes.match(/Pick-up:\s*(\d{1,2}:\d{2}\s*(?:AM|PM)?)/i);
+    return {
+      dropOff: dropOffMatch ? dropOffMatch[1].trim() : null,
+      pickUp: pickUpMatch ? pickUpMatch[1].trim() : null,
+    };
+  };
+
+  const parsedTimes = parseTimesFromNotes(reservation.notes);
+  const displayStartTime = reservation.start_time ? reservation.start_time.slice(0, 5) : parsedTimes.dropOff;
+  const displayEndTime = reservation.end_time ? reservation.end_time.slice(0, 5) : parsedTimes.pickUp;
+
   const isHalfDay = reservation.notes?.toLowerCase().includes('half day');
   const serviceLabel = reservation.service_type === 'daycare'
     ? (isHalfDay ? 'Daycare | Half Day' : 'Daycare | Full Day')
@@ -301,7 +316,7 @@ export function ReservationDetailsDialog({
                   </div>
                   <div className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
                     <Clock className="h-3 w-3" />
-                    {reservation.start_time ? reservation.start_time.slice(0, 5) : 'No time set'}
+                    {displayStartTime || 'No time set'}
                   </div>
                 </div>
                 <div className="rounded-lg border p-3">
@@ -313,7 +328,7 @@ export function ReservationDetailsDialog({
                   </div>
                   <div className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
                     <Clock className="h-3 w-3" />
-                    {reservation.end_time ? reservation.end_time.slice(0, 5) : 'No time set'}
+                    {displayEndTime || 'No time set'}
                   </div>
                 </div>
               </div>
