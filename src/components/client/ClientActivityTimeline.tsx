@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { format, formatDistanceToNow } from 'date-fns';
 import {
   LogIn,
@@ -10,12 +11,23 @@ import {
   Pencil,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useReservationTimeline, type TimelineEvent } from '@/hooks/useReservationTimeline';
+import { supabase } from '@/integrations/supabase/client';
+import { useClientAuth } from '@/contexts/ClientAuthContext';
 
 interface ClientActivityTimelineProps {
   reservationId: string;
   petId: string;
   inline?: boolean;
+}
+
+interface TimelineEvent {
+  id: string;
+  timestamp: string;
+  type: string;
+  category: string;
+  description: string;
+  performedBy: string;
+  details?: Record<string, unknown> | null;
 }
 
 const categoryIcons: Record<string, React.ElementType> = {
@@ -40,7 +52,47 @@ const categoryColors: Record<string, string> = {
 };
 
 export function ClientActivityTimeline({ reservationId, petId, inline = false }: ClientActivityTimelineProps) {
-  const { data: events = [], isLoading } = useReservationTimeline(reservationId, petId);
+  const [events, setEvents] = useState<TimelineEvent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      setIsLoading(true);
+      try {
+        // Get the Shopify access token from localStorage
+        const stored = localStorage.getItem('shopify_customer_session');
+        if (!stored) {
+          setEvents([]);
+          return;
+        }
+        const session = JSON.parse(stored);
+
+        const { data, error } = await supabase.functions.invoke('shopify-customer-auth', {
+          body: {
+            action: 'getActivityLog',
+            accessToken: session.accessToken,
+            reservationId,
+            petId,
+          },
+        });
+
+        if (error || !data?.events) {
+          console.error('Error fetching activity log:', error);
+          setEvents([]);
+          return;
+        }
+
+        setEvents(data.events);
+      } catch (err) {
+        console.error('Failed to fetch activity log:', err);
+        setEvents([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, [reservationId, petId]);
 
   if (isLoading) {
     return (
