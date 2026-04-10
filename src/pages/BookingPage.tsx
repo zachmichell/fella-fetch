@@ -794,10 +794,20 @@ const BookingPage = () => {
       return;
     }
 
+    // Check for existing bookings on this date
+    const groomDate = format(bookingData.groomingDate, "yyyy-MM-dd");
+    const conflict = await checkExistingBookings(bookingData.selectedPets, [groomDate]);
+    if (conflict.hasConflict) {
+      toast.warning("Scheduling conflict", {
+        description: conflict.message,
+        duration: 6000,
+      });
+    }
+
     setIsSubmitting(true);
     try {
       const pet = bookingData.selectedPets[0];
-      const startDate = format(bookingData.groomingDate, "yyyy-MM-dd");
+      const startDate = groomDate;
       
       // Convert time to 24h format for database
       const parsedTime = parse(bookingData.groomingTime, "h:mm a", new Date());
