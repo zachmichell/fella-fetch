@@ -545,6 +545,11 @@ const StaffDashboard = () => {
         }
       });
 
+      // Send check-out notification SMS (fire-and-forget)
+      sendCheckOutNotification(reservation).catch(err => 
+        console.error('Check-out notification error:', err)
+      );
+
       toast({ title: `${reservation.pet_name} checked out successfully!` });
       fetchDashboardData();
     } catch (error) {
