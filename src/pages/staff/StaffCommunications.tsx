@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { MessageSquare, Save, Loader2, Globe, AlertTriangle, Scissors, Phone, Send } from 'lucide-react';
+import { MessageSquare, Save, Loader2, Globe, AlertTriangle, Scissors, Phone, Send, CheckCircle } from 'lucide-react';
 import { SmsReminderSettings } from '@/components/staff/SmsReminderSettings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -20,7 +20,6 @@ interface WebhookUrls {
 }
 
 interface TelnyxConfig {
-  api_key: string;
   from_number: string;
 }
 
@@ -37,7 +36,6 @@ const StaffCommunications = () => {
   const { getSetting, updateSetting, isLoading } = useSystemSettings();
 
   const [telnyxConfig, setTelnyxConfig] = useState<TelnyxConfig>({
-    api_key: '',
     from_number: '',
   });
   const [isSavingTelnyx, setIsSavingTelnyx] = useState(false);
@@ -61,7 +59,6 @@ const StaffCommunications = () => {
       initialized.current = true;
 
       const savedTelnyx = getSetting<TelnyxConfig>('telnyx_config', {
-        api_key: '',
         from_number: '',
       });
       setTelnyxConfig(savedTelnyx);
@@ -85,7 +82,7 @@ const StaffCommunications = () => {
       await updateSetting.mutateAsync({
         key: 'telnyx_config',
         value: telnyxConfig,
-        description: 'Telnyx SMS API configuration (API key and from number)',
+        description: 'Telnyx SMS configuration (from number only — API key is stored as a backend secret)',
       });
       toast({ title: 'Saved', description: 'Telnyx SMS configuration updated' });
     } catch (error) {
@@ -121,7 +118,6 @@ const StaffCommunications = () => {
   const handleSaveWebhooks = async () => {
     setIsSavingWebhooks(true);
     try {
-      // Preserve any existing webhook keys, just update email
       const existingWebhooks = getSetting<any>('webhook_urls', {});
       await updateSetting.mutateAsync({
         key: 'webhook_urls',
@@ -186,30 +182,17 @@ const StaffCommunications = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Phone className="h-5 w-5 text-green-500" />
+              <Phone className="h-5 w-5 text-primary" />
               SMS Provider (Telnyx)
             </CardTitle>
             <CardDescription>
-              Configure your Telnyx API key and sender phone number. All SMS messages (marketing, reminders, grooming pickup) will be sent directly through Telnyx.
+              All SMS messages (marketing, reminders, grooming pickup) are sent directly through Telnyx.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="telnyx-api-key">Telnyx API Key</Label>
-              <Input
-                id="telnyx-api-key"
-                type="password"
-                placeholder="KEY..."
-                value={telnyxConfig.api_key}
-                onChange={(e) => setTelnyxConfig(prev => ({ ...prev, api_key: e.target.value }))}
-                disabled={isLoading}
-              />
-              <p className="text-xs text-muted-foreground">
-                Your Telnyx API v2 key. Find it at{' '}
-                <a href="https://portal.telnyx.com/#/app/api-keys" target="_blank" rel="noopener noreferrer" className="underline text-primary">
-                  portal.telnyx.com → API Keys
-                </a>
-              </p>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-md p-3">
+              <CheckCircle className="h-4 w-4 text-primary flex-shrink-0" />
+              <span>API Key is securely stored as a backend secret. To update it, contact your administrator.</span>
             </div>
 
             <div className="space-y-2">
@@ -229,7 +212,7 @@ const StaffCommunications = () => {
 
             <Button onClick={handleSaveTelnyx} disabled={isSavingTelnyx || isLoading}>
               {isSavingTelnyx ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-              Save Telnyx Configuration
+              Save From Number
             </Button>
 
             {/* Test SMS */}
@@ -249,7 +232,7 @@ const StaffCommunications = () => {
                 <Button
                   variant="outline"
                   onClick={handleSendTestSms}
-                  disabled={isSendingTest || !telnyxConfig.api_key || !telnyxConfig.from_number}
+                  disabled={isSendingTest || !telnyxConfig.from_number}
                 >
                   {isSendingTest ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
                   Send Test
@@ -263,7 +246,7 @@ const StaffCommunications = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Globe className="h-5 w-5 text-blue-500" />
+              <Globe className="h-5 w-5 text-primary" />
               Email Webhook
             </CardTitle>
             <CardDescription>
@@ -295,7 +278,7 @@ const StaffCommunications = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Scissors className="h-5 w-5 text-purple-500" />
+              <Scissors className="h-5 w-5 text-primary" />
               Grooming Pickup Notification
             </CardTitle>
             <CardDescription>
