@@ -504,6 +504,62 @@ const StaffCommunications = () => {
           </CardContent>
         </Card>
 
+        {/* Check-Out Notification SMS */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <LogOut className="h-5 w-5 text-primary" />
+              Check-Out Notification
+            </CardTitle>
+            <CardDescription>
+              Automatically send an SMS to the pet owner when their pet is checked out — only if they have SMS reminders enabled on their account.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Enable Check-Out SMS</Label>
+                <p className="text-xs text-muted-foreground">Send an SMS when a pet is checked out</p>
+              </div>
+              <Switch
+                checked={checkoutNotification.enabled}
+                onCheckedChange={(checked) => setCheckoutNotification(prev => ({ ...prev, enabled: checked }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="checkout-message">Message Template</Label>
+              <Textarea
+                id="checkout-message"
+                value={checkoutNotification.message}
+                onChange={(e) => setCheckoutNotification(prev => ({ ...prev, message: e.target.value }))}
+                rows={3}
+                placeholder="Enter check-out notification message..."
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              <p className="text-xs text-muted-foreground w-full mb-1">Available variables:</p>
+              {[
+                { code: '{{client_first_name}}', label: 'First Name' },
+                { code: '{{client_name}}', label: 'Full Name' },
+                { code: '{{pet_name}}', label: 'Pet Name' },
+                { code: '{{service_type}}', label: 'Service Type' },
+                { code: '{{business_name}}', label: 'Business Name' },
+              ].map(v => (
+                <Badge key={v.code} variant="secondary" className="text-xs font-mono cursor-default">
+                  {v.code} — {v.label}
+                </Badge>
+              ))}
+            </div>
+
+            <Button onClick={handleSaveCheckoutNotification} disabled={isSavingCheckout || isLoading}>
+              {isSavingCheckout ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+              Save Check-Out Notification Settings
+            </Button>
+          </CardContent>
+        </Card>
+
         {/* SMS Reminder Settings */}
         <SmsReminderSettings />
       </div>
