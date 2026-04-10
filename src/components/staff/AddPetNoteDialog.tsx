@@ -13,6 +13,8 @@ import { Save, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { usePetActivityLog } from '@/hooks/usePetActivityLog';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface AddPetNoteDialogProps {
   open: boolean;
@@ -31,6 +33,8 @@ export function AddPetNoteDialog({
 }: AddPetNoteDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { logActivity } = usePetActivityLog();
+  const queryClient = useQueryClient();
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -48,6 +52,20 @@ export function AddPetNoteDialog({
       });
 
       if (error) throw error;
+
+      // Log the activity
+      await logActivity({
+        petId,
+        reservationId: reservationId || null,
+        actionType: 'general_note_added',
+        actionCategory: 'general',
+        description: `Note added: ${note.trim().length > 80 ? note.trim().slice(0, 80) + '…' : note.trim()}`,
+      });
+
+      // Invalidate timeline
+      if (reservationId) {
+        queryClient.invalidateQueries({ queryKey: ['reservation-timeline', reservationId] });
+      }
 
       toast({ title: 'Note added successfully' });
       setNote('');

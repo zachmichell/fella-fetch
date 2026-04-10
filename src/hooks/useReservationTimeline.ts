@@ -21,10 +21,7 @@ export function useReservationTimeline(reservationId: string | undefined, petId:
       const [activityRes, careRes] = await Promise.all([
         supabase
           .from('pet_activity_logs')
-          .select(`
-            id, created_at, action_type, action_category, description, details,
-            profiles:performed_by ( first_name, last_name )
-          `)
+          .select('id, created_at, action_type, action_category, description, details, performed_by')
           .eq('reservation_id', reservationId)
           .order('created_at', { ascending: false }),
         supabase
@@ -37,20 +34,37 @@ export function useReservationTimeline(reservationId: string | undefined, petId:
 
       const events: TimelineEvent[] = [];
 
-      // Map activity logs
+      // Collect all staff IDs from activity logs for profile lookup
+      const activityStaffIds = activityRes.data
+        ? [...new Set(activityRes.data.map((l: any) => l.performed_by))]
+        : [];
+
+      // Map activity logs - resolve staff names after fetching profiles
+      const allStaffIds = [
+        ...activityStaffIds,
+        ...(careRes.data ? [...new Set(careRes.data.map(l => l.administered_by))] : []),
+      ];
+      const uniqueStaffIds = [...new Set(allStaffIds)].filter(Boolean);
+
+      // Fetch all staff profiles in one query
+      const staffRes = uniqueStaffIds.length > 0
+        ? await supabase.from('profiles').select('user_id, first_name, last_name').in('user_id', uniqueStaffIds)
+        : { data: [] };
+
+      const staffMap = new Map(
+        (staffRes.data || []).map(s => [s.user_id, `${s.first_name || ''} ${s.last_name || ''}`.trim()])
+      );
+
       if (activityRes.data) {
-        for (const log of activityRes.data) {
-          const profile = log.profiles as any;
-          const name = profile
-            ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
-            : 'System';
+        for (const log of activityRes.data as any[]) {
+          const name = staffMap.get(log.performed_by) || 'Staff';
           events.push({
             id: `activity-${log.id}`,
             timestamp: log.created_at,
             type: 'activity',
             category: log.action_category,
             description: log.description,
-            performedBy: name || 'Staff',
+            performedBy: name,
             details: log.details as Record<string, unknown> | null,
           });
         }
@@ -60,25 +74,18 @@ export function useReservationTimeline(reservationId: string | undefined, petId:
       if (careRes.data && careRes.data.length > 0) {
         const feedingIds = careRes.data.filter(l => l.log_type === 'feeding').map(l => l.reference_id);
         const medIds = careRes.data.filter(l => l.log_type === 'medication').map(l => l.reference_id);
-        const staffIds = [...new Set(careRes.data.map(l => l.administered_by))];
 
-        const [feedingRes, medRes, staffRes] = await Promise.all([
+        const [feedingRes, medRes] = await Promise.all([
           feedingIds.length > 0
             ? supabase.from('pet_feeding_schedules').select('id, food_type').in('id', feedingIds)
             : Promise.resolve({ data: [] }),
           medIds.length > 0
             ? supabase.from('pet_medications').select('id, name').in('id', medIds)
             : Promise.resolve({ data: [] }),
-          staffIds.length > 0
-            ? supabase.from('profiles').select('user_id, first_name, last_name').in('user_id', staffIds)
-            : Promise.resolve({ data: [] }),
         ]);
 
         const feedingMap = new Map((feedingRes.data || []).map(f => [f.id, f.food_type]));
         const medMap = new Map((medRes.data || []).map(m => [m.id, m.name]));
-        const staffMap = new Map(
-          (staffRes.data || []).map(s => [s.user_id, `${s.first_name || ''} ${s.last_name || ''}`.trim()])
-        );
 
         for (const log of careRes.data) {
           const refName = log.log_type === 'feeding'
