@@ -134,15 +134,29 @@ Deno.serve(async (req) => {
     // EMAIL channel - still uses webhook
     let emailWebhookUrl: string | undefined;
 
-    const { data: settingsData } = await supabaseClient
+    // Try new email_webhook_config first, then legacy webhook_urls, then env var
+    const { data: emailConfigData } = await supabaseClient
       .from('system_settings')
       .select('value')
-      .eq('key', 'webhook_urls')
-      .single();
+      .eq('key', 'email_webhook_config')
+      .maybeSingle();
 
-    if (settingsData?.value) {
-      const urls = settingsData.value as Record<string, string>;
-      emailWebhookUrl = urls.marketing_email;
+    if (emailConfigData?.value) {
+      const emailCfg = emailConfigData.value as Record<string, string>;
+      emailWebhookUrl = emailCfg.bulk_webhook_url || emailCfg.single_webhook_url;
+    }
+
+    if (!emailWebhookUrl) {
+      const { data: settingsData } = await supabaseClient
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'webhook_urls')
+        .maybeSingle();
+
+      if (settingsData?.value) {
+        const urls = settingsData.value as Record<string, string>;
+        emailWebhookUrl = urls.marketing_email;
+      }
     }
 
     if (!emailWebhookUrl) {
