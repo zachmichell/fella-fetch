@@ -951,6 +951,20 @@ export function ControlCenterTable({
           reservationId={careLogReservation.id}
         />
       )}
+
+      {/* Add Pet Note Dialog */}
+      {noteReservation && (
+        <AddPetNoteDialog
+          open={noteDialogOpen}
+          onOpenChange={(open) => {
+            setNoteDialogOpen(open);
+            if (!open) setNoteReservation(null);
+          }}
+          petId={noteReservation.pet_id}
+          petName={noteReservation.pet_name}
+          reservationId={noteReservation.id}
+        />
+      )}
     </div>
   );
 }
