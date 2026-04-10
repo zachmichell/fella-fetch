@@ -147,9 +147,38 @@ export function ReservationDetailsDialog({
     setIsEditing(false);
   };
 
+  // Map service type name to the DB enum and update notes for sub-types
+  const resolveServiceType = (name: string) => {
+    const enumMap: Record<string, string> = {
+      daycare: 'daycare',
+      half_daycare: 'daycare',
+      boarding: 'boarding',
+      grooming: 'grooming',
+      training: 'training',
+      assessment: 'daycare',
+      nail_trim: 'grooming',
+      bath: 'grooming',
+    };
+    return (enumMap[name] || 'daycare') as 'daycare' | 'boarding' | 'grooming' | 'training';
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      const resolvedType = resolveServiceType(editData.selected_service_type_name);
+      const selectedSt = serviceTypes.find(st => st.name === editData.selected_service_type_name);
+      const displayName = selectedSt?.display_name || editData.selected_service_type_name;
+
+      // Update notes to reflect service sub-type
+      let updatedNotes = editData.notes || '';
+      // Remove old service/day-type markers
+      updatedNotes = updatedNotes.replace(/\b(Full Day|Half Day)\b/gi, '').trim();
+      if (editData.selected_service_type_name === 'half_daycare') {
+        updatedNotes = `Half Day${updatedNotes ? ' | ' + updatedNotes : ''}`;
+      } else if (editData.selected_service_type_name === 'daycare') {
+        updatedNotes = `Full Day${updatedNotes ? ' | ' + updatedNotes : ''}`;
+      }
+
       const { error } = await supabase
         .from('reservations')
         .update({
@@ -157,8 +186,8 @@ export function ReservationDetailsDialog({
           end_date: editData.end_date || null,
           start_time: editData.start_time || null,
           end_time: editData.end_time || null,
-          notes: editData.notes || null,
-          service_type: editData.service_type as any,
+          notes: updatedNotes || null,
+          service_type: resolvedType as any,
         })
         .eq('id', reservation.id);
 
@@ -170,8 +199,8 @@ export function ReservationDetailsDialog({
       if (editData.end_date !== (reservation.end_date || '')) changes.push(`end date → ${editData.end_date || 'none'}`);
       if (editData.start_time !== (reservation.start_time || '')) changes.push(`start time → ${editData.start_time || 'none'}`);
       if (editData.end_time !== (reservation.end_time || '')) changes.push(`end time → ${editData.end_time || 'none'}`);
-      if (editData.service_type !== reservation.service_type) changes.push(`service type → ${editData.service_type}`);
-      if (editData.notes !== (reservation.notes || '')) changes.push('notes updated');
+      if (editData.selected_service_type_name !== getServiceTypeNameFromReservation(reservation)) changes.push(`service type → ${displayName}`);
+      if (updatedNotes !== (reservation.notes || '')) changes.push('notes updated');
 
       const changeDesc = changes.length > 0 ? changes.join(', ') : 'reservation details';
 
