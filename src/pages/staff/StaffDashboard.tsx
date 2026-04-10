@@ -93,7 +93,49 @@ const StaffDashboard = () => {
     }
   };
 
-  const fetchDashboardData = useCallback(async () => {
+  // Send check-out SMS notification if enabled and client has opted in
+  const sendCheckOutNotification = async (reservation: ControlCenterReservation) => {
+    try {
+      const { data: settingData } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'checkout_notification_sms')
+        .maybeSingle();
+
+      const settings = settingData?.value as { enabled: boolean; message: string } | null;
+      if (!settings?.enabled) return;
+
+      const { data: client } = await supabase
+        .from('clients')
+        .select('phone, sms_reminders_opt_in, first_name, last_name')
+        .eq('id', reservation.client_id)
+        .maybeSingle();
+
+      if (!client?.phone || !client.sms_reminders_opt_in) return;
+
+      const { data: bizSetting } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'business_name')
+        .maybeSingle();
+      const businessName = (bizSetting?.value as string) || 'our facility';
+
+      const message = settings.message
+        .replace(/\{\{client_first_name\}\}/g, client.first_name || '')
+        .replace(/\{\{client_name\}\}/g, `${client.first_name} ${client.last_name}`.trim())
+        .replace(/\{\{pet_name\}\}/g, reservation.pet_name)
+        .replace(/\{\{service_type\}\}/g, reservation.service_type)
+        .replace(/\{\{business_name\}\}/g, businessName);
+
+      await supabase.functions.invoke('send-sms', {
+        body: { to: client.phone, message },
+      });
+    } catch (err) {
+      console.error('Failed to send check-out notification:', err);
+    }
+  };
+
+
     if (!isStaffOrAdmin) {
       setLoading(false);
       return;
