@@ -32,7 +32,8 @@ const DEFAULT_REMINDER: ReminderConfig = {
 };
 
 const DYNAMIC_VARIABLES = [
-  { key: 'client_name', label: 'Client Name' },
+  { key: 'client_first_name', label: 'First Name' },
+  { key: 'client_name', label: 'Full Name' },
   { key: 'pet_names', label: 'Pet Name(s)' },
   { key: 'service_type', label: 'Service Type' },
   { key: 'date', label: 'Appointment Date' },

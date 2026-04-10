@@ -379,7 +379,8 @@ const StaffCommunications = () => {
             <div className="flex flex-wrap gap-1.5">
               <p className="text-xs text-muted-foreground w-full mb-1">Available variables:</p>
               {[
-                { code: '{{client_name}}', label: 'Client Name' },
+                { code: '{{client_first_name}}', label: 'First Name' },
+                { code: '{{client_name}}', label: 'Full Name' },
                 { code: '{{pet_names}}', label: 'Pet Name' },
                 { code: '{{service_type}}', label: 'Service Type' },
                 { code: '{{groomer_name}}', label: 'Groomer Name' },

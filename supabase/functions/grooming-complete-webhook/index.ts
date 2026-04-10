@@ -58,6 +58,7 @@ Deno.serve(async (req) => {
 
     // Render message template
     let message = settings.message || '';
+    message = message.replace(/\{\{client_first_name\}\}/g, (payload.clientName || '').split(' ')[0]);
     message = message.replace(/\{\{client_name\}\}/g, payload.clientName || '');
     message = message.replace(/\{\{pet_names\}\}/g, payload.petName || '');
     message = message.replace(/\{\{service_type\}\}/g, payload.serviceType || '');
