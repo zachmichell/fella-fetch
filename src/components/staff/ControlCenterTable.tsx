@@ -897,6 +897,19 @@ export function ControlCenterTable({
           onTraitsUpdated={onTraitsUpdated}
         />
       )}
+
+      {/* Reservation Details Dialog */}
+      {detailsReservation && (
+        <ReservationDetailsDialog
+          open={detailsDialogOpen}
+          onOpenChange={(open) => {
+            setDetailsDialogOpen(open);
+            if (!open) setDetailsReservation(null);
+          }}
+          reservation={detailsReservation}
+          onUpdated={onTraitsUpdated}
+        />
+      )}
     </div>
   );
 }
