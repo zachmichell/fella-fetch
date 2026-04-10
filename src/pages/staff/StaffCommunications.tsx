@@ -69,6 +69,12 @@ const StaffCommunications = () => {
   });
   const [isSavingCheckin, setIsSavingCheckin] = useState(false);
 
+  const [checkoutNotification, setCheckoutNotification] = useState<NotificationSettings>({
+    enabled: false,
+    message: DEFAULT_CHECKOUT_MESSAGE,
+  });
+  const [isSavingCheckout, setIsSavingCheckout] = useState(false);
+
   const initialized = useRef(false);
   useEffect(() => {
     if (!isLoading && !initialized.current) {
