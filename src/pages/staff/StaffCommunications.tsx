@@ -83,11 +83,17 @@ const StaffCommunications = () => {
       });
       setWebhooks({ marketing_email: savedWebhooks.marketing_email || '' });
 
-      const savedGrooming = getSetting<GroomingPickupSettings>('grooming_pickup_sms', {
+      const savedGrooming = getSetting<NotificationSettings>('grooming_pickup_sms', {
         enabled: false,
         message: DEFAULT_GROOMING_PICKUP_MESSAGE,
       });
       setGroomingPickup(savedGrooming);
+
+      const savedCheckin = getSetting<NotificationSettings>('checkin_notification_sms', {
+        enabled: false,
+        message: DEFAULT_CHECKIN_MESSAGE,
+      });
+      setCheckinNotification(savedCheckin);
     }
   }, [isLoading]);
 
