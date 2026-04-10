@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useVisitCareLogs } from '@/hooks/useVisitCareLogs';
 import { VisitCareLogList } from '@/components/client/VisitCareLogList';
+import { ReservationTimeline } from './ReservationTimeline';
+import { usePetActivityLog } from '@/hooks/usePetActivityLog';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Dialog,
   DialogContent,
@@ -85,6 +88,8 @@ export function ReservationDetailsDialog({
   initialEdit = false,
 }: ReservationDetailsDialogProps) {
   const { toast } = useToast();
+  const { logActivity } = usePetActivityLog();
+  const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(initialEdit);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -137,6 +142,29 @@ export function ReservationDetailsDialog({
         .eq('id', reservation.id);
 
       if (error) throw error;
+
+      // Build a description of what changed
+      const changes: string[] = [];
+      if (editData.start_date !== reservation.start_date) changes.push(`start date → ${editData.start_date}`);
+      if (editData.end_date !== (reservation.end_date || '')) changes.push(`end date → ${editData.end_date || 'none'}`);
+      if (editData.start_time !== (reservation.start_time || '')) changes.push(`start time → ${editData.start_time || 'none'}`);
+      if (editData.end_time !== (reservation.end_time || '')) changes.push(`end time → ${editData.end_time || 'none'}`);
+      if (editData.service_type !== reservation.service_type) changes.push(`service type → ${editData.service_type}`);
+      if (editData.notes !== (reservation.notes || '')) changes.push('notes updated');
+
+      const changeDesc = changes.length > 0 ? changes.join(', ') : 'reservation details';
+
+      await logActivity({
+        petId: reservation.pet_id,
+        reservationId: reservation.id,
+        actionType: 'reservation_updated',
+        actionCategory: 'reservation',
+        description: `Reservation edited: ${changeDesc}`,
+        details: { changes },
+      });
+
+      // Invalidate timeline query
+      queryClient.invalidateQueries({ queryKey: ['reservation-timeline', reservation.id] });
 
       toast({ title: 'Reservation updated successfully' });
       setIsEditing(false);
@@ -480,8 +508,9 @@ export function ReservationDetailsDialog({
             )}
           </div>
 
-          {/* Care Activity Logs */}
-          <CareLogsSection petId={reservation.pet_id} reservationId={reservation.id} />
+          {/* Activity Timeline */}
+          <Separator />
+          <ReservationTimeline reservationId={reservation.id} petId={reservation.pet_id} />
         </div>
 
         {/* Edit action buttons */}
@@ -499,16 +528,5 @@ export function ReservationDetailsDialog({
         )}
       </DialogContent>
     </Dialog>
-  );
-}
-
-function CareLogsSection({ petId, reservationId }: { petId: string; reservationId: string }) {
-  const { data: logs = [], isLoading } = useVisitCareLogs(petId, reservationId);
-
-  return (
-    <>
-      <Separator />
-      <VisitCareLogList logs={logs} isLoading={isLoading} />
-    </>
   );
 }
