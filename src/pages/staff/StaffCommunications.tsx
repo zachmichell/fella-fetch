@@ -21,8 +21,9 @@ interface SmsWebhookConfig {
   from_number: string;
 }
 
-interface WebhookUrls {
-  marketing_email: string;
+interface EmailWebhookConfig {
+  single_webhook_url: string;
+  bulk_webhook_url: string;
 }
 
 interface NotificationSettings {
