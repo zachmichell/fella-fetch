@@ -9,6 +9,7 @@ import { format, parseISO, isPast, isToday } from 'date-fns';
 
 const ClientHistory = () => {
   const { reservations } = useClientAuth();
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -47,7 +48,8 @@ const ClientHistory = () => {
                 {pastReservations.map((reservation) => (
                   <div
                     key={reservation.id}
-                    className="p-4 rounded-lg border bg-muted/30"
+                    className="p-4 rounded-lg border bg-muted/30 cursor-pointer"
+                    onClick={() => setExpandedId(expandedId === reservation.id ? null : reservation.id)}
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div>
@@ -56,9 +58,16 @@ const ClientHistory = () => {
                           {reservation.service_type}
                         </p>
                       </div>
-                      <Badge variant="outline" className={getStatusColor(reservation.status)}>
-                        {reservation.status.replace('_', ' ')}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className={getStatusColor(reservation.status)}>
+                          {reservation.status.replace('_', ' ')}
+                        </Badge>
+                        {expandedId === reservation.id ? (
+                          <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
@@ -72,6 +81,9 @@ const ClientHistory = () => {
                         </div>
                       )}
                     </div>
+                    {expandedId === reservation.id && (
+                      <ClientActivityTimeline reservationId={reservation.id} petId={reservation.pets.id} />
+                    )}
                   </div>
                 ))}
               </div>
