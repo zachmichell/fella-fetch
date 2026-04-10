@@ -9,16 +9,19 @@ import { Switch } from '@/components/ui/switch';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { MessageSquare, Save, Loader2, Globe, AlertTriangle, Scissors, Info } from 'lucide-react';
+import { MessageSquare, Save, Loader2, Globe, AlertTriangle, Scissors, Phone, Send } from 'lucide-react';
 import { SmsReminderSettings } from '@/components/staff/SmsReminderSettings';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
 
 interface WebhookUrls {
-  marketing_sms: string;
   marketing_email: string;
-  reminder_sms: string;
-  grooming_pickup: string;
+}
+
+interface TelnyxConfig {
+  api_key: string;
+  from_number: string;
 }
 
 interface GroomingPickupSettings {
@@ -33,11 +36,16 @@ const StaffCommunications = () => {
   const { toast } = useToast();
   const { getSetting, updateSetting, isLoading } = useSystemSettings();
 
+  const [telnyxConfig, setTelnyxConfig] = useState<TelnyxConfig>({
+    api_key: '',
+    from_number: '',
+  });
+  const [isSavingTelnyx, setIsSavingTelnyx] = useState(false);
+  const [isSendingTest, setIsSendingTest] = useState(false);
+  const [testPhone, setTestPhone] = useState('');
+
   const [webhooks, setWebhooks] = useState<WebhookUrls>({
-    marketing_sms: '',
     marketing_email: '',
-    reminder_sms: '',
-    grooming_pickup: '',
   });
   const [isSavingWebhooks, setIsSavingWebhooks] = useState(false);
 
@@ -51,13 +59,17 @@ const StaffCommunications = () => {
   useEffect(() => {
     if (!isLoading && !initialized.current) {
       initialized.current = true;
-      const saved = getSetting<WebhookUrls>('webhook_urls', {
-        marketing_sms: '',
-        marketing_email: '',
-        reminder_sms: '',
-        grooming_pickup: '',
+
+      const savedTelnyx = getSetting<TelnyxConfig>('telnyx_config', {
+        api_key: '',
+        from_number: '',
       });
-      setWebhooks(saved);
+      setTelnyxConfig(savedTelnyx);
+
+      const savedWebhooks = getSetting<any>('webhook_urls', {
+        marketing_email: '',
+      });
+      setWebhooks({ marketing_email: savedWebhooks.marketing_email || '' });
 
       const savedGrooming = getSetting<GroomingPickupSettings>('grooming_pickup_sms', {
         enabled: false,
@@ -67,15 +79,56 @@ const StaffCommunications = () => {
     }
   }, [isLoading]);
 
+  const handleSaveTelnyx = async () => {
+    setIsSavingTelnyx(true);
+    try {
+      await updateSetting.mutateAsync({
+        key: 'telnyx_config',
+        value: telnyxConfig,
+        description: 'Telnyx SMS API configuration (API key and from number)',
+      });
+      toast({ title: 'Saved', description: 'Telnyx SMS configuration updated' });
+    } catch (error) {
+      toast({ title: 'Error saving', description: 'Please try again', variant: 'destructive' });
+    } finally {
+      setIsSavingTelnyx(false);
+    }
+  };
+
+  const handleSendTestSms = async () => {
+    if (!testPhone.trim()) {
+      toast({ title: 'Enter a phone number', description: 'Please enter a phone number to send a test SMS', variant: 'destructive' });
+      return;
+    }
+    setIsSendingTest(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-sms', {
+        body: { to: testPhone.trim(), message: 'This is a test SMS from Fella & Fetch 🐾' },
+      });
+      if (error) throw error;
+      if (data?.success) {
+        toast({ title: 'Test SMS Sent', description: `Message sent to ${testPhone}` });
+      } else {
+        toast({ title: 'Failed', description: data?.error || 'SMS delivery failed', variant: 'destructive' });
+      }
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message || 'Failed to send test SMS', variant: 'destructive' });
+    } finally {
+      setIsSendingTest(false);
+    }
+  };
+
   const handleSaveWebhooks = async () => {
     setIsSavingWebhooks(true);
     try {
+      // Preserve any existing webhook keys, just update email
+      const existingWebhooks = getSetting<any>('webhook_urls', {});
       await updateSetting.mutateAsync({
         key: 'webhook_urls',
-        value: webhooks,
-        description: 'Webhook URLs for SMS, Email, and Reminder integrations',
+        value: { ...existingWebhooks, marketing_email: webhooks.marketing_email },
+        description: 'Webhook URLs for Email integrations',
       });
-      toast({ title: 'Saved', description: 'Webhook URLs have been updated' });
+      toast({ title: 'Saved', description: 'Email webhook URL has been updated' });
     } catch (error) {
       toast({ title: 'Error saving', description: 'Please try again', variant: 'destructive' });
     } finally {
@@ -125,35 +178,99 @@ const StaffCommunications = () => {
             SMS & Communications
           </h1>
           <p className="text-muted-foreground">
-            Configure SMS reminders, email settings, and webhook integrations
+            Configure SMS provider, email settings, and message templates
           </p>
         </div>
 
-        {/* Webhook URLs */}
+        {/* Telnyx SMS Configuration */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Globe className="h-5 w-5 text-blue-500" />
-              Webhook URLs
+              <Phone className="h-5 w-5 text-green-500" />
+              SMS Provider (Telnyx)
             </CardTitle>
             <CardDescription>
-              Configure the webhook endpoints used to send SMS and Email messages through your external services.
+              Configure your Telnyx API key and sender phone number. All SMS messages (marketing, reminders, grooming pickup) will be sent directly through Telnyx.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="marketing-sms-webhook">Marketing SMS Webhook URL</Label>
+              <Label htmlFor="telnyx-api-key">Telnyx API Key</Label>
               <Input
-                id="marketing-sms-webhook"
-                type="url"
-                placeholder="https://hook.us1.make.com/..."
-                value={webhooks.marketing_sms}
-                onChange={(e) => setWebhooks(prev => ({ ...prev, marketing_sms: e.target.value }))}
+                id="telnyx-api-key"
+                type="password"
+                placeholder="KEY..."
+                value={telnyxConfig.api_key}
+                onChange={(e) => setTelnyxConfig(prev => ({ ...prev, api_key: e.target.value }))}
                 disabled={isLoading}
               />
-              <p className="text-xs text-muted-foreground">Used when sending bulk SMS from the Marketing section.</p>
+              <p className="text-xs text-muted-foreground">
+                Your Telnyx API v2 key. Find it at{' '}
+                <a href="https://portal.telnyx.com/#/app/api-keys" target="_blank" rel="noopener noreferrer" className="underline text-primary">
+                  portal.telnyx.com → API Keys
+                </a>
+              </p>
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="telnyx-from-number">From Phone Number</Label>
+              <Input
+                id="telnyx-from-number"
+                type="tel"
+                placeholder="+15551234567"
+                value={telnyxConfig.from_number}
+                onChange={(e) => setTelnyxConfig(prev => ({ ...prev, from_number: e.target.value }))}
+                disabled={isLoading}
+              />
+              <p className="text-xs text-muted-foreground">
+                The Telnyx phone number to send SMS from (must be in +1XXXXXXXXXX format).
+              </p>
+            </div>
+
+            <Button onClick={handleSaveTelnyx} disabled={isSavingTelnyx || isLoading}>
+              {isSavingTelnyx ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+              Save Telnyx Configuration
+            </Button>
+
+            {/* Test SMS */}
+            <div className="border-t pt-4 mt-4">
+              <Label className="text-sm font-medium">Send Test SMS</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Verify your Telnyx configuration by sending a test message.
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  type="tel"
+                  placeholder="+15559876543"
+                  value={testPhone}
+                  onChange={(e) => setTestPhone(e.target.value)}
+                  className="max-w-xs"
+                />
+                <Button
+                  variant="outline"
+                  onClick={handleSendTestSms}
+                  disabled={isSendingTest || !telnyxConfig.api_key || !telnyxConfig.from_number}
+                >
+                  {isSendingTest ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+                  Send Test
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Email Webhook */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Globe className="h-5 w-5 text-blue-500" />
+              Email Webhook
+            </CardTitle>
+            <CardDescription>
+              Configure the webhook endpoint for sending marketing emails through your external email service.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="marketing-email-webhook">Marketing Email Webhook URL</Label>
               <Input
@@ -167,35 +284,9 @@ const StaffCommunications = () => {
               <p className="text-xs text-muted-foreground">Used when sending bulk emails from the Marketing section.</p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="reminder-sms-webhook">Appointment Reminder SMS Webhook URL</Label>
-              <Input
-                id="reminder-sms-webhook"
-                type="url"
-                placeholder="https://hook.us1.make.com/..."
-                value={webhooks.reminder_sms}
-                onChange={(e) => setWebhooks(prev => ({ ...prev, reminder_sms: e.target.value }))}
-                disabled={isLoading}
-              />
-              <p className="text-xs text-muted-foreground">Used by the automated appointment reminder system.</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="grooming-pickup-webhook">Grooming Pickup SMS Webhook URL</Label>
-              <Input
-                id="grooming-pickup-webhook"
-                type="url"
-                placeholder="https://hook.us1.make.com/..."
-                value={webhooks.grooming_pickup}
-                onChange={(e) => setWebhooks(prev => ({ ...prev, grooming_pickup: e.target.value }))}
-                disabled={isLoading}
-              />
-              <p className="text-xs text-muted-foreground">Triggered when a grooming appointment is marked complete — notifies the client their pet is ready for pickup.</p>
-            </div>
-
             <Button onClick={handleSaveWebhooks} disabled={isSavingWebhooks || isLoading}>
               {isSavingWebhooks ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-              Save Webhook URLs
+              Save Email Webhook
             </Button>
           </CardContent>
         </Card>

@@ -24,7 +24,6 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     // Check if this is a test request
@@ -41,29 +40,8 @@ Deno.serve(async (req) => {
         }
       } catch { /* no body or invalid JSON, proceed normally */ }
     }
-    // Try to get webhook URL from system_settings first, fall back to env secret
-    let webhookUrl = Deno.env.get("REMINDER_SMS_WEBHOOK_URL") || "";
-    const { data: webhookSettings } = await supabase
-      .from("system_settings")
-      .select("value")
-      .eq("key", "webhook_urls")
-      .maybeSingle();
 
-    if (webhookSettings?.value) {
-      const urls = webhookSettings.value as Record<string, string>;
-      if (urls.reminder_sms) {
-        webhookUrl = urls.reminder_sms;
-      }
-    }
-
-    if (!webhookUrl) {
-      return new Response(
-        JSON.stringify({ error: "Reminder SMS webhook URL not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // TEST MODE: Send a sample rendered message to the webhook
+    // TEST MODE: Send a sample rendered message via Telnyx
     if (isTest) {
       const { data: settingsRow } = await supabase
         .from("system_settings")
@@ -82,20 +60,17 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Get service type name
       const { data: st } = await supabase
         .from("service_types")
         .select("display_name")
         .eq("id", serviceTypeId)
         .maybeSingle();
 
-      // Use override data if provided, otherwise sample data
       const clientName = testOverride?.client_name || "Test Client";
       const petNames = testOverride?.pet_names || "Buddy";
       const clientPhone = normalizePhone(testOverride?.client_phone || "+15555555555");
       const appointmentDate = testOverride?.date || new Date(Date.now() + 86400000).toISOString().split("T")[0];
       const appointmentTime = testOverride?.time || "08:00";
-      const reservationId = testOverride?.reservation_id || "test-reservation-000";
 
       let message = config.message;
       message = message.replace(/\{\{client_name\}\}/g, clientName);
@@ -105,32 +80,18 @@ Deno.serve(async (req) => {
       message = message.replace(/\{\{time\}\}/g, appointmentTime);
       message = message.replace(/\{\{business_name\}\}/g, "Fella & Fetch");
 
-      const testPayload = {
-        type: "appointment_reminder",
-        client_id: testOverride?.client_id || "test-000",
-        client_name: clientName,
-        client_phone: clientPhone,
-        pet_names: [petNames],
-        service_type: st?.display_name || "Daycare",
-        appointment_date: appointmentDate,
-        appointment_time: appointmentTime,
-        message,
-        reservation_id: reservationId,
-      };
-
-      const webhookResponse = await fetch(webhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(testPayload),
+      // Send test SMS via Telnyx
+      const { data: smsResult, error: smsError } = await supabase.functions.invoke('send-sms', {
+        body: { to: clientPhone, message },
       });
 
-      const responseText = await webhookResponse.text();
       return new Response(
         JSON.stringify({
           mode: "test",
-          webhookStatus: webhookResponse.status,
-          webhookResponse: responseText,
-          sentPayload: testPayload,
+          message,
+          phone: clientPhone,
+          smsResult,
+          smsError: smsError ? String(smsError) : null,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -181,13 +142,11 @@ Deno.serve(async (req) => {
       const serviceType = serviceTypeMap.get(serviceTypeId);
       if (!serviceType) continue;
 
-      // Calculate the offset in milliseconds
       const offsetMs =
         config.timing_unit === "days"
           ? config.timing_value * 24 * 60 * 60 * 1000
           : config.timing_value * 60 * 60 * 1000;
 
-      // Widen the date query to cover possible dates, then filter precisely using start_time
       const earliestApptTime = new Date(now.getTime() + offsetMs - 15 * 60 * 1000);
       const latestApptTime = new Date(now.getTime() + offsetMs + 15 * 60 * 1000);
 
@@ -204,28 +163,22 @@ Deno.serve(async (req) => {
         .lte("start_date", queryEndDate);
 
       if (resError) {
-        console.error(
-          `Error querying reservations for ${serviceType.display_name}:`,
-          resError
-        );
+        console.error(`Error querying reservations for ${serviceType.display_name}:`, resError);
         continue;
       }
 
       if (!reservations || reservations.length === 0) continue;
 
-      // Precisely filter: combine start_date + start_time into a real datetime
-      // and check if NOW is within the 30-min window around (appointment - offset)
       const filteredReservations = reservations.filter((res: any) => {
-        const timeStr = res.start_time || "09:00"; // default to 9am if no time set
+        const timeStr = res.start_time || "09:00";
         const appointmentDt = new Date(`${res.start_date}T${timeStr}:00`);
         const reminderDt = new Date(appointmentDt.getTime() - offsetMs);
         const diffMs = Math.abs(now.getTime() - reminderDt.getTime());
-        return diffMs <= 15 * 60 * 1000; // within ±15 minutes of ideal send time
+        return diffMs <= 15 * 60 * 1000;
       });
 
       if (filteredReservations.length === 0) continue;
 
-      // Filter out reservations that already had a reminder sent
       const reservationIds = filteredReservations.map((r: any) => r.id);
       const { data: alreadySent } = await supabase
         .from("sent_reminders")
@@ -235,14 +188,13 @@ Deno.serve(async (req) => {
 
       const sentSet = new Set((alreadySent || []).map((r: any) => r.reservation_id));
 
-      // Group by client to avoid sending duplicate reminders
       const clientReminders = new Map<
         string,
         { client: any; petNames: string[]; reservation: any; reservationIds: string[] }
       >();
 
       for (const res of filteredReservations) {
-        if (sentSet.has(res.id)) continue; // Already sent
+        if (sentSet.has(res.id)) continue;
 
         const pet = (res as any).pets;
         const client = pet?.clients;
@@ -261,57 +213,27 @@ Deno.serve(async (req) => {
         entry.petNames.push(pet.name);
         entry.reservationIds.push(res.id);
       }
-      // Send webhook for each client
+
+      // Send SMS for each client via Telnyx
       for (const [clientId, data] of clientReminders) {
         const { client, petNames, reservation, reservationIds: resIds } = data;
 
-        // Replace dynamic variables in the message
         let message = config.message;
-        message = message.replace(
-          /\{\{client_name\}\}/g,
-          `${client.first_name} ${client.last_name}`
-        );
+        message = message.replace(/\{\{client_name\}\}/g, `${client.first_name} ${client.last_name}`);
         message = message.replace(/\{\{pet_names\}\}/g, petNames.join(", "));
-        message = message.replace(
-          /\{\{service_type\}\}/g,
-          serviceType.display_name
-        );
-        message = message.replace(
-          /\{\{date\}\}/g,
-          reservation.start_date || ""
-        );
-        message = message.replace(
-          /\{\{time\}\}/g,
-          reservation.start_time || ""
-        );
-        message = message.replace(
-          /\{\{business_name\}\}/g,
-          "Fella & Fetch"
-        );
+        message = message.replace(/\{\{service_type\}\}/g, serviceType.display_name);
+        message = message.replace(/\{\{date\}\}/g, reservation.start_date || "");
+        message = message.replace(/\{\{time\}\}/g, reservation.start_time || "");
+        message = message.replace(/\{\{business_name\}\}/g, "Fella & Fetch");
 
-        // Send to webhook
         try {
-          const webhookPayload = {
-            type: "appointment_reminder",
-            client_id: clientId,
-            client_name: `${client.first_name} ${client.last_name}`,
-            client_phone: normalizePhone(client.phone),
-            pet_names: petNames,
-            service_type: serviceType.display_name,
-            appointment_date: reservation.start_date,
-            appointment_time: reservation.start_time,
-            message,
-            reservation_id: reservation.id,
-          };
+          const clientPhone = normalizePhone(client.phone);
 
-          const webhookResponse = await fetch(webhookUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(webhookPayload),
+          const { data: smsResult, error: smsError } = await supabase.functions.invoke('send-sms', {
+            body: { to: clientPhone, message },
           });
 
-          if (webhookResponse.ok) {
-            // Record all reservation IDs as sent so they won't be sent again
+          if (!smsError && smsResult?.success) {
             for (const rid of resIds) {
               await supabase.from("sent_reminders").upsert(
                 { reservation_id: rid, service_type_id: serviceTypeId, client_id: clientId },
@@ -325,21 +247,20 @@ Deno.serve(async (req) => {
               status: "sent",
             });
           } else {
-            const errorText = await webhookResponse.text();
             results.push({
               client: `${client.first_name} ${client.last_name}`,
               service: serviceType.display_name,
               status: "failed",
-              error: errorText,
+              error: smsError ? String(smsError) : smsResult?.error,
             });
           }
-        } catch (webhookError) {
-          console.error("Webhook error:", webhookError);
+        } catch (smsErr) {
+          console.error("SMS error:", smsErr);
           results.push({
             client: `${client.first_name} ${client.last_name}`,
             service: serviceType.display_name,
             status: "error",
-            error: String(webhookError),
+            error: String(smsErr),
           });
         }
       }
