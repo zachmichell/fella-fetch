@@ -175,6 +175,22 @@ const StaffCommunications = () => {
     }
   };
 
+  const handleSaveCheckinNotification = async () => {
+    setIsSavingCheckin(true);
+    try {
+      await updateSetting.mutateAsync({
+        key: 'checkin_notification_sms',
+        value: checkinNotification,
+        description: 'Check-in SMS notification settings',
+      });
+      toast({ title: 'Saved', description: 'Check-in notification settings updated' });
+    } catch (error) {
+      toast({ title: 'Error saving', description: 'Please try again', variant: 'destructive' });
+    } finally {
+      setIsSavingCheckin(false);
+    }
+  };
+
   if (!isAdmin) {
     return (
       <StaffLayout>
