@@ -15,41 +15,39 @@ function normalizePhone(phone: string | null | undefined): string {
   return `+${digits}`;
 }
 
-interface SendSmsRequest {
-  to: string;
-  message: string;
-}
-
-interface BulkSmsRequest {
-  recipients: Array<{
-    to: string;
-    message: string;
-  }>;
-}
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
+    // Get API key from secure backend secret
+    const telnyxApiKey = Deno.env.get('TELNYX_API_KEY');
+    if (!telnyxApiKey) {
+      console.error('TELNYX_API_KEY secret is not configured');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Telnyx API key is not configured. Please add it as a backend secret.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Load Telnyx config from system_settings
+    // Load from-number from system_settings
     const { data: telnyxSettings } = await supabase
       .from('system_settings')
       .select('value')
       .eq('key', 'telnyx_config')
       .maybeSingle();
 
-    const config = telnyxSettings?.value as { api_key: string; from_number: string } | null;
+    const config = telnyxSettings?.value as { from_number: string } | null;
 
-    if (!config?.api_key || !config?.from_number) {
-      console.error('Telnyx not configured: missing API key or from number');
+    if (!config?.from_number) {
+      console.error('Telnyx from number not configured in settings');
       return new Response(
-        JSON.stringify({ success: false, error: 'Telnyx SMS is not configured. Please add your API Key and From Number in SMS & Communications settings.' }),
+        JSON.stringify({ success: false, error: 'Telnyx From Number is not configured. Please set it in SMS & Communications settings.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -84,7 +82,7 @@ Deno.serve(async (req) => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${config.api_key}`,
+            'Authorization': `Bearer ${telnyxApiKey}`,
           },
           body: JSON.stringify({
             from: config.from_number,
