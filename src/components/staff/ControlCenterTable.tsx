@@ -54,6 +54,7 @@ import { ManagePetTraitsDialog } from './ManagePetTraitsDialog';
 import { CancelReservationDialog } from './CancelReservationDialog';
 import { DeclineReservationDialog } from './DeclineReservationDialog';
 import { ReservationDetailsDialog } from './ReservationDetailsDialog';
+import { AddCareLogDialog } from './AddCareLogDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { usePetInactivityDays } from '@/hooks/useSystemSettings';
 
@@ -168,6 +169,8 @@ export function ControlCenterTable({
   const [detailsReservation, setDetailsReservation] = useState<ControlCenterReservation | null>(null);
   const [detailsInitialEdit, setDetailsInitialEdit] = useState(false);
   const [selectedPetForTraits, setSelectedPetForTraits] = useState<{ id: string; name: string } | null>(null);
+  const [careLogDialogOpen, setCareLogDialogOpen] = useState(false);
+  const [careLogReservation, setCareLogReservation] = useState<ControlCenterReservation | null>(null);
   const [petLastActivity, setPetLastActivity] = useState<Record<string, number | null>>({});
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
@@ -670,6 +673,15 @@ export function ControlCenterTable({
                             <Tags className="h-4 w-4 mr-2" />
                             Manage Traits
                           </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setCareLogReservation(reservation);
+                              setCareLogDialogOpen(true);
+                            }}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Log Care Activity
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -910,6 +922,20 @@ export function ControlCenterTable({
           reservation={detailsReservation}
           onUpdated={onTraitsUpdated}
           initialEdit={detailsInitialEdit}
+        />
+      )}
+
+      {/* Add Care Log Dialog */}
+      {careLogReservation && (
+        <AddCareLogDialog
+          open={careLogDialogOpen}
+          onOpenChange={(open) => {
+            setCareLogDialogOpen(open);
+            if (!open) setCareLogReservation(null);
+          }}
+          petId={careLogReservation.pet_id}
+          petName={careLogReservation.pet_name}
+          reservationId={careLogReservation.id}
         />
       )}
     </div>
