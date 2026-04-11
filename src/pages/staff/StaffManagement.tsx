@@ -42,6 +42,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Pencil, Trash2, Loader2, Shield, User, Eye, EyeOff, Users, Clock } from 'lucide-react';
+import { RolePermissionsEditor } from '@/components/staff/RolePermissionsEditor';
 import { useStaffCode } from '@/contexts/StaffCodeContext';
 import { useNavigate } from 'react-router-dom';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
@@ -431,6 +432,9 @@ const StaffManagementContent = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Role Permissions */}
+      <RolePermissionsEditor />
 
       {/* Add/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
