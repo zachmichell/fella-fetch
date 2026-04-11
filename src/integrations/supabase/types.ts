@@ -816,6 +816,7 @@ export type Database = {
       }
       groomers: {
         Row: {
+          bio: string | null
           color: string | null
           commission_rate: number
           created_at: string
@@ -828,6 +829,7 @@ export type Database = {
           max_concurrent: number
           name: string
           phone: string | null
+          photo_url: string | null
           shopify_staff_id: string | null
           shopify_staff_name: string | null
           sort_order: number | null
@@ -836,6 +838,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          bio?: string | null
           color?: string | null
           commission_rate?: number
           created_at?: string
@@ -848,6 +851,7 @@ export type Database = {
           max_concurrent?: number
           name: string
           phone?: string | null
+          photo_url?: string | null
           shopify_staff_id?: string | null
           shopify_staff_name?: string | null
           sort_order?: number | null
@@ -856,6 +860,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          bio?: string | null
           color?: string | null
           commission_rate?: number
           created_at?: string
@@ -868,6 +873,7 @@ export type Database = {
           max_concurrent?: number
           name?: string
           phone?: string | null
+          photo_url?: string | null
           shopify_staff_id?: string | null
           shopify_staff_name?: string | null
           sort_order?: number | null
