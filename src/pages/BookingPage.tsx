@@ -142,6 +142,11 @@ const BookingPage = () => {
   const [showQuestionnaire, setShowQuestionnaire] = useState(false);
   const [questionnaireSubmitted, setQuestionnaireSubmitted] = useState(false);
 
+  // Next available groomer state
+  const [showNextAvailable, setShowNextAvailable] = useState(false);
+  const [nextAvailableDate, setNextAvailableDate] = useState<string | null>(null);
+  const [nextAvailableGroomers, setNextAvailableGroomers] = useState<string[]>([]);
+
   // Service permissions state
   const [allowedServices, setAllowedServices] = useState<Set<string>>(new Set(['daycare', 'boarding', 'grooming', 'training']));
   const [loadingPermissions, setLoadingPermissions] = useState(false);
@@ -637,14 +642,49 @@ const BookingPage = () => {
   };
 
   const handleGroomerSelect = (groomerId: string | null) => {
+    if (!groomerId) return; // Must pick a specific groomer
     setBookingData({
       ...bookingData,
       selectedGroomerId: groomerId,
-      groomingDate: null, // Reset date when groomer changes
+      groomingDate: showNextAvailable && nextAvailableDate ? new Date(nextAvailableDate + 'T12:00:00') : null,
       groomingTime: null,
       groomingEndTime: null,
     });
-    setStep(4); // Auto-advance to service selection
+    // If we already have a next available date, skip calendar and go to service selection
+    if (showNextAvailable && nextAvailableDate) {
+      setStep(4); // service selection, then skip calendar (date already set)
+    } else {
+      setStep(4); // service selection, then calendar
+    }
+  };
+
+  const handleFindNextAvailable = () => {
+    const today = new Date();
+    const todayStr = format(today, "yyyy-MM-dd");
+    
+    // Find the earliest date any groomer is available
+    const futureDates = groomerSchedules
+      .filter(s => s.available_date >= todayStr)
+      .map(s => s.available_date)
+      .sort();
+    
+    if (futureDates.length === 0) {
+      setNextAvailableDate(null);
+      setNextAvailableGroomers([]);
+      setShowNextAvailable(true);
+      return;
+    }
+
+    const earliest = futureDates[0];
+    const availableGroomerIds = [...new Set(
+      groomerSchedules
+        .filter(s => s.available_date === earliest)
+        .map(s => s.groomer_id)
+    )];
+    
+    setNextAvailableDate(earliest);
+    setNextAvailableGroomers(availableGroomerIds);
+    setShowNextAvailable(true);
   };
 
   const handleGroomingDateSelect = (date: Date) => {
@@ -672,11 +712,31 @@ const BookingPage = () => {
   };
 
   const nextStep = () => {
-    if (step < totalSteps) setStep(step + 1);
+    if (step < totalSteps) {
+      // Skip calendar step (5) for grooming if date was pre-selected via "next available"
+      if (step === 4 && isGrooming && bookingData.groomingDate) {
+        setStep(6); // Skip to time selection
+        return;
+      }
+      setStep(step + 1);
+    }
   };
 
   const prevStep = () => {
-    if (step > 1) setStep(step - 1);
+    if (step > 1) {
+      // When going back to groomer selection, reset next-available state
+      if (step === 4 && isGrooming) {
+        setShowNextAvailable(false);
+        setNextAvailableDate(null);
+        setNextAvailableGroomers([]);
+      }
+      // Skip calendar step (5) when going back if date was pre-selected
+      if (step === 6 && isGrooming && showNextAvailable) {
+        setStep(4);
+        return;
+      }
+      setStep(step - 1);
+    }
   };
 
   const canProceed = () => {
@@ -687,8 +747,8 @@ const BookingPage = () => {
         return bookingData.selectedPets.length > 0;
       case 3:
         if (isGrooming) {
-          // Groomer selection step - always can proceed (null = any available)
-          return true;
+          // Groomer selection step - must pick a specific groomer
+          return !!bookingData.selectedGroomerId;
         }
         if (isDaycare) {
           // Daycare type selection step
@@ -1301,14 +1361,36 @@ const BookingPage = () => {
                   Select Your Groomer
                 </h2>
                 <p className="text-muted-foreground">
-                  Choose a specific groomer or let us match you with the first available.
+                  {showNextAvailable 
+                    ? "Pick a groomer from those available on the next open date."
+                    : "Choose a specific groomer, or find the next available date across all groomers."
+                  }
                 </p>
                 <GroomerSelector
                   groomers={groomers}
                   selectedGroomerId={bookingData.selectedGroomerId}
                   onSelect={handleGroomerSelect}
                   loading={loadingGroomers}
+                  schedules={groomerSchedules}
+                  showNextAvailable={showNextAvailable}
+                  onFindNextAvailable={handleFindNextAvailable}
+                  nextAvailableDate={nextAvailableDate}
+                  nextAvailableGroomers={nextAvailableGroomers}
                 />
+                {showNextAvailable && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setShowNextAvailable(false);
+                      setNextAvailableDate(null);
+                      setNextAvailableGroomers([]);
+                    }}
+                    className="text-muted-foreground"
+                  >
+                    ← Show all groomers
+                  </Button>
+                )}
               </motion.div>
             )}
 
