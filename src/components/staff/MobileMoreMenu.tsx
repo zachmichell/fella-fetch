@@ -1,27 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 import {
-  BedDouble,
-  Dog,
-  Scissors,
-  Users,
-  HeartPulse,
-  ClipboardList,
-  Repeat,
-  Sparkles,
-  Clock,
-  BarChart3,
-  KeyRound,
-  Megaphone,
-  MessageSquare,
-  UserCog,
-  Layers,
-  ShoppingBag,
-  Settings,
-  Lock,
-  LogOut,
+  Dog, Users, HeartPulse, ClipboardList, Repeat, Sparkles, Clock,
+  BarChart3, KeyRound, Megaphone, MessageSquare, UserCog, BedDouble,
+  Scissors, Layers, ShoppingBag, Settings, Lock, LogOut,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStaffCode } from '@/contexts/StaffCodeContext';
+import { useRolePermissions } from '@/hooks/useRolePermissions';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Separator } from '@/components/ui/separator';
 
@@ -31,39 +16,37 @@ interface MobileMoreMenuProps {
 }
 
 const mainItems = [
-  { title: 'Messages', url: '/staff/messages', icon: MessageSquare },
-  { title: 'Clients', url: '/staff/clients', icon: Users },
-  { title: 'Pets', url: '/staff/pets', icon: Dog },
+  { key: 'messages', title: 'Messages', url: '/staff/messages', icon: MessageSquare },
+  { key: 'clients', title: 'Clients', url: '/staff/clients', icon: Users },
+  { key: 'pets', title: 'Pets', url: '/staff/pets', icon: Dog },
 ];
 
 const operationsItems = [
-  { title: 'Pet Care', url: '/staff/pet-care', icon: HeartPulse },
-  { title: 'Report Cards', url: '/staff/report-cards', icon: ClipboardList },
-  { title: 'Subscriptions', url: '/staff/subscriptions', icon: Repeat },
-  { title: 'Trait Templates', url: '/staff/trait-templates', icon: Sparkles },
-  { title: 'Time Clock', url: '/staff/time-clock', icon: Clock },
-];
-
-const adminOnlyOperationsItems = [
-  { title: 'Analytics', url: '/staff/analytics', icon: BarChart3 },
+  { key: 'pet-care', title: 'Pet Care', url: '/staff/pet-care', icon: HeartPulse },
+  { key: 'report-cards', title: 'Report Cards', url: '/staff/report-cards', icon: ClipboardList },
+  { key: 'subscriptions', title: 'Subscriptions', url: '/staff/subscriptions', icon: Repeat },
+  { key: 'trait-templates', title: 'Trait Templates', url: '/staff/trait-templates', icon: Sparkles },
+  { key: 'time-clock', title: 'Time Clock', url: '/staff/time-clock', icon: Clock },
+  { key: 'analytics', title: 'Analytics', url: '/staff/analytics', icon: BarChart3 },
 ];
 
 const adminItems = [
-  { title: 'Staff Codes', url: '/staff/staff-management', icon: KeyRound },
-  { title: 'Marketing', url: '/staff/marketing', icon: Megaphone },
-  { title: 'SMS & Comms', url: '/staff/communications', icon: MessageSquare },
-  { title: 'User Management', url: '/staff/users', icon: UserCog },
-  { title: 'Suite Management', url: '/staff/suites', icon: BedDouble },
-  { title: 'Groomer Management', url: '/staff/groomers', icon: Scissors },
-  { title: 'Service Types', url: '/staff/service-types', icon: Layers },
-  { title: 'Shopify Settings', url: '/staff/shopify-settings', icon: ShoppingBag },
-  { title: 'Settings', url: '/staff/settings', icon: Settings },
+  { key: 'staff-management', title: 'Staff Codes', url: '/staff/staff-management', icon: KeyRound },
+  { key: 'marketing', title: 'Marketing', url: '/staff/marketing', icon: Megaphone },
+  { key: 'communications', title: 'SMS & Comms', url: '/staff/communications', icon: MessageSquare },
+  { key: 'users', title: 'User Management', url: '/staff/users', icon: UserCog },
+  { key: 'suites', title: 'Suite Management', url: '/staff/suites', icon: BedDouble },
+  { key: 'groomers', title: 'Groomer Management', url: '/staff/groomers', icon: Scissors },
+  { key: 'service-types', title: 'Service Types', url: '/staff/service-types', icon: Layers },
+  { key: 'shopify-settings', title: 'Shopify Settings', url: '/staff/shopify-settings', icon: ShoppingBag },
+  { key: 'settings', title: 'Settings', url: '/staff/settings', icon: Settings },
 ];
 
 export function MobileMoreMenu({ open, onOpenChange }: MobileMoreMenuProps) {
   const navigate = useNavigate();
   const { signOut, isAdmin } = useAuth();
-  const { currentStaff, isCodeAdmin, isSupervisorOrAbove, lock } = useStaffCode();
+  const { currentStaff, isCodeAdmin, lock } = useStaffCode();
+  const { hasPageAccess } = useRolePermissions();
 
   const goTo = (url: string) => {
     navigate(url);
@@ -80,6 +63,10 @@ export function MobileMoreMenu({ open, onOpenChange }: MobileMoreMenuProps) {
     </button>
   );
 
+  const visibleMainItems = mainItems.filter(i => hasPageAccess(i.key));
+  const visibleOpsItems = operationsItems.filter(i => hasPageAccess(i.key));
+  const visibleAdminItems = adminItems.filter(i => hasPageAccess(i.key));
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl pb-20">
@@ -94,36 +81,32 @@ export function MobileMoreMenu({ open, onOpenChange }: MobileMoreMenuProps) {
           </SheetTitle>
         </SheetHeader>
         <div className="overflow-y-auto flex-1 -mx-2">
-          {/* Main extras */}
-          <div className="space-y-0.5">
-            {mainItems.map((item) => (
-              <MenuItem key={item.title} item={item} />
-            ))}
-          </div>
+          {visibleMainItems.length > 0 && (
+            <div className="space-y-0.5">
+              {visibleMainItems.map((item) => (
+                <MenuItem key={item.title} item={item} />
+              ))}
+            </div>
+          )}
 
-          {/* Operations */}
-          {isSupervisorOrAbove && (
+          {visibleOpsItems.length > 0 && (
             <>
               <Separator className="my-3" />
               <p className="px-4 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Operations</p>
               <div className="space-y-0.5">
-                {operationsItems.map((item) => (
-                  <MenuItem key={item.title} item={item} />
-                ))}
-                {isCodeAdmin && adminOnlyOperationsItems.map((item) => (
+                {visibleOpsItems.map((item) => (
                   <MenuItem key={item.title} item={item} />
                 ))}
               </div>
             </>
           )}
 
-          {/* Admin */}
-          {isAdmin && isCodeAdmin && (
+          {isAdmin && isCodeAdmin && visibleAdminItems.length > 0 && (
             <>
               <Separator className="my-3" />
               <p className="px-4 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Admin</p>
               <div className="space-y-0.5">
-                {adminItems.map((item) => (
+                {visibleAdminItems.map((item) => (
                   <MenuItem key={item.title} item={item} />
                 ))}
               </div>
