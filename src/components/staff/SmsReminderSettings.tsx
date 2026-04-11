@@ -18,6 +18,10 @@ interface ReminderConfig {
   message: string;
   timing_value: number;
   timing_unit: 'hours' | 'days';
+  secondary_enabled?: boolean;
+  secondary_message?: string;
+  secondary_timing_value?: number;
+  secondary_timing_unit?: 'hours' | 'days';
 }
 
 interface ReminderSettings {
@@ -29,6 +33,10 @@ const DEFAULT_REMINDER: ReminderConfig = {
   message: '',
   timing_value: 24,
   timing_unit: 'hours',
+  secondary_enabled: false,
+  secondary_message: '',
+  secondary_timing_value: 1,
+  secondary_timing_unit: 'hours',
 };
 
 const DYNAMIC_VARIABLES = [
@@ -43,7 +51,7 @@ const DYNAMIC_VARIABLES = [
 
 export const SmsReminderSettings = () => {
   const { toast } = useToast();
-  const { getSetting, updateSetting, isLoading: isLoadingSettings } = useSystemSettings();
+  const { getSetting, isLoading: isLoadingSettings } = useSystemSettings();
   const [reminders, setReminders] = useState<ReminderSettings>({});
   const [isSaving, setIsSaving] = useState(false);
 
@@ -70,7 +78,7 @@ export const SmsReminderSettings = () => {
   }, [isLoadingSettings]);
 
   const getReminder = (serviceTypeId: string): ReminderConfig => {
-    return reminders[serviceTypeId] || { ...DEFAULT_REMINDER };
+    return { ...DEFAULT_REMINDER, ...reminders[serviceTypeId] };
   };
 
   const updateReminder = (serviceTypeId: string, updates: Partial<ReminderConfig>) => {
@@ -83,7 +91,6 @@ export const SmsReminderSettings = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Upsert into system_settings
       const { error } = await supabase
         .from('system_settings')
         .upsert(
@@ -167,50 +174,119 @@ export const SmsReminderSettings = () => {
 
               {config.enabled && (
                 <>
-                  {/* Timing */}
-                  <div className="flex items-end gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-sm text-muted-foreground">Send reminder</Label>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={168}
-                        className="w-20"
-                        value={config.timing_value}
-                        onChange={(e) =>
-                          updateReminder(st.id, { timing_value: parseInt(e.target.value) || 1 })
+                  {/* Primary Reminder */}
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium text-primary">Primary Reminder</Label>
+                    {/* Timing */}
+                    <div className="flex items-end gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-sm text-muted-foreground">Send reminder</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={168}
+                          className="w-20"
+                          value={config.timing_value}
+                          onChange={(e) =>
+                            updateReminder(st.id, { timing_value: parseInt(e.target.value) || 1 })
+                          }
+                        />
+                      </div>
+                      <Select
+                        value={config.timing_unit}
+                        onValueChange={(val: 'hours' | 'days') =>
+                          updateReminder(st.id, { timing_unit: val })
                         }
-                      />
+                      >
+                        <SelectTrigger className="w-28">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="hours">Hours</SelectItem>
+                          <SelectItem value="days">Days</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <span className="text-sm text-muted-foreground pb-2">before appointment</span>
                     </div>
-                    <Select
-                      value={config.timing_unit}
-                      onValueChange={(val: 'hours' | 'days') =>
-                        updateReminder(st.id, { timing_unit: val })
-                      }
-                    >
-                      <SelectTrigger className="w-28">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="hours">Hours</SelectItem>
-                        <SelectItem value="days">Days</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <span className="text-sm text-muted-foreground pb-2">before appointment</span>
+
+                    {/* Message */}
+                    <div className="space-y-1">
+                      <Label className="text-sm text-muted-foreground">Reminder Message</Label>
+                      <Textarea
+                        placeholder={`Hi {{client_name}}, this is a reminder that {{pet_names}} has a ${st.display_name.toLowerCase()} appointment on {{date}} at {{time}}. See you soon!`}
+                        value={config.message}
+                        onChange={(e) => updateReminder(st.id, { message: e.target.value })}
+                        className="min-h-[80px] font-mono text-sm"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {config.message.length} characters · {Math.ceil(config.message.length / 160) || 1} SMS segment{Math.ceil(config.message.length / 160) > 1 ? 's' : ''}
+                      </p>
+                    </div>
                   </div>
 
-                  {/* Message */}
-                  <div className="space-y-1">
-                    <Label className="text-sm text-muted-foreground">Reminder Message</Label>
-                    <Textarea
-                      placeholder={`Hi {{client_name}}, this is a reminder that {{pet_names}} has a ${st.display_name.toLowerCase()} appointment on {{date}} at {{time}}. See you soon!`}
-                      value={config.message}
-                      onChange={(e) => updateReminder(st.id, { message: e.target.value })}
-                      className="min-h-[80px] font-mono text-sm"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      {config.message.length} characters · {Math.ceil(config.message.length / 160) || 1} SMS segment{Math.ceil(config.message.length / 160) > 1 ? 's' : ''}
-                    </p>
+                  {/* Secondary Reminder */}
+                  <div className="border-t pt-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">Secondary Reminder</Label>
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor={`secondary-${st.id}`} className="text-sm text-muted-foreground">
+                          Enabled
+                        </Label>
+                        <Switch
+                          id={`secondary-${st.id}`}
+                          checked={config.secondary_enabled || false}
+                          onCheckedChange={(checked) => updateReminder(st.id, { secondary_enabled: checked })}
+                        />
+                      </div>
+                    </div>
+
+                    {config.secondary_enabled && (
+                      <>
+                        <div className="flex items-end gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-sm text-muted-foreground">Send reminder</Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={168}
+                              className="w-20"
+                              value={config.secondary_timing_value || 1}
+                              onChange={(e) =>
+                                updateReminder(st.id, { secondary_timing_value: parseInt(e.target.value) || 1 })
+                              }
+                            />
+                          </div>
+                          <Select
+                            value={config.secondary_timing_unit || 'hours'}
+                            onValueChange={(val: 'hours' | 'days') =>
+                              updateReminder(st.id, { secondary_timing_unit: val })
+                            }
+                          >
+                            <SelectTrigger className="w-28">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="hours">Hours</SelectItem>
+                              <SelectItem value="days">Days</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <span className="text-sm text-muted-foreground pb-2">before appointment</span>
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-sm text-muted-foreground">Reminder Message</Label>
+                          <Textarea
+                            placeholder={`Hi {{client_first_name}}, just a heads up — {{pet_names}}'s ${st.display_name.toLowerCase()} appointment is in 1 hour! See you soon at {{business_name}}.`}
+                            value={config.secondary_message || ''}
+                            onChange={(e) => updateReminder(st.id, { secondary_message: e.target.value })}
+                            className="min-h-[80px] font-mono text-sm"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            {(config.secondary_message || '').length} characters · {Math.ceil((config.secondary_message || '').length / 160) || 1} SMS segment{Math.ceil((config.secondary_message || '').length / 160) > 1 ? 's' : ''}
+                          </p>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </>
               )}

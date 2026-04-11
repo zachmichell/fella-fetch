@@ -10,11 +10,68 @@ function normalizePhone(phone: string | null | undefined): string {
   return `+${digits}`;
 }
 
+/**
+ * Convert a local date string + time string in a given IANA timezone to a UTC Date.
+ * e.g. toUTC("2025-07-15", "09:00", "America/New_York") => Date representing 13:00 UTC
+ */
+function toUTC(dateStr: string, timeStr: string, tz: string): Date {
+  // Build an ISO-ish string and use the timezone to figure out the offset
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const [hour, minute] = timeStr.split(':').map(Number);
+
+  // Create a date in UTC first as a starting point
+  const utcGuess = new Date(Date.UTC(year, month - 1, day, hour, minute, 0));
+
+  // Use Intl to find what the local time would be in the target timezone at this UTC moment
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false,
+  });
+
+  const parts = formatter.formatToParts(utcGuess);
+  const get = (type: string) => parseInt(parts.find(p => p.type === type)?.value || '0');
+
+  const localAtGuess = new Date(Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second')));
+  const offsetMs = localAtGuess.getTime() - utcGuess.getTime();
+
+  // The actual UTC time = desired local time - offset
+  return new Date(Date.UTC(year, month - 1, day, hour, minute, 0) - offsetMs);
+}
+
+/** Map settings timezone keys to IANA timezone names */
+const TZ_MAP: Record<string, string> = {
+  'America/New_York': 'America/New_York',
+  'America/Chicago': 'America/Chicago',
+  'America/Denver': 'America/Denver',
+  'America/Phoenix': 'America/Phoenix',
+  'America/Los_Angeles': 'America/Los_Angeles',
+  'America/Anchorage': 'America/Anchorage',
+  'Pacific/Honolulu': 'Pacific/Honolulu',
+  'America/Puerto_Rico': 'America/Puerto_Rico',
+  'US/Eastern': 'America/New_York',
+  'US/Central': 'America/Chicago',
+  'US/Mountain': 'America/Denver',
+  'US/Pacific': 'America/Los_Angeles',
+};
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
+
+interface ReminderConfig {
+  enabled: boolean;
+  message: string;
+  timing_value: number;
+  timing_unit: "hours" | "days";
+  secondary_enabled?: boolean;
+  secondary_message?: string;
+  secondary_timing_value?: number;
+  secondary_timing_unit?: "hours" | "days";
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -82,7 +139,6 @@ Deno.serve(async (req) => {
       message = message.replace(/\{\{time\}\}/g, appointmentTime);
       message = message.replace(/\{\{business_name\}\}/g, "Fella & Fetch");
 
-      // Send test SMS via Telnyx
       const { data: smsResult, error: smsError } = await supabase.functions.invoke('send-sms', {
         body: { to: clientPhone, message },
       });
@@ -114,15 +170,18 @@ Deno.serve(async (req) => {
       );
     }
 
-    const reminderSettings = settingsRow.value as Record<
-      string,
-      {
-        enabled: boolean;
-        message: string;
-        timing_value: number;
-        timing_unit: "hours" | "days";
-      }
-    >;
+    const reminderSettings = settingsRow.value as Record<string, ReminderConfig>;
+
+    // 1b. Load business timezone
+    const { data: tzRow } = await supabase
+      .from("system_settings")
+      .select("value")
+      .eq("key", "business_timezone")
+      .maybeSingle();
+
+    const rawTz = typeof tzRow?.value === 'string' ? tzRow.value : (tzRow?.value as any)?.timezone || 'America/New_York';
+    const businessTz = TZ_MAP[rawTz] || rawTz || 'America/New_York';
+    console.log(`Using business timezone: ${businessTz}`);
 
     // 2. Load service types to map IDs to names
     const { data: serviceTypes } = await supabase
@@ -138,22 +197,64 @@ Deno.serve(async (req) => {
     let totalSent = 0;
     const results: any[] = [];
 
+    // Build a list of reminder jobs: primary + secondary per service type
+    interface ReminderJob {
+      serviceTypeId: string;
+      config: ReminderConfig;
+      offsetMs: number;
+      messageTemplate: string;
+      reminderType: string; // "primary" | "secondary"
+    }
+
+    const jobs: ReminderJob[] = [];
+
     for (const [serviceTypeId, config] of Object.entries(reminderSettings)) {
       if (!config.enabled || !config.message) continue;
+      if (!serviceTypeMap.has(serviceTypeId)) continue;
 
-      const serviceType = serviceTypeMap.get(serviceTypeId);
-      if (!serviceType) continue;
-
-      const offsetMs =
+      // Primary reminder
+      const primaryOffsetMs =
         config.timing_unit === "days"
           ? config.timing_value * 24 * 60 * 60 * 1000
           : config.timing_value * 60 * 60 * 1000;
 
-      const earliestApptTime = new Date(now.getTime() + offsetMs - 15 * 60 * 1000);
-      const latestApptTime = new Date(now.getTime() + offsetMs + 15 * 60 * 1000);
+      jobs.push({
+        serviceTypeId,
+        config,
+        offsetMs: primaryOffsetMs,
+        messageTemplate: config.message,
+        reminderType: "primary",
+      });
 
-      const queryStartDate = earliestApptTime.toISOString().split("T")[0];
-      const queryEndDate = latestApptTime.toISOString().split("T")[0];
+      // Secondary reminder
+      if (config.secondary_enabled && config.secondary_message) {
+        const secondaryOffsetMs =
+          (config.secondary_timing_unit === "days"
+            ? (config.secondary_timing_value || 1) * 24 * 60 * 60 * 1000
+            : (config.secondary_timing_value || 1) * 60 * 60 * 1000);
+
+        jobs.push({
+          serviceTypeId,
+          config,
+          offsetMs: secondaryOffsetMs,
+          messageTemplate: config.secondary_message,
+          reminderType: "secondary",
+        });
+      }
+    }
+
+    for (const job of jobs) {
+      const serviceType = serviceTypeMap.get(job.serviceTypeId);
+      if (!serviceType) continue;
+
+      // Calculate the window of appointment times we should be sending reminders for
+      // Target appointment UTC time = now + offset (meaning the reminder should fire now)
+      const targetApptUtc = new Date(now.getTime() + job.offsetMs);
+
+      // Query reservations around the target date
+      // We need a wider date range because timezone conversion may shift dates
+      const dayBefore = new Date(targetApptUtc.getTime() - 48 * 60 * 60 * 1000).toISOString().split("T")[0];
+      const dayAfter = new Date(targetApptUtc.getTime() + 48 * 60 * 60 * 1000).toISOString().split("T")[0];
 
       const { data: reservations, error: resError } = await supabase
         .from("reservations")
@@ -161,8 +262,8 @@ Deno.serve(async (req) => {
           "id, start_date, start_time, end_date, notes, status, pet_id, pets!inner(id, name, client_id, clients!inner(id, first_name, last_name, phone, sms_opt_in, sms_reminders_opt_in))"
         )
         .in("status", ["confirmed", "pending"])
-        .gte("start_date", queryStartDate)
-        .lte("start_date", queryEndDate);
+        .gte("start_date", dayBefore)
+        .lte("start_date", dayAfter);
 
       if (resError) {
         console.error(`Error querying reservations for ${serviceType.display_name}:`, resError);
@@ -171,21 +272,27 @@ Deno.serve(async (req) => {
 
       if (!reservations || reservations.length === 0) continue;
 
+      // Filter: check if now is within ±15 min of when the reminder should fire
       const filteredReservations = reservations.filter((res: any) => {
         const timeStr = res.start_time || "09:00";
-        const appointmentDt = new Date(`${res.start_date}T${timeStr}:00`);
-        const reminderDt = new Date(appointmentDt.getTime() - offsetMs);
-        const diffMs = Math.abs(now.getTime() - reminderDt.getTime());
+        // Convert the appointment's local date+time to UTC using the business timezone
+        const appointmentUtc = toUTC(res.start_date, timeStr, businessTz);
+        const reminderFireTime = new Date(appointmentUtc.getTime() - job.offsetMs);
+        const diffMs = Math.abs(now.getTime() - reminderFireTime.getTime());
         return diffMs <= 15 * 60 * 1000;
       });
 
       if (filteredReservations.length === 0) continue;
 
+      // Dedup key includes reminder type to allow both primary and secondary
+      const dedupSuffix = job.reminderType === "secondary" ? "_secondary" : "";
+      const dedupServiceTypeId = job.serviceTypeId + dedupSuffix;
+
       const reservationIds = filteredReservations.map((r: any) => r.id);
       const { data: alreadySent } = await supabase
         .from("sent_reminders")
         .select("reservation_id")
-        .eq("service_type_id", serviceTypeId)
+        .eq("service_type_id", dedupServiceTypeId)
         .in("reservation_id", reservationIds);
 
       const sentSet = new Set((alreadySent || []).map((r: any) => r.reservation_id));
@@ -216,11 +323,11 @@ Deno.serve(async (req) => {
         entry.reservationIds.push(res.id);
       }
 
-      // Send SMS for each client via Telnyx
+      // Send SMS for each client
       for (const [clientId, data] of clientReminders) {
         const { client, petNames, reservation, reservationIds: resIds } = data;
 
-        let message = config.message;
+        let message = job.messageTemplate;
         message = message.replace(/\{\{client_first_name\}\}/g, client.first_name || '');
         message = message.replace(/\{\{client_name\}\}/g, `${client.first_name} ${client.last_name}`);
         message = message.replace(/\{\{pet_names\}\}/g, petNames.join(", "));
@@ -239,7 +346,7 @@ Deno.serve(async (req) => {
           if (!smsError && smsResult?.success) {
             for (const rid of resIds) {
               await supabase.from("sent_reminders").upsert(
-                { reservation_id: rid, service_type_id: serviceTypeId, client_id: clientId },
+                { reservation_id: rid, service_type_id: dedupServiceTypeId, client_id: clientId },
                 { onConflict: "reservation_id,service_type_id" }
               );
             }
@@ -247,12 +354,14 @@ Deno.serve(async (req) => {
             results.push({
               client: `${client.first_name} ${client.last_name}`,
               service: serviceType.display_name,
+              reminderType: job.reminderType,
               status: "sent",
             });
           } else {
             results.push({
               client: `${client.first_name} ${client.last_name}`,
               service: serviceType.display_name,
+              reminderType: job.reminderType,
               status: "failed",
               error: smsError ? String(smsError) : smsResult?.error,
             });
@@ -262,6 +371,7 @@ Deno.serve(async (req) => {
           results.push({
             client: `${client.first_name} ${client.last_name}`,
             service: serviceType.display_name,
+            reminderType: job.reminderType,
             status: "error",
             error: String(smsErr),
           });
@@ -270,7 +380,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ message: "Reminders processed", sent: totalSent, results }),
+      JSON.stringify({ message: "Reminders processed", sent: totalSent, results, timezone: businessTz }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
