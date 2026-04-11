@@ -37,6 +37,7 @@ export type ActionType =
   | 'special_needs_updated'
   | 'weight_updated'
   | 'grooming_completed'
+  | 'grooming_preferences_updated'
   | 'training_session_completed'
   | 'medical_note_added'
   | 'report_card_created'
