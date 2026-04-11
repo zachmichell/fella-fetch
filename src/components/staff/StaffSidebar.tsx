@@ -70,7 +70,7 @@ export function StaffSidebar() {
 
   return (
     <Sidebar className={collapsed ? 'w-14' : 'w-64'} collapsible="icon">
-      <SidebarContent>
+      <SidebarContent className="overflow-y-auto">
         {/* Logo Section */}
         <div className={`p-4 border-b border-sidebar-border ${collapsed ? 'px-2' : ''}`}>
           <div className="flex items-center gap-3">
