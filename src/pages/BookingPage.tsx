@@ -727,8 +727,8 @@ const BookingPage = () => {
         return bookingData.selectedPets.length > 0;
       case 3:
         if (isGrooming) {
-          // Groomer selection step - always can proceed (null = any available)
-          return true;
+          // Groomer selection step - must pick a specific groomer
+          return !!bookingData.selectedGroomerId;
         }
         if (isDaycare) {
           // Daycare type selection step
