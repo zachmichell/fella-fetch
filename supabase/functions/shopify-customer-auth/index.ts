@@ -919,6 +919,73 @@ serve(async (req) => {
       );
     }
 
+    // ── getServicePermissions ──
+    if (action === 'getServicePermissions') {
+      if (!accessToken) {
+        return new Response(
+          JSON.stringify({ error: 'Access token required' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify Shopify session
+      const customerRes = await fetch(SHOPIFY_STOREFRONT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Shopify-Storefront-Access-Token': storefrontToken },
+        body: JSON.stringify({ query: `{ customer(customerAccessToken: "${accessToken}") { email } }` }),
+      });
+      const customerData = await customerRes.json();
+      const customerEmail = customerData?.data?.customer?.email;
+      if (!customerEmail) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid session' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const adminClient = createClient(supabaseUrl, serviceRoleKey);
+
+      // Find client
+      const { data: client } = await adminClient
+        .from('clients')
+        .select('id')
+        .ilike('email', customerEmail)
+        .maybeSingle();
+
+      if (!client) {
+        return new Response(
+          JSON.stringify({ allowed: [] }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Fetch service types + permissions
+      const { data: serviceTypes } = await adminClient
+        .from('service_types')
+        .select('id, name')
+        .eq('is_active', true);
+
+      const { data: permissions } = await adminClient
+        .from('client_service_permissions')
+        .select('service_type_id, is_allowed')
+        .eq('client_id', client.id);
+
+      const allowed: string[] = [];
+      (serviceTypes || []).forEach((st: any) => {
+        const perm = (permissions || []).find((p: any) => p.service_type_id === st.id);
+        if (!perm || perm.is_allowed) {
+          allowed.push(st.name);
+        }
+      });
+
+      return new Response(
+        JSON.stringify({ allowed }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     return new Response(
       JSON.stringify({ error: 'Invalid action' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

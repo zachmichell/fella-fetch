@@ -164,48 +164,33 @@ const BookingPage = () => {
     payInStore: false,
   });
 
-  // Fetch client service permissions
+  // Fetch client service permissions via edge function (bypasses RLS for Shopify auth)
   useEffect(() => {
     const fetchPermissions = async () => {
       if (!isAuthenticated || !clientData?.id) {
-        // Default: all services allowed when not authenticated
         setAllowedServices(new Set(['daycare', 'boarding', 'grooming', 'training']));
         return;
       }
 
       setLoadingPermissions(true);
       try {
-        // Fetch service types to map IDs to names
-        const { data: serviceTypes, error: typesError } = await supabase
-          .from('service_types')
-          .select('id, name')
-          .eq('is_active', true);
+        const sessionRaw = localStorage.getItem('shopify_customer_session');
+        if (!sessionRaw) throw new Error('No session');
+        const session = JSON.parse(sessionRaw);
 
-        if (typesError) throw typesError;
-
-        // Fetch client's permissions
-        const { data: permissions, error: permsError } = await supabase
-          .from('client_service_permissions')
-          .select('service_type_id, is_allowed')
-          .eq('client_id', clientData.id);
-
-        if (permsError) throw permsError;
-
-        // Build set of allowed service names
-        // Default: all services are allowed unless explicitly set to false
-        const allowed = new Set<string>();
-        serviceTypes?.forEach(st => {
-          const permission = permissions?.find(p => p.service_type_id === st.id);
-          // If no permission record exists or is_allowed is true, service is allowed
-          if (!permission || permission.is_allowed) {
-            allowed.add(st.name);
-          }
+        const { data, error } = await supabase.functions.invoke('shopify-customer-auth', {
+          body: { action: 'getServicePermissions', accessToken: session.accessToken },
         });
 
-        setAllowedServices(allowed);
+        if (error) throw error;
+
+        if (data?.allowed) {
+          setAllowedServices(new Set(data.allowed as string[]));
+        } else {
+          setAllowedServices(new Set(['daycare', 'boarding', 'grooming', 'training']));
+        }
       } catch (error) {
         console.error('Error fetching service permissions:', error);
-        // On error, default to all services allowed
         setAllowedServices(new Set(['daycare', 'boarding', 'grooming', 'training']));
       } finally {
         setLoadingPermissions(false);
