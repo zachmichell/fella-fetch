@@ -142,6 +142,11 @@ const BookingPage = () => {
   const [showQuestionnaire, setShowQuestionnaire] = useState(false);
   const [questionnaireSubmitted, setQuestionnaireSubmitted] = useState(false);
 
+  // Next available groomer state
+  const [showNextAvailable, setShowNextAvailable] = useState(false);
+  const [nextAvailableDate, setNextAvailableDate] = useState<string | null>(null);
+  const [nextAvailableGroomers, setNextAvailableGroomers] = useState<string[]>([]);
+
   // Service permissions state
   const [allowedServices, setAllowedServices] = useState<Set<string>>(new Set(['daycare', 'boarding', 'grooming', 'training']));
   const [loadingPermissions, setLoadingPermissions] = useState(false);
