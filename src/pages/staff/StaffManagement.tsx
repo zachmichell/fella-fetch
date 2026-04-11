@@ -433,6 +433,9 @@ const StaffManagementContent = () => {
         </CardContent>
       </Card>
 
+      {/* Role Permissions */}
+      <RolePermissionsEditor />
+
       {/* Add/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
