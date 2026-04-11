@@ -51,6 +51,7 @@ interface Groomer {
   id: string;
   name: string;
   color: string | null;
+  bio: string | null;
 }
 
 interface GroomerSchedule {
