@@ -1,6 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+export interface HolidayEntry {
+  date: string; // YYYY-MM-DD
+  name: string;
+  closed: boolean;
+  open?: string;
+  close?: string;
+}
+
 export interface BusinessHours {
   weekday: {
     open: string;
@@ -78,10 +86,54 @@ export function useBusinessHours() {
     },
   });
 
+  const { data: holidays = [] } = useQuery({
+    queryKey: ['holiday-hours'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'holiday_hours')
+        .maybeSingle();
+      if (error) throw error;
+      if (data?.value && Array.isArray(data.value)) {
+        return data.value as unknown as HolidayEntry[];
+      }
+      return [] as HolidayEntry[];
+    },
+  });
+
+  /**
+   * Get effective hours for a specific date, accounting for holidays.
+   * Returns null if the business is closed on that date.
+   */
+  const getHoursForDate = (date: Date | string): { open: string; close: string } | null => {
+    const d = typeof date === 'string' ? new Date(date + 'T00:00:00') : date;
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+    const holiday = holidays.find(h => h.date === dateStr);
+    if (holiday) {
+      if (holiday.closed) return null;
+      return { open: holiday.open || '9:00 AM', close: holiday.close || '5:00 PM' };
+    }
+
+    const hours = businessHours || DEFAULT_BUSINESS_HOURS;
+    const day = d.getDay();
+    return day === 0 || day === 6 ? hours.weekend : hours.weekday;
+  };
+
+  const isHoliday = (date: Date | string): boolean => {
+    const d = typeof date === 'string' ? new Date(date + 'T00:00:00') : date;
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return holidays.some(h => h.date === dateStr);
+  };
+
   return {
     businessHours: businessHours || DEFAULT_BUSINESS_HOURS,
+    holidays,
     isLoading,
     updateBusinessHours,
+    getHoursForDate,
+    isHoliday,
   };
 }
 

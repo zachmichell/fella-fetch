@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Settings, AlertTriangle, Save, Loader2, Clock, Building2, BarChart3, ListChecks, Plus, X } from 'lucide-react';
 import { EarlyLateFeeSettings } from '@/components/staff/EarlyLateFeeSettings';
+import { HolidayHoursManager } from '@/components/staff/HolidayHoursManager';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const TIMEZONES = [
@@ -349,6 +350,9 @@ const StaffSettings = () => {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Holiday Hours */}
+        <HolidayHoursManager />
 
         {/* Early/Late Fee Settings */}
         <EarlyLateFeeSettings />
