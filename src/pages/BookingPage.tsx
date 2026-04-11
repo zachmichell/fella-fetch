@@ -1341,14 +1341,36 @@ const BookingPage = () => {
                   Select Your Groomer
                 </h2>
                 <p className="text-muted-foreground">
-                  Choose a specific groomer or let us match you with the first available.
+                  {showNextAvailable 
+                    ? "Pick a groomer from those available on the next open date."
+                    : "Choose a specific groomer, or find the next available date across all groomers."
+                  }
                 </p>
                 <GroomerSelector
                   groomers={groomers}
                   selectedGroomerId={bookingData.selectedGroomerId}
                   onSelect={handleGroomerSelect}
                   loading={loadingGroomers}
+                  schedules={groomerSchedules}
+                  showNextAvailable={showNextAvailable}
+                  onFindNextAvailable={handleFindNextAvailable}
+                  nextAvailableDate={nextAvailableDate}
+                  nextAvailableGroomers={nextAvailableGroomers}
                 />
+                {showNextAvailable && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setShowNextAvailable(false);
+                      setNextAvailableDate(null);
+                      setNextAvailableGroomers([]);
+                    }}
+                    className="text-muted-foreground"
+                  >
+                    ← Show all groomers
+                  </Button>
+                )}
               </motion.div>
             )}
 
