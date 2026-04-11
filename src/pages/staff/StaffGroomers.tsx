@@ -62,6 +62,8 @@ interface Groomer {
   eod_buffer_minutes: number;
   max_concurrent: number;
   user_id: string | null;
+  bio: string | null;
+  photo_url: string | null;
 }
 
 
@@ -70,6 +72,7 @@ interface GroomerFormData {
   email: string;
   phone: string;
   color: string;
+  bio: string;
 }
 
 const COLOR_OPTIONS = [
@@ -99,6 +102,7 @@ const StaffGroomers = () => {
     email: '',
     phone: '',
     color: '#3b82f6',
+    bio: '',
   });
   const [draggedGroomer, setDraggedGroomer] = useState<Groomer | null>(null);
 
@@ -128,6 +132,7 @@ const StaffGroomers = () => {
           email: data.email || null,
           phone: data.phone || null,
           color: data.color,
+          bio: data.bio || null,
           sort_order: maxSortOrder + 1,
         });
       
@@ -154,6 +159,7 @@ const StaffGroomers = () => {
           email: data.email || null,
           phone: data.phone || null,
           color: data.color,
+          bio: data.bio || null,
         })
         .eq('id', id);
       
@@ -228,7 +234,7 @@ const StaffGroomers = () => {
 
   const handleOpenCreate = () => {
     setEditingGroomer(null);
-    setFormData({ name: '', email: '', phone: '', color: '#3b82f6' });
+    setFormData({ name: '', email: '', phone: '', color: '#3b82f6', bio: '' });
     setIsDialogOpen(true);
   };
 
@@ -239,6 +245,7 @@ const StaffGroomers = () => {
       email: groomer.email || '',
       phone: groomer.phone || '',
       color: groomer.color || '#3b82f6',
+      bio: groomer.bio || '',
     });
     setIsDialogOpen(true);
   };
@@ -246,7 +253,7 @@ const StaffGroomers = () => {
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setEditingGroomer(null);
-    setFormData({ name: '', email: '', phone: '', color: '#3b82f6' });
+    setFormData({ name: '', email: '', phone: '', color: '#3b82f6', bio: '' });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -521,6 +528,22 @@ const StaffGroomers = () => {
               </div>
               <p className="text-xs text-muted-foreground">
                 This color will be used to identify the groomer's appointments on the calendar
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="bio">Bio</Label>
+              <textarea
+                id="bio"
+                value={formData.bio}
+                onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                placeholder="A short bio about this groomer that clients will see when booking..."
+                maxLength={300}
+                rows={3}
+                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              />
+              <p className="text-xs text-muted-foreground">
+                {formData.bio.length}/300 characters — shown to clients during booking
               </p>
             </div>
 

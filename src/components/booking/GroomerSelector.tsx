@@ -5,6 +5,7 @@ interface Groomer {
   id: string;
   name: string;
   color: string | null;
+  bio: string | null;
 }
 
 interface GroomerSchedule {
@@ -110,8 +111,8 @@ export const GroomerSelector = ({
             </div>
             <div className="flex-1">
               <h3 className="font-semibold text-foreground text-lg">{groomer.name}</h3>
-              <p className="text-sm text-muted-foreground">
-                Professional groomer
+              <p className="text-sm text-muted-foreground line-clamp-2">
+                {groomer.bio || 'Professional groomer'}
               </p>
             </div>
             {isSelected && (
