@@ -3,14 +3,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { useToast } from '@/hooks/use-toast';
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
   LayoutDashboard, Calendar, Users, Dog, ClipboardList, Clock,
   BarChart3, Settings, HeartPulse, Scissors, BedDouble, MessageCircle,
   MessageSquare, Repeat, Megaphone, Sparkles, UserCog, ShoppingBag,
-  Layers, KeyRound, Shield, Loader2, Save
+  Layers, KeyRound, Shield, Loader2, Save, Plus, Trash2
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -73,11 +79,15 @@ export function RolePermissionsEditor() {
   const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [newRoleName, setNewRoleName] = useState('');
+  const [activeTab, setActiveTab] = useState('');
 
   useEffect(() => {
     if (!isLoading && !initialized) {
       const saved = getSetting<RolePermissions>('role_permissions', DEFAULT_PERMISSIONS);
       setPermissions(saved);
+      const firstRole = Object.keys(saved)[0] || '';
+      setActiveTab(firstRole);
       setInitialized(true);
     }
   }, [isLoading, initialized]);
@@ -104,6 +114,32 @@ export function RolePermissionsEditor() {
       };
     });
     setHasChanges(true);
+  };
+
+  const addRole = () => {
+    const key = newRoleName.trim().toLowerCase().replace(/\s+/g, '-');
+    if (!key) return;
+    if (key === 'admin' || permissions[key]) {
+      toast({ title: 'Role already exists', variant: 'destructive' });
+      return;
+    }
+    setPermissions(prev => ({ ...prev, [key]: ['dashboard'] }));
+    setNewRoleName('');
+    setActiveTab(key);
+    setHasChanges(true);
+    toast({ title: `Role "${newRoleName.trim()}" created` });
+  };
+
+  const deleteRole = (roleKey: string) => {
+    setPermissions(prev => {
+      const next = { ...prev };
+      delete next[roleKey];
+      return next;
+    });
+    const remaining = Object.keys(permissions).filter(k => k !== roleKey);
+    setActiveTab(remaining[0] || '');
+    setHasChanges(true);
+    toast({ title: `Role deleted` });
   };
 
   const handleSave = async () => {
@@ -133,10 +169,10 @@ export function RolePermissionsEditor() {
     );
   }
 
-  const roles: { key: string; label: string; description: string }[] = [
-    { key: 'basic', label: 'Basic', description: 'Standard staff members' },
-    { key: 'supervisor', label: 'Supervisor', description: 'Team leads with expanded access' },
-  ];
+  const roles = Object.keys(permissions).map(key => ({
+    key,
+    label: key.charAt(0).toUpperCase() + key.slice(1).replace(/-/g, ' '),
+  }));
 
   return (
     <Card>
@@ -159,9 +195,23 @@ export function RolePermissionsEditor() {
           )}
         </div>
       </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="basic">
-          <TabsList className="mb-4">
+      <CardContent className="space-y-4">
+        {/* Add new role */}
+        <div className="flex gap-2">
+          <Input
+            placeholder="New role name…"
+            value={newRoleName}
+            onChange={e => setNewRoleName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addRole()}
+            className="max-w-xs"
+          />
+          <Button variant="outline" size="sm" onClick={addRole} disabled={!newRoleName.trim()}>
+            <Plus className="h-4 w-4 mr-1" /> Add Role
+          </Button>
+        </div>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="mb-4 flex-wrap h-auto gap-1">
             {roles.map(r => (
               <TabsTrigger key={r.key} value={r.key}>{r.label}</TabsTrigger>
             ))}
@@ -175,12 +225,34 @@ export function RolePermissionsEditor() {
             const rolePerms = permissions[role.key] || [];
             return (
               <TabsContent key={role.key} value={role.key} className="space-y-6">
-                <p className="text-sm text-muted-foreground">{role.description}</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    Configure access for the <span className="font-medium">{role.label}</span> role
+                  </p>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm">
+                        <Trash2 className="h-4 w-4 mr-1" /> Delete Role
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete "{role.label}" role?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will remove the role and its permissions. Staff codes assigned to this role will need to be reassigned.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => deleteRole(role.key)}>Delete</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
                 
                 {(['main', 'operations', 'admin'] as const).map(section => {
                   const sectionPages = ALL_PAGES.filter(p => p.section === section);
                   const allEnabled = sectionPages.every(p => rolePerms.includes(p.key));
-                  const someEnabled = sectionPages.some(p => rolePerms.includes(p.key));
                   
                   return (
                     <div key={section} className="space-y-3">
