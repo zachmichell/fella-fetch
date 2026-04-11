@@ -723,7 +723,20 @@ const BookingPage = () => {
   };
 
   const prevStep = () => {
-    if (step > 1) setStep(step - 1);
+    if (step > 1) {
+      // When going back to groomer selection, reset next-available state
+      if (step === 4 && isGrooming) {
+        setShowNextAvailable(false);
+        setNextAvailableDate(null);
+        setNextAvailableGroomers([]);
+      }
+      // Skip calendar step (5) when going back if date was pre-selected
+      if (step === 6 && isGrooming && showNextAvailable) {
+        setStep(4);
+        return;
+      }
+      setStep(step - 1);
+    }
   };
 
   const canProceed = () => {
