@@ -712,7 +712,14 @@ const BookingPage = () => {
   };
 
   const nextStep = () => {
-    if (step < totalSteps) setStep(step + 1);
+    if (step < totalSteps) {
+      // Skip calendar step (5) for grooming if date was pre-selected via "next available"
+      if (step === 4 && isGrooming && bookingData.groomingDate) {
+        setStep(6); // Skip to time selection
+        return;
+      }
+      setStep(step + 1);
+    }
   };
 
   const prevStep = () => {
