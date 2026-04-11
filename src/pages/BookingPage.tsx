@@ -642,14 +642,49 @@ const BookingPage = () => {
   };
 
   const handleGroomerSelect = (groomerId: string | null) => {
+    if (!groomerId) return; // Must pick a specific groomer
     setBookingData({
       ...bookingData,
       selectedGroomerId: groomerId,
-      groomingDate: null, // Reset date when groomer changes
+      groomingDate: showNextAvailable && nextAvailableDate ? new Date(nextAvailableDate + 'T12:00:00') : null,
       groomingTime: null,
       groomingEndTime: null,
     });
-    setStep(4); // Auto-advance to service selection
+    // If we already have a next available date, skip calendar and go to service selection
+    if (showNextAvailable && nextAvailableDate) {
+      setStep(4); // service selection, then skip calendar (date already set)
+    } else {
+      setStep(4); // service selection, then calendar
+    }
+  };
+
+  const handleFindNextAvailable = () => {
+    const today = new Date();
+    const todayStr = format(today, "yyyy-MM-dd");
+    
+    // Find the earliest date any groomer is available
+    const futureDates = groomerSchedules
+      .filter(s => s.available_date >= todayStr)
+      .map(s => s.available_date)
+      .sort();
+    
+    if (futureDates.length === 0) {
+      setNextAvailableDate(null);
+      setNextAvailableGroomers([]);
+      setShowNextAvailable(true);
+      return;
+    }
+
+    const earliest = futureDates[0];
+    const availableGroomerIds = [...new Set(
+      groomerSchedules
+        .filter(s => s.available_date === earliest)
+        .map(s => s.groomer_id)
+    )];
+    
+    setNextAvailableDate(earliest);
+    setNextAvailableGroomers(availableGroomerIds);
+    setShowNextAvailable(true);
   };
 
   const handleGroomingDateSelect = (date: Date) => {
