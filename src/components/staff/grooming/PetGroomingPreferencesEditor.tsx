@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { storefrontApiRequest } from '@/lib/shopify';
 import { useToast } from '@/hooks/use-toast';
+import { usePetActivityLog } from '@/hooks/usePetActivityLog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -40,6 +41,7 @@ export const PetGroomingPreferencesEditor = ({
 }: PetGroomingPreferencesEditorProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { logActivity } = usePetActivityLog();
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [selectedVariantTitle, setSelectedVariantTitle] = useState<string | null>(null);
   const [frequencyNumber, setFrequencyNumber] = useState<string>('');
@@ -197,6 +199,24 @@ export const PetGroomingPreferencesEditor = ({
       if (error) throw error;
     },
     onSuccess: () => {
+      const frequency = frequencyNumber && frequencyUnit 
+        ? `${frequencyNumber} ${frequencyUnit}` 
+        : null;
+      const displayTitle = selectedVariantTitle 
+        ? `${selectedProduct?.title} - ${selectedVariantTitle}`
+        : selectedProduct?.title || null;
+
+      logActivity({
+        petId,
+        actionType: 'grooming_preferences_updated',
+        actionCategory: 'grooming',
+        description: `Grooming preferences updated for ${petName}`,
+        details: {
+          product: displayTitle,
+          frequency,
+        },
+      });
+
       queryClient.invalidateQueries({ queryKey: ['pet-grooming-prefs', petId] });
       queryClient.invalidateQueries({ queryKey: ['pets'] });
       toast({
