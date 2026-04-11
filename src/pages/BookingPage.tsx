@@ -951,6 +951,17 @@ const BookingPage = () => {
 
     setIsSubmitting(true);
     try {
+      // Convert "10:00 AM" display time to "10:00:00" 24h format for DB
+      const to24h = (timeStr: string): string | null => {
+        if (!timeStr) return null;
+        try {
+          const parsed = parse(timeStr, 'h:mm a', new Date());
+          return format(parsed, 'HH:mm:ss');
+        } catch {
+          return null;
+        }
+      };
+
       // Build notes string
       const buildNotes = () => {
         const parts: string[] = [];
@@ -970,6 +981,8 @@ const BookingPage = () => {
         status: "pending" as const,
         start_date: bookingData.date,
         end_date: bookingData.endDate || bookingData.date,
+        start_time: to24h(bookingData.time),
+        end_time: to24h(bookingData.endTime),
         notes: buildNotes(),
         payment_pending: bookingData.payInStore,
       }));
