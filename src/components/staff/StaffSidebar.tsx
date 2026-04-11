@@ -170,7 +170,7 @@ export function StaffSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border p-4">
+      <SidebarFooter className="shrink-0 border-t border-sidebar-border p-4">
         {!collapsed && currentStaff && (
           <div className="mb-3 px-2">
             <p className="text-sm font-medium truncate">{currentStaff.name}</p>
