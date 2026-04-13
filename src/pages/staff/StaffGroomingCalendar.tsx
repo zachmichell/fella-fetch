@@ -133,6 +133,7 @@ const StaffGroomingCalendar = () => {
           showViewToggle={!isMobile}
         />
 
+        <PendingQuestionnaires />
         <PendingGroomingRequests groomers={groomers || []} />
 
         {effectiveViewMode === 'weekly' ? (
