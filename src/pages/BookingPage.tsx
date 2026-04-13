@@ -220,8 +220,9 @@ const BookingPage = () => {
       try {
         // Fetch active groomers from public view (excludes email/phone for privacy)
         const { data: groomersData, error: groomersError } = await supabase
-          .from("groomers_public" as any)
-          .select("id, name, color")
+          .from("groomers")
+          .select("id, name, color, bio")
+          .eq("is_active", true)
           .order("sort_order") as { data: Groomer[] | null; error: any };
 
         if (groomersError) throw groomersError;
