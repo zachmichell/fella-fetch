@@ -7,6 +7,7 @@ import { GroomingWeekView } from '@/components/staff/grooming/GroomingWeekView';
 import { CreateGroomingDialog } from '@/components/staff/grooming/CreateGroomingDialog';
 import { GroomingDetailsDialog } from '@/components/staff/grooming/GroomingDetailsDialog';
 import { PendingGroomingRequests } from '@/components/staff/grooming/PendingGroomingRequests';
+import { PendingQuestionnaires } from '@/components/staff/grooming/PendingQuestionnaires';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { startOfWeek } from 'date-fns';
