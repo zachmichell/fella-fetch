@@ -10,6 +10,41 @@ const SHOPIFY_STORE_DOMAIN = 'fella-fetch.myshopify.com';
 const SHOPIFY_API_VERSION = '2025-07';
 const SHOPIFY_STOREFRONT_URL = `https://${SHOPIFY_STORE_DOMAIN}/api/${SHOPIFY_API_VERSION}/graphql.json`;
 
+const verifyCustomerEmail = async (accessToken: string, storefrontToken: string) => {
+  const customerQuery = `
+    query getCustomer($accessToken: String!) {
+      customer(customerAccessToken: $accessToken) {
+        email
+      }
+    }
+  `;
+
+  const customerResponse = await fetch(SHOPIFY_STOREFRONT_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Shopify-Storefront-Access-Token': storefrontToken,
+    },
+    body: JSON.stringify({
+      query: customerQuery,
+      variables: { accessToken },
+    }),
+  });
+
+  const customerData = await customerResponse.json();
+  return customerData?.data?.customer?.email as string | null;
+};
+
+const dataUrlToBytes = (dataUrl: string) => {
+  const [, base64Payload] = dataUrl.split(',', 2);
+  if (!base64Payload) {
+    throw new Error('Invalid image data');
+  }
+
+  const binary = atob(base64Payload);
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -22,7 +57,7 @@ serve(async (req) => {
       throw new Error('Shopify storefront token not configured');
     }
 
-    const { action, email, password, accessToken, reservations, reservationId, petId } = await req.json();
+    const { action, email, password, accessToken, reservations, reservationId, petId, questionnaire, photos } = await req.json();
 
     // Create a Storefront Access Token using Admin API
     if (action === 'createStorefrontToken') {
@@ -725,6 +760,125 @@ serve(async (req) => {
 
       return new Response(
         JSON.stringify({ success: true, reservations: insertedReservations }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'submitGroomQuestionnaire') {
+      if (!accessToken || !questionnaire?.pet_id) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required questionnaire details' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const customerEmail = await verifyCustomerEmail(accessToken, storefrontToken);
+
+      if (!customerEmail) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired session' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+      const { data: client, error: clientError } = await supabase
+        .from('clients')
+        .select('id')
+        .ilike('email', customerEmail)
+        .maybeSingle();
+
+      if (clientError) {
+        console.error('Error finding client for questionnaire:', clientError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to verify client account' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!client) {
+        return new Response(
+          JSON.stringify({ error: 'Client not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: ownedPet, error: petError } = await supabase
+        .from('pets')
+        .select('id')
+        .eq('id', questionnaire.pet_id)
+        .eq('client_id', client.id)
+        .maybeSingle();
+
+      if (petError) {
+        console.error('Error verifying questionnaire pet ownership:', petError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to verify pet ownership' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!ownedPet) {
+        return new Response(
+          JSON.stringify({ error: 'This pet does not belong to your account' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const uploadedPhotoPaths: string[] = [];
+
+      for (const photo of Array.isArray(photos) ? photos : []) {
+        const fileName = typeof photo?.name === 'string' ? photo.name : 'questionnaire-photo.jpg';
+        const fileType = typeof photo?.type === 'string' && photo.type ? photo.type : 'image/jpeg';
+        const extension = (fileName.split('.').pop() || fileType.split('/').pop() || 'jpg').replace(/[^a-zA-Z0-9]/g, '') || 'jpg';
+        const storagePath = `questionnaires/${questionnaire.pet_id}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('pet-photos')
+          .upload(storagePath, dataUrlToBytes(photo.dataUrl), {
+            contentType: fileType,
+            upsert: false,
+          });
+
+        if (uploadError) {
+          console.error('Error uploading questionnaire photo:', uploadError);
+          return new Response(
+            JSON.stringify({ error: 'Failed to upload questionnaire photo' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        uploadedPhotoPaths.push(`pet-photos/${storagePath}`);
+      }
+
+      const { data: insertedQuestionnaire, error: insertError } = await supabase
+        .from('groom_questionnaires')
+        .insert({
+          pet_id: questionnaire.pet_id,
+          client_id: client.id,
+          coat_condition: questionnaire.coat_condition ?? null,
+          matting_level: questionnaire.matting_level ?? null,
+          behavior_concerns: questionnaire.behavior_concerns ?? null,
+          last_groom_location: questionnaire.last_groom_location ?? null,
+          last_groom_timeframe: questionnaire.last_groom_timeframe ?? null,
+          photo_urls: uploadedPhotoPaths,
+        })
+        .select('id')
+        .single();
+
+      if (insertError) {
+        console.error('Error inserting questionnaire:', insertError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to save grooming questionnaire' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, questionnaireId: insertedQuestionnaire.id }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
