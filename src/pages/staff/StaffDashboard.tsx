@@ -164,6 +164,10 @@ const StaffDashboard = () => {
           payment_pending,
           parent_reservation_id,
           subscription_id,
+          suite_id,
+          suites:suite_id (
+            name
+          ),
           pets (
             id,
             name,
@@ -207,6 +211,10 @@ const StaffDashboard = () => {
           payment_pending,
           parent_reservation_id,
           subscription_id,
+          suite_id,
+          suites:suite_id (
+            name
+          ),
           pets (
             id,
             name,
