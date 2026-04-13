@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Upload, X, Camera } from 'lucide-react';
+import { X, Camera } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -39,9 +39,18 @@ export function GroomQuestionnaire({ petId, petName, clientId, onSubmit, onCance
   };
 
   const removePhoto = (index: number) => {
+    URL.revokeObjectURL(previewUrls[index]);
     setPhotos(prev => prev.filter((_, i) => i !== index));
     setPreviewUrls(prev => prev.filter((_, i) => i !== index));
   };
+
+  const fileToDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(new Error(`Failed to read ${file.name}`));
+      reader.readAsDataURL(file);
+    });
 
   const handleSubmit = async () => {
     if (!coatCondition || !mattingLevel || !behaviorConcerns || !lastGroomTimeframe) {
@@ -51,35 +60,43 @@ export function GroomQuestionnaire({ petId, petName, clientId, onSubmit, onCance
 
     setIsSubmitting(true);
     try {
-      // Upload photos
-      const photoUrls: string[] = [];
-      for (const photo of photos) {
-        const ext = photo.name.split('.').pop();
-        const path = `questionnaires/${petId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-        const { error } = await supabase.storage.from('pet-photos').upload(path, photo);
-        if (error) throw error;
-        const { data: urlData } = supabase.storage.from('pet-photos').getPublicUrl(path);
-        photoUrls.push(urlData.publicUrl);
+      const storedSession = localStorage.getItem('shopify_customer_session');
+      const shopifyToken = storedSession ? JSON.parse(storedSession).accessToken : null;
+
+      if (!shopifyToken) {
+        throw new Error('Please sign in again before submitting the questionnaire.');
       }
 
-      // Insert questionnaire
-      const { data, error } = await supabase
-        .from('groom_questionnaires')
-        .insert({
-          pet_id: petId,
-          client_id: clientId,
-          coat_condition: coatCondition,
-          matting_level: mattingLevel,
-          behavior_concerns: behaviorConcerns,
-          last_groom_location: lastGroomLocation,
-          last_groom_timeframe: lastGroomTimeframe,
-          photo_urls: photoUrls,
-        })
-        .select('id')
-        .single();
+      const encodedPhotos = await Promise.all(
+        photos.map(async (photo) => ({
+          name: photo.name,
+          type: photo.type,
+          dataUrl: await fileToDataUrl(photo),
+        }))
+      );
 
-      if (error) throw error;
-      onSubmit(data.id);
+      const { data, error } = await supabase.functions.invoke('shopify-customer-auth', {
+        body: {
+          action: 'submitGroomQuestionnaire',
+          accessToken: shopifyToken,
+          questionnaire: {
+            pet_id: petId,
+            client_id: clientId,
+            coat_condition: coatCondition,
+            matting_level: mattingLevel,
+            behavior_concerns: behaviorConcerns,
+            last_groom_location: lastGroomLocation,
+            last_groom_timeframe: lastGroomTimeframe,
+          },
+          photos: encodedPhotos,
+        },
+      });
+
+      if (error || data?.error) {
+        throw new Error(data?.error || error?.message || 'Failed to submit questionnaire');
+      }
+
+      onSubmit(data.questionnaireId);
     } catch (err: any) {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
     } finally {
