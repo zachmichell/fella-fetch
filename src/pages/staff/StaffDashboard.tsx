@@ -164,6 +164,10 @@ const StaffDashboard = () => {
           payment_pending,
           parent_reservation_id,
           subscription_id,
+          suite_id,
+          suites:suite_id (
+            name
+          ),
           pets (
             id,
             name,
@@ -207,6 +211,10 @@ const StaffDashboard = () => {
           payment_pending,
           parent_reservation_id,
           subscription_id,
+          suite_id,
+          suites:suite_id (
+            name
+          ),
           pets (
             id,
             name,
@@ -315,7 +323,7 @@ const StaffDashboard = () => {
         end_date: r.end_date,
         start_time: r.start_time,
         end_time: r.end_time,
-        lodging: null, // Will be implemented with lodging feature
+        lodging: r.suites?.name || null,
         checked_in_at: r.checked_in_at,
         checked_out_at: r.checked_out_at,
         daycare_credits: r.pets?.clients?.daycare_credits ?? 0,
