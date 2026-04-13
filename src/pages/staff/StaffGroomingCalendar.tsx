@@ -74,7 +74,7 @@ const StaffGroomingCalendar = () => {
           queryClient.invalidateQueries({ queryKey: ['grooming-appointments'] });
           queryClient.invalidateQueries({ queryKey: ['grooming-appointments-week'] });
           queryClient.invalidateQueries({ queryKey: ['pending-grooming'] });
-        }
+          queryClient.invalidateQueries({ queryKey: ['pending-questionnaires'] });
       )
       .on(
         'postgres_changes',
