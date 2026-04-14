@@ -169,7 +169,7 @@ const ClientLogin = () => {
               <CardDescription>
                 {showForgotPassword 
                   ? 'Enter your email to receive reset instructions'
-                  : 'Use your Shopify account credentials'
+                  : 'Sign in to your Fella & Fetch account'
                 }
               </CardDescription>
             </CardHeader>
