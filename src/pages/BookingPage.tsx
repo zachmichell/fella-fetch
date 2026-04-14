@@ -2594,6 +2594,7 @@ const BookingPage = () => {
             )}
           </div>
         </div>
+        )}
       </main>
 
       <Footer />
