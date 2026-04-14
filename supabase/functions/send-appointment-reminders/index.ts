@@ -42,6 +42,7 @@ function toUTC(dateStr: string, timeStr: string, tz: string): Date {
 
 /** Map settings timezone keys to IANA timezone names */
 const TZ_MAP: Record<string, string> = {
+  'America/Regina': 'America/Regina',
   'America/New_York': 'America/New_York',
   'America/Chicago': 'America/Chicago',
   'America/Denver': 'America/Denver',
