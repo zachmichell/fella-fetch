@@ -1109,6 +1109,52 @@ const BookingPage = () => {
       <Header />
       
       <main className="pt-24 pb-16">
+        {bookingConfirmed ? (
+          <div className="container-app max-w-lg text-center py-16">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="space-y-6"
+            >
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                <Check className="w-8 h-8 text-primary" />
+              </div>
+              <h2 className="font-display text-2xl sm:text-3xl font-semibold text-foreground">
+                Booking Request Submitted!
+              </h2>
+              <div className="bg-card border border-border rounded-2xl p-6 space-y-3 text-left">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Service</span>
+                  <span className="font-semibold text-foreground">{bookingConfirmed.service}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Pet{bookingConfirmed.petNames.length > 1 ? 's' : ''}</span>
+                  <span className="font-semibold text-foreground">{bookingConfirmed.petNames.join(', ')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Date</span>
+                  <span className="font-semibold text-foreground">{bookingConfirmed.date}</span>
+                </div>
+                {bookingConfirmed.time && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Time</span>
+                    <span className="font-semibold text-foreground">{bookingConfirmed.time}</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-muted-foreground">
+                We'll be in touch to confirm your booking.
+              </p>
+              <Button
+                variant="hero"
+                size="lg"
+                onClick={() => setBookingConfirmed(null)}
+              >
+                Book Another Visit
+              </Button>
+            </motion.div>
+          </div>
+        ) : (
         <div className="container-app max-w-4xl">
           {/* Header */}
           <motion.div
