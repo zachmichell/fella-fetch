@@ -96,7 +96,7 @@ const Footer = () => {
             <div className="space-y-4">
               <div className="flex items-start gap-3 text-muted-foreground">
                 <MapPin className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                <span>123 Paws Street<br />Pet City, PC 12345</span>
+                <span>Regina, Saskatchewan</span>
               </div>
               <div className="flex items-center gap-3 text-muted-foreground">
                 <Phone className="w-5 h-5" />
