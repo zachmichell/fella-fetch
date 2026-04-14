@@ -18,7 +18,7 @@ const services = [
     subtitle: "Daily Daycare",
     description: "Supervised play, socialization, and exercise in a safe, fun environment. Your dog will come home happy and tired.",
     icon: iconStay,
-    features: ["Play groups by size", "Indoor/outdoor areas", "Daily report cards"],
+    features: ["Play groups by size", "Indoor/outdoor areas", "Daily report cards (launching soon)"],
     price: "From $25/half day",
   },
   {

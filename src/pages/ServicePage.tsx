@@ -21,7 +21,7 @@ const serviceDetails = {
       "Indoor and outdoor play areas",
       "Scheduled nap times in comfortable rest areas",
       "Fresh water available at all times",
-      "Daily report cards with updates",
+      "Daily report cards with updates (launching soon)",
       "24-hour supervision by trained staff",
     ],
     pricing: [
