@@ -125,6 +125,12 @@ const BookingPage = () => {
   const [step, setStep] = useState(1);
   const [isCreatingCart, setIsCreatingCart] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [bookingConfirmed, setBookingConfirmed] = useState<{
+    service: string;
+    petNames: string[];
+    date: string;
+    time?: string;
+  } | null>(null);
   const [creditProduct, setCreditProduct] = useState<{ shopify_product_id: string; shopify_product_title: string } | null>(null);
   
   // Grooming-specific state
@@ -871,8 +877,15 @@ const BookingPage = () => {
 
       if (error) throw error;
 
-      toast.success("Appointment requested!", {
-        description: "We'll confirm your grooming appointment shortly.",
+      const groomingDateStr = bookingData.groomingDate 
+        ? format(bookingData.groomingDate, 'EEEE, MMMM d, yyyy')
+        : '';
+
+      setBookingConfirmed({
+        service: 'Grooming',
+        petNames: bookingData.selectedPets.map(p => p.name),
+        date: groomingDateStr,
+        time: bookingData.groomingTime || undefined,
       });
 
       // Reset form
@@ -981,14 +994,19 @@ const BookingPage = () => {
 
       if (error || data?.error) throw new Error(data?.error || error?.message);
 
-      toast.success(
-        bookingData.payInStore 
-          ? "Reservation requested! Payment will be collected at drop-off." 
-          : "Reservation requested!",
-        {
-          description: "We'll confirm your reservation shortly.",
-        }
-      );
+      const serviceName = bookingData.service === 'daycare' 
+        ? `${bookingData.daycareType === 'half' ? 'Half Day' : 'Full Day'} Daycare`
+        : bookingData.service === 'boarding' ? 'Boarding' : 'Training';
+      const dateStr = bookingData.date 
+        ? format(parseLocalDate(bookingData.date), 'EEEE, MMMM d, yyyy')
+        : '';
+
+      setBookingConfirmed({
+        service: serviceName,
+        petNames: bookingData.selectedPets.map(p => p.name),
+        date: dateStr,
+        time: bookingData.time || undefined,
+      });
 
       // Reset form
       setStep(1);
@@ -1091,6 +1109,52 @@ const BookingPage = () => {
       <Header />
       
       <main className="pt-24 pb-16">
+        {bookingConfirmed ? (
+          <div className="container-app max-w-lg text-center py-16">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="space-y-6"
+            >
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                <Check className="w-8 h-8 text-primary" />
+              </div>
+              <h2 className="font-display text-2xl sm:text-3xl font-semibold text-foreground">
+                Booking Request Submitted!
+              </h2>
+              <div className="bg-card border border-border rounded-2xl p-6 space-y-3 text-left">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Service</span>
+                  <span className="font-semibold text-foreground">{bookingConfirmed.service}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Pet{bookingConfirmed.petNames.length > 1 ? 's' : ''}</span>
+                  <span className="font-semibold text-foreground">{bookingConfirmed.petNames.join(', ')}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Date</span>
+                  <span className="font-semibold text-foreground">{bookingConfirmed.date}</span>
+                </div>
+                {bookingConfirmed.time && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Time</span>
+                    <span className="font-semibold text-foreground">{bookingConfirmed.time}</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-muted-foreground">
+                We'll be in touch to confirm your booking.
+              </p>
+              <Button
+                variant="hero"
+                size="lg"
+                onClick={() => setBookingConfirmed(null)}
+              >
+                Book Another Visit
+              </Button>
+            </motion.div>
+          </div>
+        ) : (
         <div className="container-app max-w-4xl">
           {/* Header */}
           <motion.div
@@ -2530,6 +2594,7 @@ const BookingPage = () => {
             )}
           </div>
         </div>
+        )}
       </main>
 
       <Footer />

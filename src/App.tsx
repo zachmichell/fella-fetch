@@ -12,6 +12,7 @@ import BookingPage from "./pages/BookingPage";
 import PricingPage from "./pages/PricingPage";
 import ContactPage from "./pages/ContactPage";
 import AboutPage from "./pages/AboutPage";
+import ShopPage from "./pages/ShopPage";
 import NotFound from "./pages/NotFound";
 import FAQsPage from "./pages/FAQsPage";
 import PoliciesPage from "./pages/PoliciesPage";
@@ -72,6 +73,7 @@ const App = () => (
               <Route path="/policies" element={<PoliciesPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/terms" element={<TermsPage />} />
+              <Route path="/shop" element={<ShopPage />} />
 {/* Client Portal Routes */}
               <Route path="/login" element={<ClientLogin />} />
               <Route path="/portal" element={<ClientDashboard />} />
