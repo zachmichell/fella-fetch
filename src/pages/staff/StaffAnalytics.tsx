@@ -1,3 +1,4 @@
+import React from 'react';
 import { StaffLayout } from '@/components/staff/StaffLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CapacityTab } from '@/components/staff/analytics/CapacityTab';
@@ -6,7 +7,6 @@ import { TrainingTab } from '@/components/staff/analytics/TrainingTab';
 import { OwnersTab } from '@/components/staff/analytics/OwnersTab';
 import { BarChart3, Scissors, GraduationCap, Crown, AlertTriangle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { ErrorBoundary } from 'react';
 
 class AnalyticsErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -36,8 +36,6 @@ class AnalyticsErrorBoundary extends React.Component<
     return this.props.children;
   }
 }
-
-import React from 'react';
 
 const StaffAnalytics = () => (
   <StaffLayout>
