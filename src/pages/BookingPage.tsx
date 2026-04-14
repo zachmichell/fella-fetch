@@ -994,14 +994,19 @@ const BookingPage = () => {
 
       if (error || data?.error) throw new Error(data?.error || error?.message);
 
-      toast.success(
-        bookingData.payInStore 
-          ? "Reservation requested! Payment will be collected at drop-off." 
-          : "Reservation requested!",
-        {
-          description: "We'll confirm your reservation shortly.",
-        }
-      );
+      const serviceName = bookingData.service === 'daycare' 
+        ? `${bookingData.daycareType === 'half' ? 'Half Day' : 'Full Day'} Daycare`
+        : bookingData.service === 'boarding' ? 'Boarding' : 'Training';
+      const dateStr = bookingData.date 
+        ? format(parseLocalDate(bookingData.date), 'EEEE, MMMM d, yyyy')
+        : '';
+
+      setBookingConfirmed({
+        service: serviceName,
+        petNames: bookingData.selectedPets.map(p => p.name),
+        date: dateStr,
+        time: bookingData.time || undefined,
+      });
 
       // Reset form
       setStep(1);
