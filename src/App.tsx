@@ -13,6 +13,10 @@ import PricingPage from "./pages/PricingPage";
 import ContactPage from "./pages/ContactPage";
 import AboutPage from "./pages/AboutPage";
 import NotFound from "./pages/NotFound";
+import FAQsPage from "./pages/FAQsPage";
+import PoliciesPage from "./pages/PoliciesPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import TermsPage from "./pages/TermsPage";
 // Client pages
 import ClientLogin from "./pages/client/ClientLogin";
 import ClientDashboard from "./pages/client/ClientDashboard";
@@ -64,7 +68,10 @@ const App = () => (
               <Route path="/book" element={<BookingPage />} />
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/contact" element={<ContactPage />} />
-              <Route path="/about" element={<AboutPage />} />
+              <Route path="/faqs" element={<FAQsPage />} />
+              <Route path="/policies" element={<PoliciesPage />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
+              <Route path="/terms" element={<TermsPage />} />
 {/* Client Portal Routes */}
               <Route path="/login" element={<ClientLogin />} />
               <Route path="/portal" element={<ClientDashboard />} />
