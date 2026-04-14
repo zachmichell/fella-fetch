@@ -599,7 +599,6 @@ const BookingPage = () => {
       groomingTime: null,
       groomingEndTime: null,
     });
-    setStep(2);
   };
 
   const handlePetToggle = (pet: SelectedPet) => {
@@ -625,10 +624,9 @@ const BookingPage = () => {
           && new Date(pet.level_expiration_date) > new Date();
         
         if (hasActiveLevel) {
-          // Lane B: VIP Fast-Track — proceed to groomer selection
+          // Lane B: VIP Fast-Track — user clicks Continue to proceed to groomer selection
           setShowQuestionnaire(false);
           setQuestionnaireSubmitted(false);
-          setStep(3);
         } else {
           // Lane A: Gatekeeper — show questionnaire
           setShowQuestionnaire(true);
@@ -652,12 +650,6 @@ const BookingPage = () => {
       groomingTime: null,
       groomingEndTime: null,
     });
-    // If we already have a next available date, skip calendar and go to service selection
-    if (showNextAvailable && nextAvailableDate) {
-      setStep(4); // service selection, then skip calendar (date already set)
-    } else {
-      setStep(4); // service selection, then calendar
-    }
   };
 
   const handleFindNextAvailable = () => {
@@ -695,7 +687,6 @@ const BookingPage = () => {
       groomingDate: date,
       groomingTime: null, // Reset time when date changes
     });
-    setStep(6); // Auto-advance to time selection
   };
 
   const handleGroomingTimeSelect = (time: string) => {
@@ -710,7 +701,6 @@ const BookingPage = () => {
       groomingTime: time,
       groomingEndTime: endTimeStr,
     });
-    setStep(7); // Auto-advance to confirmation
   };
 
   const nextStep = () => {
@@ -1429,7 +1419,6 @@ const BookingPage = () => {
                   <button
                     onClick={() => {
                       setBookingData({ ...bookingData, daycareType: "full" });
-                      setStep(4); // Auto-advance to next step
                     }}
                     className={`p-6 rounded-2xl border-2 text-left transition-all ${
                       bookingData.daycareType === "full"
@@ -1446,7 +1435,6 @@ const BookingPage = () => {
                   <button
                     onClick={() => {
                       setBookingData({ ...bookingData, daycareType: "half" });
-                      setStep(4); // Auto-advance to next step
                     }}
                     className={`p-6 rounded-2xl border-2 text-left transition-all ${
                       bookingData.daycareType === "half"
@@ -1596,14 +1584,12 @@ const BookingPage = () => {
                         <button
                           key={service.id}
                           onClick={() => {
-                            // If only one variant, auto-select it and advance
                             if (service.variants.length === 1) {
                               setBookingData({ 
                                 ...bookingData, 
                                 selectedGroomingService: service,
                                 selectedGroomingVariant: service.variants[0]
                               });
-                              setStep(5); // Auto-advance to date selection
                             } else {
                               setBookingData({ 
                                 ...bookingData, 
@@ -1666,7 +1652,6 @@ const BookingPage = () => {
                             key={variant.id}
                             onClick={() => {
                               setBookingData({ ...bookingData, selectedGroomingVariant: variant });
-                              setStep(5); // Auto-advance to date selection
                             }}
                             className={`relative w-full p-4 rounded-xl border-2 transition-all text-left ${
                               isSelected 
@@ -2508,7 +2493,7 @@ const BookingPage = () => {
               <div />
             )}
             
-            {step === 1 ? (
+            {false ? (
               <div />
             ) : step < totalSteps ? (
               <Button
