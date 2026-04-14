@@ -7,7 +7,12 @@ const PoliciesPage = () => {
       <Header />
       <main className="flex-1 container-app py-20">
         <h1 className="font-display text-3xl font-semibold mb-4">Policies</h1>
-        <p className="text-muted-foreground">This page is coming soon. Our facility policies will be published here shortly.</p>
+        <p className="text-muted-foreground">
+          Our policies document is coming soon. For inquiries, contact{" "}
+          <a href="mailto:hello@fellaandfetch.ca" className="text-primary hover:underline">
+            hello@fellaandfetch.ca
+          </a>
+        </p>
       </main>
       <Footer />
     </div>
