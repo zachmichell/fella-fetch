@@ -65,8 +65,7 @@ const ContactPage = () => {
                     <div>
                       <h3 className="font-semibold text-foreground mb-1">Address</h3>
                       <p className="text-muted-foreground">
-                        123 Paws Street<br />
-                        Pet City, PC 12345
+                        Regina, Saskatchewan
                       </p>
                     </div>
                   </div>
