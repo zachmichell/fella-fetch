@@ -2491,7 +2491,7 @@ const BookingPage = () => {
 
                 <p className="text-xs text-muted-foreground text-center">
                   Hours: Mon-Fri 7am-7pm • Sat-Sun 9am-5pm<br />
-                  Located in Victoria Park Village, Toronto
+                  Regina, Saskatchewan
                 </p>
               </motion.div>
             )}
