@@ -68,7 +68,10 @@ const App = () => (
               <Route path="/book" element={<BookingPage />} />
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/contact" element={<ContactPage />} />
-              <Route path="/about" element={<AboutPage />} />
+              <Route path="/faqs" element={<FAQsPage />} />
+              <Route path="/policies" element={<PoliciesPage />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
+              <Route path="/terms" element={<TermsPage />} />
 {/* Client Portal Routes */}
               <Route path="/login" element={<ClientLogin />} />
               <Route path="/portal" element={<ClientDashboard />} />
