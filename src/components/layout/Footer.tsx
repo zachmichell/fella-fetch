@@ -119,7 +119,7 @@ const Footer = () => {
       <div className="border-t border-border">
         <div className="container-app py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-muted-foreground text-sm">
-            © {currentYear} Fella & Fetch. All rights reserved.
+            © {currentYear} Fella & Fetch Canine Care. All rights reserved.
           </p>
           
           <div className="flex items-center gap-6">

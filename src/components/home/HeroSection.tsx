@@ -52,8 +52,8 @@ const HeroSection = () => {
             transition={{ delay: 0.4, duration: 0.6 }}
             className="text-lg sm:text-xl text-muted-foreground mb-12 max-w-2xl mx-auto leading-relaxed"
           >
-            Daycare, boarding, grooming, and training services. 
-            Your pets deserve exceptional care.
+            Premium canine care in Regina, SK. 
+            Daycare, boarding, grooming, and training.
           </motion.p>
 
           {/* CTA Buttons */}
