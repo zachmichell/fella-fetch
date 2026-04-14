@@ -125,6 +125,12 @@ const BookingPage = () => {
   const [step, setStep] = useState(1);
   const [isCreatingCart, setIsCreatingCart] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [bookingConfirmed, setBookingConfirmed] = useState<{
+    service: string;
+    petNames: string[];
+    date: string;
+    time?: string;
+  } | null>(null);
   const [creditProduct, setCreditProduct] = useState<{ shopify_product_id: string; shopify_product_title: string } | null>(null);
   
   // Grooming-specific state
