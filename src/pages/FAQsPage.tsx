@@ -7,7 +7,12 @@ const FAQsPage = () => {
       <Header />
       <main className="flex-1 container-app py-20">
         <h1 className="font-display text-3xl font-semibold mb-4">Frequently Asked Questions</h1>
-        <p className="text-muted-foreground">This page is coming soon. Check back later for answers to common questions about our services.</p>
+        <p className="text-muted-foreground">
+          Our FAQ is coming soon. For questions, contact us at{" "}
+          <a href="mailto:hello@fellaandfetch.ca" className="text-primary hover:underline">
+            hello@fellaandfetch.ca
+          </a>
+        </p>
       </main>
       <Footer />
     </div>
