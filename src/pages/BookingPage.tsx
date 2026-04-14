@@ -877,8 +877,15 @@ const BookingPage = () => {
 
       if (error) throw error;
 
-      toast.success("Appointment requested!", {
-        description: "We'll confirm your grooming appointment shortly.",
+      const groomingDateStr = bookingData.groomingDate 
+        ? format(bookingData.groomingDate, 'EEEE, MMMM d, yyyy')
+        : '';
+
+      setBookingConfirmed({
+        service: 'Grooming',
+        petNames: bookingData.selectedPets.map(p => p.name),
+        date: groomingDateStr,
+        time: bookingData.groomingTime || undefined,
       });
 
       // Reset form
