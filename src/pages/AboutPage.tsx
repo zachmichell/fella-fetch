@@ -216,13 +216,13 @@ const AboutPage = () => {
                 <MapPin className="w-6 h-6 mx-auto mb-4 text-primary-foreground/60" strokeWidth={1.5} />
                 <p className="font-medium mb-1">Address</p>
                 <p className="text-primary-foreground/70 text-sm">
-                  1600 Osler St<br />Regina, SK
+                  Regina, Saskatchewan
                 </p>
               </div>
               <div className="text-center">
                 <Phone className="w-6 h-6 mx-auto mb-4 text-primary-foreground/60" strokeWidth={1.5} />
                 <p className="font-medium mb-1">Phone</p>
-                <p className="text-primary-foreground/70 text-sm">(306) 540-4451</p>
+                <p className="text-primary-foreground/70 text-sm">(306) 500-3100</p>
               </div>
               <div className="text-center">
                 <Mail className="w-6 h-6 mx-auto mb-4 text-primary-foreground/60" strokeWidth={1.5} />
