@@ -6,6 +6,7 @@ import { ArrowRight } from "lucide-react";
 import iconStay from "@/assets/icons/icon-stay.png";
 import iconGroom from "@/assets/icons/icon-groom.png";
 import iconTrain from "@/assets/icons/icon-train.png";
+import iconPlay from "@/assets/icons/icon-play.png";
 import iconShop from "@/assets/icons/icon-shop.png";
 
 const services = [
@@ -42,7 +43,7 @@ const services = [
     subtitle: "Daily Daycare",
     description: "Supervised play, socialization, and exercise in a safe, fun environment for your pup.",
     path: "/services/daycare",
-    icon: iconStay,
+    icon: iconPlay,
     features: ["Supervised play", "Indoor & outdoor", "Nap time", "Report cards"],
   },
 ];
